@@ -1,0 +1,77 @@
+<Program>               ::= ( <StructDecl> | <FunctionDecl> | <Stmt> )*
+
+<StructDecl>            ::= 'struct' Identifier '{' <StructMember>* '}'
+<StructMember>          ::= <FieldDecl> ( ',' | ) | <MethodDecl>
+<FieldDecl>             ::= Identifier ':' Type
+<MethodDecl>            ::= <FunctionDecl>
+
+<FunctionDecl>          ::= 'func' Identifier '(' <Params>? ')' <ReturnType>? <Block>
+<Params>                ::= <Param> ( ',' <Param> )*
+<Param>                 ::= ( 'mut' | 'read' | 'take' )? Identifier ':' Type
+<ReturnType>            ::= 'returns' '(' Identifier ':' Type ')'
+
+<Block>                 ::= '{' <Stmt>* '}'
+
+<Stmt>                  ::= <VarDecl> ';'
+                          | <Assignment> ';'
+                          | <IfStmt>
+                          | <ForStmt>
+                          | <WhileStmt>
+                          | <SwitchStmt>
+                          | <Block>
+                          | <Expr> ';'
+                          | <ReturnStmt> ';'
+                          | <BreakStmt> ';'
+                          | <ContinueStmt> ';'
+                          | <FreeStmt> ';'
+                          | 'asm' <Block> ';'
+                          | 'Error' '(' String ')' ';'
+
+<VarDecl>               ::= 'mut'? Identifier ( ( ':' Type ( '=' <Expr> )? ) | ( ':=' <Expr> ) )
+
+<Assignment>            ::= <LValue> '=' <Expr>
+<LValue>                ::= Identifier | '*' <Expr> | <LValue> '.' Identifier
+
+<IfStmt>                ::= 'if' '(' <Expr> ')' <Block> ( 'else' ( <Block> | <IfStmt> ) )?
+<ForStmt>               ::= 'for' '(' <Expr>? ';' <Expr>? ';' <Expr>? ')' <Block>
+<WhileStmt>             ::= 'while' '(' <Expr> ')' <Block>
+<SwitchStmt>            ::= 'switch' '(' <Expr> ')' '{' <Case>* '}'
+<Case>                  ::= 'case' <Expr> ':' <Block>
+
+<ReturnStmt>            ::= 'return' <Expr>?
+<BreakStmt>             ::= 'break'
+<ContinueStmt>          ::= 'continue'
+<FreeStmt>              ::= 'free' '[]'? <Expr>
+
+<Expr>                  ::= <LogicalOrExpr>
+<LogicalOrExpr>         ::= <LogicalAndExpr> ( 'or' <LogicalAndExpr> )*
+<LogicalAndExpr>        ::= <EqualityExpr> ( 'and' <EqualityExpr> )*
+<EqualityExpr>          ::= <RelationalExpr> ( ( '==' | '!=' ) <RelationalExpr> )*
+<RelationalExpr>        ::= <AdditiveExpr> ( ( '<' | '>' | '<=' | '>=' ) <AdditiveExpr> )*
+<AdditiveExpr>          ::= <MultiplicativeExpr> ( ( '+' | '-' ) <MultiplicativeExpr> )*
+<MultiplicativeExpr>    ::= <UnaryExpr> ( ( '*' | '/' | '%' ) <UnaryExpr> )*
+<UnaryExpr>             ::= ( '&' 'mut'? | '*' ) <UnaryExpr> | <PostfixExpr>
+<PostfixExpr>           ::= <PrimaryExpr> ( <PostfixSuffix> )*
+<PostfixSuffix>         ::= '.' Identifier | '(' <Args>? ')' | '[' <Expr> ']'
+
+<PrimaryExpr>           ::= <Literal>
+                          | Identifier
+                          | '(' <Expr> ')'
+                          | <StructLiteral>
+                          | <NewExpr>
+
+<StructLiteral>         ::= Identifier '(' ( Identifier '=' <Expr> ( ',' Identifier '=' <Expr> )* )? ')'
+<NewExpr>               ::= 'new' '<' Type '>' ( '[' <Expr> ']' | '(' <Expr>? ')' )
+
+<Args>                  ::= <Arg> ( ',' <Arg> )*
+<Arg>                   ::= 'give'? <Expr>
+
+<Type>                  ::= <BasicType> | <StructType> | <PointerType>
+<BasicType>             ::= 'i32' | 'u8' | 'str' | 'bool'
+<StructType>            ::= Identifier
+<PointerType>           ::= 'ptr' '<' ( 'mut' | 'imm' ) <Type> '>'
+
+<Literal>               ::= Integer | String | Bool | 'null'
+Integer                 ::= [0-9]+
+String                  ::= '"' ( Escape | [^"] )* '"'
+Bool                    ::= 1 | 0
