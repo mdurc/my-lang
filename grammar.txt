@@ -74,4 +74,4 @@
 <Literal>               ::= Integer | String | Bool | 'null'
 Integer                 ::= [0-9]+
 String                  ::= '"' ( Escape | [^"] )* '"'
-Bool                    ::= 1 | 0
+Bool                    ::= 'true' | 'false'

@@ -1,0 +1,14 @@
+// Declaration
+mut x: i32;          // Mutable, uninitialized
+
+mut y: i32 = 3;      // Mutable, explicit type + initializer
+z: i32 = 5;          // Immutable, explicit type + initializer
+
+mut a := 10;         // Mutable, inferred type
+b := "hello";        // Immutable, inferred type
+
+// Assignment
+mut x := 3; // inferred declaration by using :=
+mut y : i32 = 2; // explicit declaration using : T =
+
+x = 13; // assignment using = (we cannot use := because it will re-declare the variable)

@@ -1,0 +1,13 @@
+struct Point {
+    x: i32,
+    y: i32,
+
+    func is_origin() returns (r: u8) {
+        return x == 0 and y == 0;
+    }
+}
+
+mut origin := Point(x = 0, y = 0);
+
+mut x_o : i32 = origin.x;
+mut y_o : i32 = origin.y;

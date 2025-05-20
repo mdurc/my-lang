@@ -1,0 +1,5 @@
+asm {
+    // TODO
+}
+
+Error("err msg");

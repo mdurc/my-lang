@@ -1,0 +1,9 @@
+mut px : ptr<mut i32>;
+
+px = new<mut i32>[3];
+free[] px;
+
+px = null;
+
+px = new<mut i32>(15);
+free px;

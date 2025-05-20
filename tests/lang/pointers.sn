@@ -1,0 +1,10 @@
+// Address Of
+mut x : i32 = 3;
+mut px : ptr<imm i32> = &x; // mutable pointer to immutable reference to i32
+mut px : ptr<mut i32> = &mut x; // mutable pointer to mutable reference to i32
+
+// Accessing
+px = &x;
+print px; // address
+print *px; // value
+print *(px + 0); // value at px, using pointer arithmetic

@@ -147,7 +147,9 @@ func bar () returns (z: i32) {
 
 - Parameter Ownership Modifiers:
 ```
-func foo(mut x: i32, read y: i32, take z: i32) { }
+func foo(mut x: i32, read y: i32, take z: i32) {
+    // return; // empty return is valid for u0 return type
+}
 ```
 - `x` is a mutable reference (not a copy)
     - Argument passed for `x` must be mutable (we cannot make an immutable variable mutable via passing it to a mutable parameter)

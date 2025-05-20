@@ -1,0 +1,12 @@
+func foo () returns (z: i32) {
+    z = 18; // note that we cannot re-declare z using := operator, as it has already been typed as i32
+}
+func bar () returns (z: i32) {
+    return 5; // explicit returns
+}
+
+func foo_2(mut x: i32, read y: i32, take z: i32) {
+    print "hi";
+
+    // return; // empty return is valid for u0 return type
+}
