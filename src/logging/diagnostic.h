@@ -1,5 +1,5 @@
-#ifndef LOGGER_DIAGNOSTIC_H
-#define LOGGER_DIAGNOSTIC_H
+#ifndef LOGGING_DIAGNOSTIC_H
+#define LOGGING_DIAGNOSTIC_H
 
 #include <cstdlib>
 #include <exception>
@@ -99,4 +99,4 @@ private:
   void generate_message() override;
 };
 
-#endif // LOGGER_DIAGNOSTIC_H
+#endif // LOGGING_DIAGNOSTIC_H
