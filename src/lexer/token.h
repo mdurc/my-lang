@@ -91,6 +91,7 @@ enum class TokenType {
   BANG_EQUAL,    // !=
   LESS_EQUAL,    // <=
   GREATER_EQUAL, // >=
+  ARROW,         // ->
 
   UNKNOWN,
   EOF_ // End Of File

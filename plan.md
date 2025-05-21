@@ -145,6 +145,15 @@ func bar () returns (z: i32) {
 }
 ```
 
+- First class functions (note that the function definition syntax above is the
+  only way to declare a function 'literal', i.e. you cannot do `x : func = (){}`
+  and must instead do `func x (){}`)
+```
+// First class usage (assignment):
+temp : func()->u0 = foo;
+test := foo;
+```
+
 - Parameter Ownership Modifiers:
 ```
 func foo(mut x: i32, read y: i32, take z: i32) {

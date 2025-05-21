@@ -245,7 +245,6 @@ void Lexer::scan_token() {
     case '.': add_token(TokenType::DOT); break;
     case ';': add_token(TokenType::SEMICOLON); break;
     case '+': add_token(TokenType::PLUS); break;
-    case '-': add_token(TokenType::MINUS); break;
     case '*': add_token(TokenType::STAR); break;
     case '/': add_token(TokenType::SLASH); break;
     case '%': add_token(TokenType::MODULO); break;
@@ -265,6 +264,9 @@ void Lexer::scan_token() {
       break;
     case '>':
       add_token(match('=') ? TokenType::GREATER_EQUAL : TokenType::RANGLE);
+      break;
+    case '-':
+      add_token(match('>') ? TokenType::ARROW : TokenType::MINUS);
       break;
 
     case '"': lex_string(); break;
