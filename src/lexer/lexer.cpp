@@ -140,7 +140,7 @@ void Lexer::lex_string() {
       // handle escaped characters
       advance();
       if (is_at_end()) {
-        logger.report(FatalError("Unterminated string escape sequence."));
+        m_logger.report(FatalError("Unterminated string escape sequence."));
         break;
       }
       char escaped_char = advance();
@@ -150,8 +150,8 @@ void Lexer::lex_string() {
         case '"': value += '"'; break;
         case '\\': value += '\\'; break;
         default:
-          logger.report(Warning("Unterminated string escape sequence: \\" +
-                                std::string(1, escaped_char)));
+          m_logger.report(Warning("Unterminated string escape sequence: \\" +
+                                  std::string(1, escaped_char)));
           value += escaped_char;
           break;
       }
@@ -161,7 +161,7 @@ void Lexer::lex_string() {
   }
 
   if (is_at_end() || peek() != '"') {
-    logger.report(FatalError("Unterminated string."));
+    m_logger.report(FatalError("Unterminated string."));
     add_token(TokenType::UNKNOWN);
     return;
   }
@@ -189,14 +189,14 @@ void Lexer::lex_number() {
     try {
       add_token(TokenType::FLOAT_LITERAL, std::stod(num_str));
     } catch (const std::out_of_range&) {
-      logger.report(FatalError("Float literal out of range: " + num_str));
+      m_logger.report(FatalError("Float literal out of range: " + num_str));
       add_token(TokenType::UNKNOWN);
     }
   } else {
     try {
       add_token(TokenType::INT_LITERAL, std::stoull(num_str));
     } catch (const std::out_of_range&) {
-      logger.report(FatalError("Integer literal out of range: " + num_str));
+      m_logger.report(FatalError("Integer literal out of range: " + num_str));
       add_token(TokenType::UNKNOWN);
     }
   }
@@ -270,7 +270,7 @@ void Lexer::scan_token() {
     case '"': lex_string(); break;
 
     default:
-      logger.report(FatalError("Unexpected character: " + std::string(1, c)));
+      m_logger.report(FatalError("Unexpected character: " + std::string(1, c)));
       add_token(TokenType::UNKNOWN);
       break;
   }

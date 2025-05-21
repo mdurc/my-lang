@@ -17,6 +17,8 @@ public:
   friend std::ostream& operator<<(std::ostream& out, const Lexer& lex);
 
 private:
+  Logger m_logger;
+
   std::string m_source;
   size_t m_lex_start;
   size_t m_lex_pos;
@@ -25,8 +27,6 @@ private:
   int m_row;
   int m_col;
   int m_start_col;
-
-  Logger logger;
 
   static const std::map<std::string, TokenType> s_keyword_map;
 
