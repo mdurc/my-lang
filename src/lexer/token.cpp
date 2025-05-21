@@ -1,254 +1,141 @@
-enum TokenType {
-    // keywords:
-    FUNC,       // func
-    IF,         // if
-    ELSE,       // else
-    FOR,        // for
-    WHILE,      // while
-    PRINT,      // print
-    RETURN,     // return
-    RETURNS,    // returns
-    BREAK,      // break
-    CONTINUE,   // continue
-    TRUE,       // true
-    FALSE,      // false
-    NULL_,      // null
-    AND,        // and
-    OR,         // or
+#include "token.h"
 
-    STRUCT,     // struct
-    SWITCH,     // switch
-    CASE,       // case
-    DEFAULT,    // default
+#include <iomanip>
 
-    IMM,        // imm (immutable, though only used for pointee types)
-    MUT,        // mut (mutable)
-    READ,       // read
-    TAKE,       // take
-    GIVE,       // give
+Token::Token(TokenType type, const std::string& lexeme, const Span& span,
+             LiteralValueVariant value)
+    : m_type(type),
+      m_lexeme(lexeme),
+      m_span(span),
+      m_literal_value(std::move(value)) {}
 
-    PTR,        // ptr
+bool Token::is_literal() const {
+  return !std::holds_alternative<std::monostate>(m_literal_value);
+}
 
-    NEW,        // new
-    FREE,       // free
+std::ostream& operator<<(std::ostream& out, const Token& token) {
+  constexpr int type_width = 14;
+  constexpr int lexeme_width = 14;
+  constexpr int literal_width = 14;
 
-    IDENTIFIER,
+  out << "[" << std::left << std::setw(type_width)
+      << token_type_to_string(token.m_type) << "] ";
 
-    // primitive types:
-    // Unsigned
-    U8, U16, U32, U64,
-    // Signed
-    I8, I16, I32, I64,
-    // Floating
-    F64,
-    // Special
-    BOOL, STRING, U0,
+  out << std::left << std::setw(lexeme_width) << token.m_lexeme;
 
-    // literals
-    INT_LITERAL,        // 42, 0x1F, 0b1010
-    FLOAT_LITERAL,      // 3.14, 2e5
-    STRING_LITERAL,     // "text"
+  if (token.is_literal()) {
+    std::ostringstream literal_stream;
+    std::visit(
+        [&literal_stream](auto&& arg) {
+          using T = std::decay_t<decltype(arg)>;
+          if constexpr (std::is_same_v<T, std::monostate>) {
+            literal_stream << "monostate_error";
+          } else {
+            literal_stream << arg;
+          }
+        },
+        token.m_literal_value);
+    out << std::left << std::setw(literal_width) << literal_stream.str();
+  } else {
+    out << std::left << std::setw(literal_width) << "";
+  }
 
-    // syntax:
-    LPAREN, RPAREN,     // ()
-    LBRACE, RBRACE,     // {}
-    LBRACK, RBRACK,     // []
-    LANGLE, RANGLE,     // <>
-    COMMA, COLON, SEMICOLON, TILDE, DOT,
+  out << "at (row=" << token.m_span.row << ", s_col=" << token.m_span.start_col
+      << ", e_col=" << token.m_span.end_col << ")";
 
-    // operators:
-    BANG,           // !
-    PLUS,           // +
-    MINUS,          // -
-    SLASH,          // /
-    STAR,           // *
-    EQUAL,          // =
-    AMPERSAND,      // &
-    MODULO,         // %
-
-    // compound operators:
-    WALRUS,         // :=
-    EQUAL_EQUAL,    // ==
-    BANG_EQUAL,     // !=
-    LESS_EQUAL,     // <=
-    GREATER_EQUAL,  // >=
-
-    EOF_
+  return out;
 }
 
 std::string token_type_to_string(TokenType type) {
-    switch (type) {
-        // keywords
-        case FUNC:          return "func";
-        case IF:            return "if";
-        case ELSE:          return "else";
-        case FOR:           return "for";
-        case WHILE:         return "while";
-        case PRINT:         return "print";
-        case RETURN:        return "return";
-        case RETURNS:       return "returns";
-        case BREAK:         return "break";
-        case CONTINUE:      return "continue";
-        case TRUE:          return "true";
-        case FALSE:         return "false";
-        case NULL_:         return "null";
-        case AND:           return "and";
-        case OR:            return "or";
+  switch (type) {
+    // keywords
+    case TokenType::FUNC: return "FUNC";
+    case TokenType::IF: return "IF";
+    case TokenType::ELSE: return "ELSE";
+    case TokenType::FOR: return "FOR";
+    case TokenType::WHILE: return "WHILE";
+    case TokenType::PRINT: return "PRINT";
+    case TokenType::RETURN: return "RETURN";
+    case TokenType::RETURNS: return "RETURNS";
+    case TokenType::BREAK: return "BREAK";
+    case TokenType::CONTINUE: return "CONTINUE";
+    case TokenType::TRUE: return "TRUE";
+    case TokenType::FALSE: return "FALSE";
+    case TokenType::NULL_: return "NULL_";
+    case TokenType::AND: return "AND";
+    case TokenType::OR: return "OR";
+    case TokenType::ASM: return "ASM";
+    case TokenType::ERROR_KEYWORD: return "ERROR_KEYWORD";
 
-        case STRUCT:        return "struct";
-        case SWITCH:        return "switch";
-        case CASE:          return "case";
-        case DEFAULT:       return "default";
+    case TokenType::STRUCT: return "STRUCT";
+    case TokenType::SWITCH: return "SWITCH";
+    case TokenType::CASE: return "CASE";
+    case TokenType::DEFAULT: return "DEFAULT";
 
-        case MUT:           return "mut";
-        case READ:          return "read";
-        case TAKE:          return "take";
-        case GIVE:          return "give";
+    case TokenType::IMM: return "IMM";
+    case TokenType::MUT: return "MUT";
+    case TokenType::READ: return "READ";
+    case TokenType::TAKE: return "TAKE";
+    case TokenType::GIVE: return "GIVE";
 
-        case PTR:           return "ptr";
+    case TokenType::PTR: return "PTR";
+    case TokenType::NEW: return "NEW";
+    case TokenType::FREE: return "FREE";
 
-        case NEW:           return "new";
-        case FREE:          return "free";
+    case TokenType::IDENTIFIER: return "IDENTIFIER";
 
-        case IDENTIFIER:    return "_identifier_";
+    // primitive types
+    case TokenType::U0: return "U0";
+    case TokenType::U8: return "U8";
+    case TokenType::U16: return "U16";
+    case TokenType::U32: return "U32";
+    case TokenType::U64: return "U64";
+    case TokenType::I8: return "I8";
+    case TokenType::I16: return "I16";
+    case TokenType::I32: return "I32";
+    case TokenType::I64: return "I64";
+    case TokenType::F64: return "F64";
+    case TokenType::BOOL: return "BOOL";
+    case TokenType::STRING: return "STRING_TYPE";
 
-        // primitive types
-        case U0:            return "u0";
-        case U8:            return "u8";
-        case U16:           return "u16";
-        case U32:           return "u32";
-        case U64:           return "u64";
-        case I8:            return "i8";
-        case I16:           return "i16";
-        case I32:           return "i32";
-        case I64:           return "i64";
-        case F64:           return "f64";
-        case BOOL:          return "bool";
-        case STRING:        return "String";
+    // literals
+    case TokenType::INT_LITERAL: return "INT_LITERAL";
+    case TokenType::FLOAT_LITERAL: return "FLOAT_LITERAL";
+    case TokenType::STRING_LITERAL: return "STRING_LITERAL";
 
-        // literals
-        case INT_LITERAL:   return "_int_literal_";
-        case FLOAT_LITERAL: return "_float_literal_";
-        case STRING_LITERAL:return "_string_literal_";
+    // syntax
+    case TokenType::LPAREN: return "LPAREN";
+    case TokenType::RPAREN: return "RPAREN";
+    case TokenType::LBRACE: return "LBRACE";
+    case TokenType::RBRACE: return "RBRACE";
+    case TokenType::LBRACK: return "LBRACK";
+    case TokenType::RBRACK: return "RBRACK";
+    case TokenType::LANGLE: return "LANGLE";
+    case TokenType::RANGLE: return "RANGLE";
+    case TokenType::COMMA: return "COMMA";
+    case TokenType::DOT: return "DOT";
+    case TokenType::COLON: return "COLON";
+    case TokenType::SEMICOLON: return "SEMICOLON";
 
-        // syntax
-        case LPAREN:        return "(";
-        case RPAREN:        return ")";
-        case LBRACE:        return "{";
-        case RBRACE:        return "}";
-        case LBRACK:        return "[";
-        case RBRACK:        return "]";
-        case LANGLE:        return "<";
-        case RANGLE:        return ">";
-        case COMMA:         return ",";
-        case DOT:           return ".";
-        case COLON:         return ":";
-        case SEMICOLON:     return ";";
-        case TILDE:         return "~";
+    // operators
+    case TokenType::BANG: return "BANG";
+    case TokenType::PLUS: return "PLUS";
+    case TokenType::MINUS: return "MINUS";
+    case TokenType::SLASH: return "SLASH";
+    case TokenType::STAR: return "STAR";
+    case TokenType::EQUAL: return "EQUAL";
+    case TokenType::AMPERSAND: return "AMPERSAND";
+    case TokenType::MODULO: return "MODULO";
 
-        // operators
-        case BANG:          return "!";
-        case PLUS:          return "+";
-        case MINUS:         return "-";
-        case SLASH:        return "/";
-        case STAR:          return "*";
-        case EQUAL:         return "=";
-        case AMPERSAND:     return "&";
-        case MODULO:        return "%";
+    // compound operators
+    case TokenType::WALRUS: return "WALRUS";
+    case TokenType::EQUAL_EQUAL: return "EQUAL_EQUAL";
+    case TokenType::BANG_EQUAL: return "BANG_EQUAL";
+    case TokenType::LESS_EQUAL: return "LESS_EQUAL";
+    case TokenType::GREATER_EQUAL: return "GREATER_EQUAL";
 
-        // compound operators
-        case WALRUS:        return ":=";
-        case BANG_EQUAL:    return "!=";
-        case LESS_EQUAL:    return "<=";
-        case GREATER_EQUAL: return ">=";
-
-        case EOF_:          return "_EOF_";
-        default:            return "UNKNOWN";
-    }
-}
-
-typedef struct {
-    const char* keyword;
-    TokenType type;
-} KeywordEntry;
-
-static KeywordEntry keyword_map[] = {
-    {"func",    FUNC},
-    {"if",      IF},
-    {"else",    ELSE},
-    {"for",     FOR},
-    {"while",   WHILE},
-    {"print",   PRINT},
-    {"return",  RETURN},
-    {"returns", RETURNS},
-    {"struct",  STRUCT_KW},
-    {"switch",  SWITCH},
-    {"case",    CASE},
-    {"default", DEFAULT},
-    {"break",   BREAK},
-    {"continue",CONTINUE},
-    {"mut",     MUT},
-    {"read",    READ},
-    {"owned",   OWNED},
-    {"safeptr", SAFEPTR},
-    {"ownedptr",OWNEDPTR},
-    {"sharedptr",SHAREDPTR},
-    {"rawptr", RAWPTR},
-    {"new", NEW},
-    {"free", FREE},
-    {"true", TRUE}, {"false", FALSE}, {"null", NULL_}, {"and", AND}, {"or", OR},
-    {"u0", U0}, {"u8", U8}, {"u16", U16}, {"u32", U32}, {"u64", U64},
-    {"i8", I8}, {"i16", I16}, {"i32", I32}, {"i64", I64}, {"f64", F64},
-    {"bool",    BOOL},
-    {"String",  STRING},
-};
-
-#define KEYWORD_COUNT (sizeof(keyword_map) / sizeof(keyword_map[0]))
-
-class Literal {
-public:
-    auto& get_data() { return 0; }
-}
-
-class IntLiteral: public Literal {
-public:
-    uint64_t m_data;
-    auto& get_data() {
-        return m_data;
-    }
-}
-
-class StringLiteral: public Literal {
-public:
-    std::string m_data;
-    auto& get_data() {
-        return m_data;
-    }
-}
-
-class FloatLiteral: public Literal {
-public:
-    double m_data;
-    auto& get_data() {
-        return m_data;
-    }
-}
-
-class Token {
-public:
-    TokenType m_type;
-    std::string m_lexeme;
-    int row, col;
-
-    bool m_is_literal;
-    Literal m_lit_data; // if this is a literal
-
-    friend std::ostream& operator<<(std::ostream& out, const Token& token) {
-        out << "[" << token_type_to_string(token.m_type) <<
-        "] : " << token.m_lexeme;
-        if (token.m_is_literal) {
-            out << " (" << token.m_lit_data.get_data() << ")";
-        }
-        out << " at (" << row << ", " << col << ")" << std::endl;
-    }
+    case TokenType::UNKNOWN: return "UNKNOWN";
+    case TokenType::EOF_: return "EOF_";
+    default: return "UNHANDLED_TOKEN_TYPE";
+  }
 }

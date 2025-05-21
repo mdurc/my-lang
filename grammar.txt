@@ -18,6 +18,7 @@
                           | <ForStmt>
                           | <WhileStmt>
                           | <SwitchStmt>
+                          | 'print' <Expr> ';'
                           | <Block>
                           | <Expr> ';'
                           | <ReturnStmt> ';'
@@ -36,7 +37,7 @@
 <ForStmt>               ::= 'for' '(' <Expr>? ';' <Expr>? ';' <Expr>? ')' <Block>
 <WhileStmt>             ::= 'while' '(' <Expr> ')' <Block>
 <SwitchStmt>            ::= 'switch' '(' <Expr> ')' '{' <Case>* '}'
-<Case>                  ::= 'case' <Expr> ':' <Block>
+<Case>                  ::= 'case' <Expr> ':' <Block> | 'default' ':' <Block>
 
 <ReturnStmt>            ::= 'return' <Expr>?
 <BreakStmt>             ::= 'break'
@@ -48,9 +49,9 @@
 <LogicalAndExpr>        ::= <EqualityExpr> ( 'and' <EqualityExpr> )*
 <EqualityExpr>          ::= <RelationalExpr> ( ( '==' | '!=' ) <RelationalExpr> )*
 <RelationalExpr>        ::= <AdditiveExpr> ( ( '<' | '>' | '<=' | '>=' ) <AdditiveExpr> )*
-<AdditiveExpr>          ::= <MultiplicativeExpr> ( ( '+' | '-' ) <MultiplicativeExpr> )*
+<AdditiveExpr>          ::= <MultiplicativeExpr> ( ( '+' | '-') <MultiplicativeExpr> )*
 <MultiplicativeExpr>    ::= <UnaryExpr> ( ( '*' | '/' | '%' ) <UnaryExpr> )*
-<UnaryExpr>             ::= ( '&' 'mut'? | '*' ) <UnaryExpr> | <PostfixExpr>
+<UnaryExpr>             ::= ( '&' 'mut'? | '*' | '!' ) <UnaryExpr> | <PostfixExpr>
 <PostfixExpr>           ::= <PrimaryExpr> ( <PostfixSuffix> )*
 <PostfixSuffix>         ::= '.' Identifier | '(' <Args>? ')' | '[' <Expr> ']'
 
@@ -67,11 +68,12 @@
 <Arg>                   ::= 'give'? <Expr>
 
 <Type>                  ::= <BasicType> | <StructType> | <PointerType>
-<BasicType>             ::= 'i32' | 'u8' | 'str' | 'bool'
+<BasicType>             ::= 'i32' | 'u8' | 'String' | 'bool' | 'u0' | 'u16' | 'u32' | 'u64' | 'i8' | 'i16' | 'i64' | 'f64'
 <StructType>            ::= Identifier
 <PointerType>           ::= 'ptr' '<' ( 'mut' | 'imm' ) <Type> '>'
 
-<Literal>               ::= Integer | String | Bool | 'null'
+<Literal>               ::= Integer | String | Bool | 'null' | Float
 Integer                 ::= [0-9]+
+Float                   ::= [0-9]+ '.' [0-9]+
 String                  ::= '"' ( Escape | [^"] )* '"'
 Bool                    ::= 'true' | 'false'
