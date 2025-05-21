@@ -13,6 +13,9 @@ int main(int argc, char** argv) {
   try {
     Lexer lexer(filename);
     std::cout << lexer;
+  } catch (const Error& e) {
+    std::cerr << "Lexing failed: " << e.what() << std::endl;
+    return 1;
   } catch (const std::exception& e) {
     std::cerr << "Lexing failed: " << e.what() << std::endl;
     return 1;

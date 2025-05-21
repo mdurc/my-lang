@@ -1,10 +1,12 @@
-#ifndef TOKEN_H
-#define TOKEN_H
+#ifndef LEXER_TOKEN_H
+#define LEXER_TOKEN_H
 
 #include <cstdint>
 #include <ostream>
 #include <string>
 #include <variant>
+
+#include "span.h"
 
 enum class TokenType {
   // Keywords:
@@ -96,32 +98,22 @@ enum class TokenType {
 
 std::string token_type_to_string(TokenType type);
 
-class Span {
-public:
-  size_t row;
-  size_t start_col;
-  size_t end_col; // the span is exclusive of the end col
-  Span(size_t r, size_t sc, size_t ec) : row(r), start_col(sc), end_col(ec) {}
-
-  inline size_t len() { return end_col - start_col; }
-};
-
 class Token {
 public:
-  TokenType m_type;
-  std::string m_lexeme;
-  Span m_span;
-
   // default constructable variant
-  using LiteralValueVariant =
-      std::variant<std::monostate, std::uint64_t, std::string, double>;
-  LiteralValueVariant m_literal_value;
+  using Lit = std::variant<std::monostate, std::uint64_t, std::string, double>;
 
   Token(TokenType type, const std::string& lexeme, const Span& span,
-        LiteralValueVariant value = std::monostate{});
+        Lit value = std::monostate{});
 
   bool is_literal() const;
   friend std::ostream& operator<<(std::ostream& out, const Token& token);
+
+private:
+  TokenType m_type;
+  std::string m_lexeme;
+  Span m_span;
+  Lit m_literal_value;
 };
 
-#endif
+#endif // LEXER_TOKEN_H

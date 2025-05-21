@@ -1,10 +1,11 @@
-#ifndef LEXER_H
-#define LEXER_H
+#ifndef LEXER_LEXER_H
+#define LEXER_LEXER_H
 
 #include <map>
 #include <string>
 #include <vector>
 
+#include "../logging/logger.h"
 #include "token.h"
 
 class Lexer {
@@ -25,6 +26,8 @@ private:
   int m_col;
   int m_start_col;
 
+  Logger logger;
+
   static const std::map<std::string, TokenType> s_keyword_map;
 
   void tokenize();
@@ -36,14 +39,12 @@ private:
   char peek_next() const;
   bool match(char expected);
 
-  void add_token(TokenType type,
-                 Token::LiteralValueVariant literal_value = std::monostate{});
+  void add_token(TokenType type, Token::Lit literal_value = std::monostate{});
 
   void lex_string();
   void lex_number();
   void lex_identifier_or_keyword();
   void skip_whitespace_and_comments();
-  void report_error(const std::string& message);
 };
 
-#endif
+#endif // LEXER_LEXER_H

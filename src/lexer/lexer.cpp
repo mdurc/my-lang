@@ -33,8 +33,7 @@ Lexer::Lexer(const std::string& filename)
     : m_lex_start(0), m_lex_pos(0), m_row(1), m_col(1), m_start_col(1) {
   std::ifstream file(filename);
   if (!file.is_open()) {
-    throw std::runtime_error("LexerError: Could not open file at this : " +
-                             filename);
+    throw std::runtime_error("Could not open file: " + filename);
   }
 
   std::stringstream buffer;
@@ -97,8 +96,7 @@ bool Lexer::match(char expected) {
 }
 
 // optional literal value
-void Lexer::add_token(TokenType type,
-                      Token::LiteralValueVariant literal_value) {
+void Lexer::add_token(TokenType type, Token::Lit literal_value) {
   m_tokens.push_back(
       Token(type, m_source.substr(m_lex_start, m_lex_pos - m_lex_start),
             Span(m_row, m_start_col, m_col), std::move(literal_value)));
@@ -142,7 +140,7 @@ void Lexer::lex_string() {
       // handle escaped characters
       advance();
       if (is_at_end()) {
-        report_error("Unterminated string escape sequence.");
+        logger.report(FatalError("Unterminated string escape sequence."));
         break;
       }
       char escaped_char = advance();
@@ -152,9 +150,8 @@ void Lexer::lex_string() {
         case '"': value += '"'; break;
         case '\\': value += '\\'; break;
         default:
-          // TODO warning instead
-          report_error("Unknown escape sequence: \\" +
-                       std::string(1, escaped_char));
+          logger.report(Warning("Unterminated string escape sequence: \\" +
+                                std::string(1, escaped_char)));
           value += escaped_char;
           break;
       }
@@ -164,7 +161,7 @@ void Lexer::lex_string() {
   }
 
   if (is_at_end() || peek() != '"') {
-    report_error("Unterminated string.");
+    logger.report(FatalError("Unterminated string."));
     add_token(TokenType::UNKNOWN);
     return;
   }
@@ -192,14 +189,14 @@ void Lexer::lex_number() {
     try {
       add_token(TokenType::FLOAT_LITERAL, std::stod(num_str));
     } catch (const std::out_of_range&) {
-      report_error("Float literal out of range: " + num_str);
+      logger.report(FatalError("Float literal out of range: " + num_str));
       add_token(TokenType::UNKNOWN);
     }
   } else {
     try {
       add_token(TokenType::INT_LITERAL, std::stoull(num_str));
     } catch (const std::out_of_range&) {
-      report_error("Integer literal out of range: " + num_str);
+      logger.report(FatalError("Integer literal out of range: " + num_str));
       add_token(TokenType::UNKNOWN);
     }
   }
@@ -273,13 +270,8 @@ void Lexer::scan_token() {
     case '"': lex_string(); break;
 
     default:
-      report_error("Unexpected character: " + std::string(1, c));
+      logger.report(FatalError("Unexpected character: " + std::string(1, c)));
       add_token(TokenType::UNKNOWN);
       break;
   }
-}
-
-void Lexer::report_error(const std::string& message) {
-  std::cerr << "LexerError [line " << m_row << ":" << m_col << "]: " << message
-            << std::endl;
 }

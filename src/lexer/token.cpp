@@ -3,7 +3,7 @@
 #include <iomanip>
 
 Token::Token(TokenType type, const std::string& lexeme, const Span& span,
-             LiteralValueVariant value)
+             Lit value)
     : m_type(type),
       m_lexeme(lexeme),
       m_span(span),
@@ -29,6 +29,7 @@ std::ostream& operator<<(std::ostream& out, const Token& token) {
         [&literal_stream](auto&& arg) {
           using T = std::decay_t<decltype(arg)>;
           if constexpr (std::is_same_v<T, std::monostate>) {
+            // this should never be reached due to checking is_literal
             literal_stream << "monostate_error";
           } else {
             literal_stream << arg;
@@ -40,8 +41,7 @@ std::ostream& operator<<(std::ostream& out, const Token& token) {
     out << std::left << std::setw(literal_width) << "";
   }
 
-  out << "at (row=" << token.m_span.row << ", s_col=" << token.m_span.start_col
-      << ", e_col=" << token.m_span.end_col << ")";
+  out << "at " << token.m_span;
 
   return out;
 }
