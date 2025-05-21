@@ -1,0 +1,48 @@
+Symbol Table design notes:
+
+i32 x;
+u8 y;
+{
+  struct MyStruct {}
+  MyStruct z;
+}
+
+
+Scopes      : [ 0, 1 ]
+Types       : [ (i32, 0), (u8, 0), (MyStruct, 1) ]
+Variables   : [ (x, 0), (y, 0), (z, 1) ]
+
+
+Lookup type from string "MyStruct":
+- I am in scope 1
+- Iterate through Types and match the type name
+
+Lookup variable from string "z":
+- I am in scope 1
+- Iterate through variables and match for name
+
+Both lookups are Theta(n)
+Both insertions are O(1)
+
+
+==
+Scopes : [ {T: i32, u8 ; V: x, y}, {T: MyStruct ; V: z} ]
+
+Lookup type from string "MyStruct":
+- I am in scope 1
+- Go to scope one {T: MyStruct ; V: z}
+- Iterate through types and compare, if it doesn't exist, go to the parent
+
+Lookup variable from string "z":
+- I am in scope 1
+- Go to scope one {T: MyStruct ; V: z}
+- Iterate through declared variables in scope 1 and match by name
+
+Common case is faster during lookup O(n)
+Insertion still O(1)
+
+
+
+
+Grammar notes:
+- Statements do not exist on rhs

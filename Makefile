@@ -7,8 +7,10 @@ BUILD_DIR = build
 LEXER_SRCS = src/lexer/lexer.cpp \
 						 src/lexer/token.cpp
 DIAG_SRCS = src/logging/diagnostic.cpp
+PARSER_SRC = src/parser/parser.cpp \
+						 src/parser/symtab.cpp
 
-SOURCE = $(LEXER_SRCS) $(DIAG_SRCS)
+SOURCE = $(LEXER_SRCS) $(DIAG_SRCS) $(PARSER_SRC)
 PROGRAM_SRCS = src/main.cpp $(SOURCE)
 TEST_SRCS = src/testing/lexer_tests.cpp \
 						src/testing/test_harness.cpp \

@@ -104,7 +104,9 @@ public:
   // default constructable variant
   using Lit = std::variant<std::monostate, std::uint64_t, std::string, double>;
 
-  Token(TokenType type, const std::string& lexeme, const Span& span,
+  // Span and Value are both going to be passed as literals thus
+  // we are going to use std::move
+  Token(TokenType type, const std::string& lexeme, Span span,
         Lit value = std::monostate{});
 
   bool is_literal() const;

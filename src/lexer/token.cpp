@@ -2,11 +2,10 @@
 
 #include <iomanip>
 
-Token::Token(TokenType type, const std::string& lexeme, const Span& span,
-             Lit value)
+Token::Token(TokenType type, const std::string& lexeme, Span span, Lit value)
     : m_type(type),
       m_lexeme(lexeme),
-      m_span(span),
+      m_span(std::move(span)),
       m_literal_value(std::move(value)) {}
 
 bool Token::is_literal() const {
@@ -96,7 +95,7 @@ std::string token_type_to_string(TokenType type) {
     case TokenType::I64: return "I64";
     case TokenType::F64: return "F64";
     case TokenType::BOOL: return "BOOL";
-    case TokenType::STRING: return "STRING_TYPE";
+    case TokenType::STRING: return "STRING";
 
     // literals
     case TokenType::INT_LITERAL: return "INT_LITERAL";
