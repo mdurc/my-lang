@@ -22,6 +22,25 @@ public:
   size_t num_errors() const { return m_errors.size(); }
   size_t num_warnings() const { return m_warnings.size(); }
 
+  bool output_diagnostics() const {
+    if (num_errors() == 0) {
+      for (const Diagnostic& d : m_warnings) {
+        std::cerr << d.what() << std::endl;
+      }
+      return false;
+    }
+
+    for (const Diagnostic& d : m_warnings) {
+      std::cerr << d.what() << std::endl;
+    }
+
+    for (const Diagnostic& d : m_errors) {
+      std::cerr << d.what() << std::endl;
+    }
+
+    return true;
+  }
+
 private:
   std::vector<Diagnostic> m_errors;   // fatal errors and errors
   std::vector<Diagnostic> m_warnings; // warnings and hints

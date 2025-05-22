@@ -41,6 +41,13 @@ Lexer::Lexer(const std::string& filename)
   m_source = buffer.str();
 
   tokenize();
+
+  if (m_logger.output_diagnostics()) {
+    throw std::runtime_error(
+        "Lexing failed with " + std::to_string(m_logger.num_errors()) +
+        " errors and " + std::to_string(m_logger.num_warnings()) +
+        " warnings.");
+  }
 }
 
 std::ostream& operator<<(std::ostream& out, const Lexer& lex) {
