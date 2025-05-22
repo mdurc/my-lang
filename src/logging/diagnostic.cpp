@@ -28,6 +28,18 @@ std::string Diagnostic::format_type() const {
 
 // == Specific Errors: ==
 
+// ExpectedToken during parsing
+ExpectedToken::ExpectedToken(const Span& span,
+                             const std::string& expected_token)
+    : Diagnostic(DiagType::ERROR, span), m_expected_token(expected_token) {}
+
+void ExpectedToken::generate_message() {
+  std::stringstream ss;
+  ss << format_type() << " " << m_span
+     << ": Expected token: " << m_expected_token;
+  m_msg = ss.str();
+}
+
 // TypeMismatchError
 TypeMismatchError::TypeMismatchError(const Span& span,
                                      const std::string& expected_type,

@@ -12,6 +12,16 @@ bool Token::is_literal() const {
   return !std::holds_alternative<std::monostate>(m_literal_value);
 }
 
+std::uint64_t Token::get_int_val() const {
+  return std::get<std::uint64_t>(m_literal_value);
+}
+const std::string& Token::get_string_val() const {
+  return std::get<std::string>(m_literal_value);
+}
+double Token::get_float_val() const {
+  return std::get<double>(m_literal_value);
+}
+
 std::ostream& operator<<(std::ostream& out, const Token& token) {
   constexpr int type_width = 14;
   constexpr int lexeme_width = 14;

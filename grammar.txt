@@ -77,7 +77,7 @@
 
 <FunctionType>          ::= 'func' '(' <FunctionParamTypes>? ')' '->' <Type>
 <FunctionParamTypes>    ::= <FunctionParamType> ( ',' <FunctionParamType> )*
-<FunctionParamType>     ::= ( 'mut' | 'read' | 'take' )? <Type>
+<FunctionParamType>     ::= ( 'mut' | 'read' | 'take' 'mut'? )? <Type>
 
 Integer                 ::= [0-9]+
 Float                   ::= [0-9]+ '.' [0-9]+

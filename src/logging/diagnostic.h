@@ -70,6 +70,15 @@ public:
       : Diagnostic(DiagType::HINT, span, hint) {}
 };
 
+class ExpectedToken : public Diagnostic {
+public:
+  ExpectedToken(const Span& span, const std::string& expected_token);
+
+private:
+  std::string m_expected_token;
+  void generate_message() override;
+};
+
 class TypeMismatchError : public Diagnostic {
 public:
   TypeMismatchError(const Span& span, const std::string& expected_type,

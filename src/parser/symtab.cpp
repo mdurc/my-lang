@@ -23,18 +23,18 @@ SymTab::SymTab() {
   m_scopes.emplace_back(-1); // global scope
 
   // define the primitives in the language
-  m_scopes[0].add_type(std::make_unique<NamedType>("u0", 0));
-  m_scopes[0].add_type(std::make_unique<NamedType>("u8", 0));
-  m_scopes[0].add_type(std::make_unique<NamedType>("u16", 0));
-  m_scopes[0].add_type(std::make_unique<NamedType>("u32", 0));
-  m_scopes[0].add_type(std::make_unique<NamedType>("u64", 0));
-  m_scopes[0].add_type(std::make_unique<NamedType>("i8", 0));
-  m_scopes[0].add_type(std::make_unique<NamedType>("i16", 0));
-  m_scopes[0].add_type(std::make_unique<NamedType>("i32", 0));
-  m_scopes[0].add_type(std::make_unique<NamedType>("i64", 0));
-  m_scopes[0].add_type(std::make_unique<NamedType>("f64", 0));
-  m_scopes[0].add_type(std::make_unique<NamedType>("bool", 0));
-  m_scopes[0].add_type(std::make_unique<NamedType>("string", 0));
+  m_scopes[0].add_type(std::make_shared<NamedType>("u0", 0));
+  m_scopes[0].add_type(std::make_shared<NamedType>("u8", 0));
+  m_scopes[0].add_type(std::make_shared<NamedType>("u16", 0));
+  m_scopes[0].add_type(std::make_shared<NamedType>("u32", 0));
+  m_scopes[0].add_type(std::make_shared<NamedType>("u64", 0));
+  m_scopes[0].add_type(std::make_shared<NamedType>("i8", 0));
+  m_scopes[0].add_type(std::make_shared<NamedType>("i16", 0));
+  m_scopes[0].add_type(std::make_shared<NamedType>("i32", 0));
+  m_scopes[0].add_type(std::make_shared<NamedType>("i64", 0));
+  m_scopes[0].add_type(std::make_shared<NamedType>("f64", 0));
+  m_scopes[0].add_type(std::make_shared<NamedType>("bool", 0));
+  m_scopes[0].add_type(std::make_shared<NamedType>("string", 0));
 }
 
 void SymTab::enter_new_scope() {
@@ -78,6 +78,11 @@ const Variable* SymTab::lookup_variable(const std::string& target_name) const {
     scope = &m_scopes[next_id];
   }
   return nullptr;
+}
+
+const TypeKind* SymTab::get_primitive_type(std::string primitive) const {
+  return m_scopes[0].lookup_type(
+      std::make_shared<NamedType>(std::move(primitive), 0));
 }
 
 void SymTab::declare_type(TypeKind tk) {

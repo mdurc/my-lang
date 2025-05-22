@@ -9,8 +9,7 @@ LEXER_SRCS = src/lexer/lexer.cpp \
 DIAG_SRCS = src/logging/diagnostic.cpp
 PARSER_SRC = src/parser/parser.cpp \
 						 src/parser/symtab.cpp \
-						 src/parser/types.cpp \
-						 src/parser/ast.cpp
+						 src/parser/types.cpp
 
 SOURCE = $(LEXER_SRCS) $(DIAG_SRCS) $(PARSER_SRC)
 PROGRAM_SRCS = src/main.cpp $(SOURCE)

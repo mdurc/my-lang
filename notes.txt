@@ -46,3 +46,21 @@ Insertion still O(1)
 
 Grammar notes:
 - Statements do not exist on rhs
+
+
+// TODO
+- go through codebase and find when I should/shouldn't be using std::move
+
+
+Scoping Rules:
+- Functions
+  - Parameters and block all in the same scope
+- Blocks
+  - Scoped in everything except when attached to function
+- For/While loops
+  - Parameter scopes with inner block scope
+- Struct
+  - field scopes
+  - Literal arguments scope
+
+

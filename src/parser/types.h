@@ -11,9 +11,18 @@ struct Variable;
 // == Type System ==
 struct NamedType;
 struct FunctionType;
+struct PointerType;
 
 using TypeKind =
-    std::variant<std::unique_ptr<NamedType>, std::unique_ptr<FunctionType>>;
+    std::variant<std::shared_ptr<NamedType>, std::shared_ptr<FunctionType>,
+                 std::shared_ptr<PointerType>>;
+
+enum BorrowState {
+  MutablyOwned,      // as param: owned mut
+  ImmutableOwned,    // as param: owned
+  MutablyBorrowed,   // as param: mut
+  ImmutablyBorrowed, // as param: read
+};
 
 // == Valid Type Kinds: ==
 // Note: Do not consider scope when checking equality. Scope per type is
@@ -30,25 +39,27 @@ struct NamedType {
 };
 
 struct FunctionType {
-  std::vector<Variable> parameters;
+  std::vector<std::pair<BorrowState, TypeKind>> parameters;
   TypeKind return_type;
   size_t scope_id;
 
-  // Variables must be moved due to holding TypeKinds
-  FunctionType(std::vector<Variable> params, TypeKind ret_type, size_t sc)
+  FunctionType(std::vector<std::pair<BorrowState, TypeKind>> params,
+               TypeKind ret_type, size_t sc)
       : parameters(std::move(params)),
         return_type(std::move(ret_type)),
         scope_id(sc) {}
 };
 
-// == Variables ==
-enum BorrowState {
-  MutablyOwned,      // as param: owned mut
-  ImmutableOwned,    // as param: owned
-  MutablyBorrowed,   // as param: mut
-  ImmutablyBorrowed, // as param: read
+struct PointerType {
+  bool is_mutable;
+  TypeKind pointee;
+  size_t scope_id;
+
+  PointerType(bool is_mutable, TypeKind pointee, size_t sc)
+      : is_mutable(is_mutable), pointee(std::move(pointee)), scope_id(sc) {}
 };
 
+// == Variables ==
 struct Variable {
   Variable(const std::string& name, BorrowState mod, TypeKind tk, size_t sc)
       : name(name), modifier(mod), type(std::move(tk)), scope_id(sc) {}

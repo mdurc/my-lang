@@ -18,6 +18,9 @@ public:
   void add_type(TypeKind tk) { m_types.push_back(std::move(tk)); }
   void add_variable(Variable v) { m_variables.push_back(std::move(v)); }
 
+  const std::vector<TypeKind>& get_types() const { return m_types; }
+  const std::vector<Variable>& get_variables() const { return m_variables; }
+
   const TypeKind* lookup_type(const TypeKind& target) const;
   const Variable* lookup_variable(const std::string& target_name) const;
 
@@ -37,8 +40,12 @@ public:
   const TypeKind* lookup_type(const TypeKind& target) const;
   const Variable* lookup_variable(const std::string& target_name) const;
 
+  const TypeKind* get_primitive_type(std::string primitive) const;
+
   void declare_type(TypeKind tk);
   void declare_variable(Variable v);
+
+  size_t current_scope() const { return m_current_scope; }
 
 private:
   size_t m_current_scope;      // current scope id

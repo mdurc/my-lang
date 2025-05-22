@@ -2,6 +2,7 @@
 #define LEXER_TOKEN_H
 
 #include <cstdint>
+#include <optional>
 #include <ostream>
 #include <string>
 #include <variant>
@@ -109,7 +110,16 @@ public:
   Token(TokenType type, const std::string& lexeme, Span span,
         Lit value = std::monostate{});
 
+  TokenType get_type() const { return m_type; }
+  const Span& get_span() const { return m_span; }
+  const std::string& get_lexeme() const { return m_lexeme; }
+
+  std::uint64_t get_int_val() const;
+  const std::string& get_string_val() const;
+  double get_float_val() const;
+
   bool is_literal() const;
+
   friend std::ostream& operator<<(std::ostream& out, const Token& token);
 
 private:
