@@ -10,9 +10,9 @@
 
 class Lexer {
 public:
-  Lexer(const std::string& filename);
+  Lexer() = default;
 
-  const std::vector<Token>& get_tokens() const { return m_tokens; }
+  std::vector<Token> tokenize(const std::string& filename);
 
   friend std::ostream& operator<<(std::ostream& out, const Lexer& lex);
 
@@ -30,7 +30,8 @@ private:
 
   static const std::map<std::string, TokenType> s_keyword_map;
 
-  void tokenize();
+  void setup();
+
   void scan_token();
 
   bool is_at_end() const;

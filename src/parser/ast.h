@@ -75,8 +75,8 @@ DERIVE_NODE(NullLiteralNode, ExpressionNode)
 class IdentifierNode : public ExpressionNode {
 public:
   std::string name;
-  IdentifierNode(const Token* tok, size_t sc, const std::string& name_val)
-      : ExpressionNode(tok, sc), name(name_val) {}
+  IdentifierNode(const Token* tok, size_t sc, std::string name_val)
+      : ExpressionNode(tok, sc), name(std::move(name_val)) {}
 };
 
 class BinaryOpExprNode : public ExpressionNode {
@@ -87,10 +87,7 @@ public:
 
   BinaryOpExprNode(const Token* tok, size_t sc, BinOperator op, ExprPtr l,
                    ExprPtr r)
-      : ExpressionNode(tok, sc),
-        op_type(op),
-        left(std::move(l)),
-        right(std::move(r)) {}
+      : ExpressionNode(tok, sc), op_type(op), left(l), right(r) {}
 };
 
 class UnaryExprNode : public ExpressionNode {
@@ -99,7 +96,7 @@ public:
   ExprPtr operand;
 
   UnaryExprNode(const Token* tok, size_t sc, UnaryOperator op, ExprPtr expr)
-      : ExpressionNode(tok, sc), op_type(op), operand(std::move(expr)) {}
+      : ExpressionNode(tok, sc), op_type(op), operand(expr) {}
 };
 
 class ArgumentNode : public AstNode {
@@ -108,7 +105,7 @@ public:
   ExprPtr expression;
 
   ArgumentNode(const Token* tok, size_t sc, bool give, ExprPtr expr)
-      : AstNode(tok, sc), is_give(give), expression(std::move(expr)) {}
+      : AstNode(tok, sc), is_give(give), expression(expr) {}
 };
 
 class FunctionCallNode : public ExpressionNode {
@@ -119,7 +116,7 @@ public:
   FunctionCallNode(const Token* tok, size_t sc, ExprPtr fn_callee,
                    std::vector<ArgPtr> args)
       : ExpressionNode(tok, sc),
-        callee(std::move(fn_callee)),
+        callee(fn_callee),
         arguments(std::move(args)) {}
 };
 
@@ -131,9 +128,7 @@ public:
 
   MemberAccessNode(const Token* tok, size_t sc, ExprPtr obj_expr,
                    IdentPtr member)
-      : ExpressionNode(tok, sc),
-        object(std::move(obj_expr)),
-        member(std::move(member)) {}
+      : ExpressionNode(tok, sc), object(obj_expr), member(member) {}
 };
 
 class ArrayIndexNode : public ExpressionNode {
@@ -144,16 +139,14 @@ public:
 
   ArrayIndexNode(const Token* tok, size_t sc, ExprPtr arr_expr,
                  ExprPtr idx_expr)
-      : ExpressionNode(tok, sc),
-        object(std::move(arr_expr)),
-        index(std::move(idx_expr)) {}
+      : ExpressionNode(tok, sc), object(arr_expr), index(idx_expr) {}
 };
 
 class GroupedExprNode : public ExpressionNode {
 public:
   ExprPtr expression;
   GroupedExprNode(const Token* tok, size_t sc, ExprPtr expr)
-      : ExpressionNode(tok, sc), expression(std::move(expr)) {}
+      : ExpressionNode(tok, sc), expression(expr) {}
 };
 
 class StructFieldInitializerNode : public AstNode {
@@ -163,7 +156,7 @@ public:
 
   StructFieldInitializerNode(const Token* tok, size_t sc, IdentPtr field,
                              ExprPtr val)
-      : AstNode(tok, sc), field(std::move(field)), value(std::move(val)) {}
+      : AstNode(tok, sc), field(field), value(val) {}
 };
 
 class StructLiteralNode : public ExpressionNode {
@@ -174,21 +167,19 @@ public:
   StructLiteralNode(const Token* tok, size_t sc, IdentPtr struct_type,
                     std::vector<StructFieldInitPtr> inits)
       : ExpressionNode(tok, sc),
-        struct_type(std::move(struct_type)),
+        struct_type(struct_type),
         initializers(std::move(inits)) {}
 };
 
 class NewExprNode : public ExpressionNode {
 public:
-  TypeKind type_to_allocate;           // The <Type> part
-  std::variant<ExprPtr,                // Array size
-               std::optional<ExprPtr>> // Constructor arg
-      allocation_specifier;
+  std::shared_ptr<Type> type_to_allocate; // The <Type> part
+  std::optional<ExprPtr> allocation_specifier;
 
-  NewExprNode(const Token* tok, size_t sc, TypeKind allocated_type,
-              decltype(allocation_specifier) specifier)
+  NewExprNode(const Token* tok, size_t sc, std::shared_ptr<Type> allocated_type,
+              std::optional<ExprPtr> specifier)
       : ExpressionNode(tok, sc),
-        type_to_allocate(std::move(allocated_type)),
+        type_to_allocate(allocated_type),
         allocation_specifier(std::move(specifier)) {}
 };
 
@@ -202,16 +193,17 @@ class VariableDeclNode : public StatementNode {
 public:
   bool is_mutable;
   IdentPtr var_name;
-  std::optional<TypeKind> type; // Optional for ':=' type inference
-  ExprPtr initializer;          // optional
+  std::optional<std::shared_ptr<Type>> type; // Optional for ':=' type inference
+  ExprPtr initializer;                       // optional
 
   VariableDeclNode(const Token* tok, size_t sc, bool mut, IdentPtr var_name,
-                   std::optional<TypeKind> tk, ExprPtr init = nullptr)
+                   std::optional<std::shared_ptr<Type>> tk,
+                   ExprPtr init = nullptr)
       : StatementNode(tok, sc),
         is_mutable(mut),
-        var_name(std::move(var_name)),
+        var_name(var_name),
         type(std::move(tk)),
-        initializer(std::move(init)) {}
+        initializer(init) {}
 };
 
 class AssignmentNode : public StatementNode {
@@ -220,9 +212,7 @@ public:
   ExprPtr rvalue;
 
   AssignmentNode(const Token* tok, size_t sc, ExprPtr lval, ExprPtr rval)
-      : StatementNode(tok, sc),
-        lvalue(std::move(lval)),
-        rvalue(std::move(rval)) {}
+      : StatementNode(tok, sc), lvalue(lval), rvalue(rval) {}
 };
 
 class BlockNode : public StatementNode {
@@ -242,9 +232,9 @@ public:
   IfStmtNode(const Token* tok, size_t sc, ExprPtr cond, BlockPtr then_b,
              BlockPtr else_b = nullptr)
       : StatementNode(tok, sc),
-        condition(std::move(cond)),
-        then_branch(std::move(then_b)),
-        else_branch(std::move(else_b)) {}
+        condition(cond),
+        then_branch(then_b),
+        else_branch(else_b) {}
 };
 
 class ForStmtNode : public StatementNode {
@@ -257,10 +247,10 @@ public:
   ForStmtNode(const Token* tok, size_t sc, BlockPtr b, ExprPtr init = nullptr,
               ExprPtr cond = nullptr, ExprPtr iter = nullptr)
       : StatementNode(tok, sc),
-        initializer(std::move(init)),
-        condition(std::move(cond)),
-        iteration(std::move(iter)),
-        body(std::move(b)) {}
+        initializer(init),
+        condition(cond),
+        iteration(iter),
+        body(b) {}
 };
 
 class WhileStmtNode : public StatementNode {
@@ -269,9 +259,7 @@ public:
   BlockPtr body;
 
   WhileStmtNode(const Token* tok, size_t sc, ExprPtr cond, BlockPtr b)
-      : StatementNode(tok, sc),
-        condition(std::move(cond)),
-        body(std::move(b)) {}
+      : StatementNode(tok, sc), condition(cond), body(b) {}
 };
 
 DERIVE_NODE(BreakStmtNode, StatementNode)
@@ -283,7 +271,7 @@ public:
   BlockPtr body;
 
   CaseNode(const Token* tok, size_t sc, BlockPtr b, ExprPtr val = nullptr)
-      : AstNode(tok, sc), value(std::move(val)), body(std::move(b)) {}
+      : AstNode(tok, sc), value(val), body(b) {}
 };
 
 class SwitchStmtNode : public StatementNode {
@@ -293,30 +281,28 @@ public:
 
   SwitchStmtNode(const Token* tok, size_t sc, ExprPtr expr,
                  std::vector<CasePtr> c)
-      : StatementNode(tok, sc),
-        expression(std::move(expr)),
-        cases(std::move(c)) {}
+      : StatementNode(tok, sc), expression(expr), cases(std::move(c)) {}
 };
 
 class PrintStmtNode : public StatementNode {
 public:
   ExprPtr expression;
   PrintStmtNode(const Token* tok, size_t sc, ExprPtr expr)
-      : StatementNode(tok, sc), expression(std::move(expr)) {}
+      : StatementNode(tok, sc), expression(expr) {}
 };
 
 class ExpressionStatementNode : public StatementNode {
 public:
   ExprPtr expression;
   ExpressionStatementNode(const Token* tok, size_t sc, ExprPtr expr)
-      : StatementNode(tok, sc), expression(std::move(expr)) {}
+      : StatementNode(tok, sc), expression(expr) {}
 };
 
 class ReturnStmtNode : public StatementNode {
 public:
   ExprPtr value; // optional
   ReturnStmtNode(const Token* tok, size_t sc, ExprPtr val = nullptr)
-      : StatementNode(tok, sc), value(std::move(val)) {}
+      : StatementNode(tok, sc), value(val) {}
 };
 
 class FreeStmtNode : public StatementNode {
@@ -326,31 +312,32 @@ public:
   FreeStmtNode(const Token* tok, size_t sc, bool is_arr, ExprPtr expr)
       : StatementNode(tok, sc),
         is_array_deallocation(is_arr),
-        expression(std::move(expr)) {}
+        expression(expr) {}
 };
 
 class ErrorStmtNode : public StatementNode {
 public:
   std::string message_content;
-  ErrorStmtNode(const Token* tok, size_t sc, const std::string& msg)
-      : StatementNode(tok, sc), message_content(msg) {}
+  ErrorStmtNode(const Token* tok, size_t sc, std::string msg)
+      : StatementNode(tok, sc), message_content(std::move(msg)) {}
 };
 
 class AsmBlockNode : public StatementNode {
 public:
   std::string body;
-  AsmBlockNode(const Token* tok, size_t sc, const std::string& b)
-      : StatementNode(tok, sc), body(b) {}
+  AsmBlockNode(const Token* tok, size_t sc, std::string b)
+      : StatementNode(tok, sc), body(std::move(b)) {}
 };
 
 // == Declaration Nodes ==
 class StructFieldNode : public AstNode {
 public:
   IdentPtr name;
-  TypeKind type;
+  std::shared_ptr<Type> type;
 
-  StructFieldNode(const Token* tok, size_t sc, IdentPtr name, TypeKind tk)
-      : AstNode(tok, sc), name(std::move(name)), type(std::move(tk)) {}
+  StructFieldNode(const Token* tok, size_t sc, IdentPtr name,
+                  std::shared_ptr<Type> tk)
+      : AstNode(tok, sc), name(name), type(tk) {}
 };
 
 class StructDeclNode : public AstNode {
@@ -362,41 +349,38 @@ public:
 
   StructDeclNode(const Token* tok, size_t sc, IdentPtr name,
                  decltype(members) m)
-      : AstNode(tok, sc), name(std::move(name)), members(std::move(m)) {}
+      : AstNode(tok, sc), name(name), members(std::move(m)) {}
 };
 
 class ParamNode : public AstNode {
 public:
   BorrowState modifier;
   IdentPtr name;
-  TypeKind type;
+  std::shared_ptr<Type> type;
 
   ParamNode(const Token* tok, size_t sc, BorrowState mod, IdentPtr name,
-            TypeKind tk)
-      : AstNode(tok, sc),
-        modifier(mod),
-        name(std::move(name)),
-        type(std::move(tk)) {}
+            std::shared_ptr<Type> tk)
+      : AstNode(tok, sc), modifier(mod), name(name), type(tk) {}
 };
 
 class FunctionDeclNode : public AstNode {
 public:
   IdentPtr name;
   std::vector<ParamPtr> params;
-  std::optional<std::string> return_type_name;
-  std::optional<TypeKind> return_type; // optional
+  std::optional<std::string> return_type_name; // optional for u0 return type
+  std::shared_ptr<Type> return_type;
   BlockPtr body;
 
   FunctionDeclNode(const Token* tok, size_t sc, IdentPtr name,
                    std::vector<ParamPtr> ps, BlockPtr b,
-                   std::optional<std::string> rt_n = std::nullopt,
-                   std::optional<TypeKind> rt = std::nullopt)
+                   std::shared_ptr<Type> rt,
+                   std::optional<std::string> rt_n = std::nullopt)
       : AstNode(tok, sc),
-        name(std::move(name)),
+        name(name),
         params(std::move(ps)),
         return_type_name(std::move(rt_n)),
-        return_type(std::move(rt)),
-        body(std::move(b)) {}
+        return_type(rt),
+        body(b) {}
 };
 
 #endif // PARSER_AST_H

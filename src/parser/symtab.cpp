@@ -1,18 +1,19 @@
 #include "symtab.h"
 
-const TypeKind* Scope::lookup_type(const TypeKind& target) const {
-  for (const TypeKind& type : m_types) {
-    if (type == target) {
-      return &type;
+std::shared_ptr<Type> Scope::lookup_type(const Type& target) const {
+  for (std::shared_ptr<Type> type : m_types) {
+    if (*type == target) {
+      return type;
     }
   }
   return nullptr;
 }
 
-const Variable* Scope::lookup_variable(const std::string& target_name) const {
-  for (const Variable& var : m_variables) {
-    if (var.name == target_name) {
-      return &var;
+std::shared_ptr<Variable> Scope::lookup_variable(
+    const std::string& name) const {
+  for (std::shared_ptr<Variable> var : m_variables) {
+    if (var->name == name) {
+      return var;
     }
   }
   return nullptr;
@@ -23,18 +24,18 @@ SymTab::SymTab() {
   m_scopes.emplace_back(-1); // global scope
 
   // define the primitives in the language
-  m_scopes[0].add_type(std::make_shared<NamedType>("u0", 0));
-  m_scopes[0].add_type(std::make_shared<NamedType>("u8", 0));
-  m_scopes[0].add_type(std::make_shared<NamedType>("u16", 0));
-  m_scopes[0].add_type(std::make_shared<NamedType>("u32", 0));
-  m_scopes[0].add_type(std::make_shared<NamedType>("u64", 0));
-  m_scopes[0].add_type(std::make_shared<NamedType>("i8", 0));
-  m_scopes[0].add_type(std::make_shared<NamedType>("i16", 0));
-  m_scopes[0].add_type(std::make_shared<NamedType>("i32", 0));
-  m_scopes[0].add_type(std::make_shared<NamedType>("i64", 0));
-  m_scopes[0].add_type(std::make_shared<NamedType>("f64", 0));
-  m_scopes[0].add_type(std::make_shared<NamedType>("bool", 0));
-  m_scopes[0].add_type(std::make_shared<NamedType>("string", 0));
+  m_scopes[0].add_type(Type(Type::Named("u0"), 0));
+  m_scopes[0].add_type(Type(Type::Named("u8"), 0));
+  m_scopes[0].add_type(Type(Type::Named("u16"), 0));
+  m_scopes[0].add_type(Type(Type::Named("u32"), 0));
+  m_scopes[0].add_type(Type(Type::Named("u64"), 0));
+  m_scopes[0].add_type(Type(Type::Named("i8"), 0));
+  m_scopes[0].add_type(Type(Type::Named("i16"), 0));
+  m_scopes[0].add_type(Type(Type::Named("i32"), 0));
+  m_scopes[0].add_type(Type(Type::Named("i64"), 0));
+  m_scopes[0].add_type(Type(Type::Named("f64"), 0));
+  m_scopes[0].add_type(Type(Type::Named("bool"), 0));
+  m_scopes[0].add_type(Type(Type::Named("string"), 0));
 }
 
 void SymTab::enter_new_scope() {
@@ -48,10 +49,10 @@ void SymTab::exit_scope() {
   }
 }
 
-const TypeKind* SymTab::lookup_type(const TypeKind& target) const {
+std::shared_ptr<Type> SymTab::lookup_type(const Type& target) const {
   const Scope* scope = &m_scopes[m_current_scope];
   while (true) {
-    const TypeKind* tk = scope->lookup_type(target);
+    std::shared_ptr<Type> tk = scope->lookup_type(target);
     if (tk != nullptr) {
       return tk;
     }
@@ -64,10 +65,11 @@ const TypeKind* SymTab::lookup_type(const TypeKind& target) const {
   return nullptr;
 }
 
-const Variable* SymTab::lookup_variable(const std::string& target_name) const {
+std::shared_ptr<Variable> SymTab::lookup_variable(
+    const std::string& target_name) const {
   const Scope* scope = &m_scopes[m_current_scope];
   while (true) {
-    const Variable* v = scope->lookup_variable(target_name);
+    std::shared_ptr<Variable> v = scope->lookup_variable(target_name);
     if (v != nullptr) {
       return v;
     }
@@ -80,15 +82,20 @@ const Variable* SymTab::lookup_variable(const std::string& target_name) const {
   return nullptr;
 }
 
-const TypeKind* SymTab::get_primitive_type(std::string primitive) const {
-  return m_scopes[0].lookup_type(
-      std::make_shared<NamedType>(std::move(primitive), 0));
+std::shared_ptr<Type> SymTab::get_primitive_type(std::string primitive) const {
+  return m_scopes[0].lookup_type(Type(Type::Named(std::move(primitive)), 0));
 }
 
-void SymTab::declare_type(TypeKind tk) {
-  m_scopes[m_current_scope].add_type(std::move(tk));
+std::shared_ptr<Type> SymTab::declare_type(Type tk) {
+  if (m_scopes[m_current_scope].lookup_type(tk)) {
+    return nullptr;
+  }
+  return m_scopes[m_current_scope].add_type(tk);
 }
 
-void SymTab::declare_variable(Variable v) {
-  m_scopes[m_current_scope].add_variable(std::move(v));
+std::shared_ptr<Variable> SymTab::declare_variable(Variable v) {
+  if (m_scopes[m_current_scope].lookup_variable(v.name)) {
+    return nullptr;
+  }
+  return m_scopes[m_current_scope].add_variable(std::move(v));
 }

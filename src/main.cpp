@@ -2,6 +2,8 @@
 #include <string>
 
 #include "lexer/lexer.h"
+#include "parser/parser.h"
+#include "parser/symtab.h"
 
 int main(int argc, char** argv) {
   if (argc != 2) {
@@ -10,9 +12,18 @@ int main(int argc, char** argv) {
   }
 
   const std::string& filename = argv[1];
+
   try {
-    Lexer lexer(filename);
-    std::cout << lexer;
+    Lexer lexer;
+    const std::vector<Token>& tokens = lexer.tokenize(filename);
+    std::cout << lexer; // prints out last tokenized file
+
+    SymTab symtab;
+
+    Parser parser;
+    std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
+
+    std::cout << "parsed: " << ast.size() << std::endl;
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
     return 1;

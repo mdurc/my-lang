@@ -30,8 +30,9 @@ void write_string_to_file(const std::string& filepath,
 
 std::string generate_lexer_output(const std::string& input_filepath) {
   std::stringstream ss;
+  Lexer lexer;
   try {
-    Lexer lexer(input_filepath);
+    lexer.tokenize(input_filepath);
     ss << lexer;
   } catch (const std::exception& e) {
     ss << "LEXER_EXCEPTION: " << e.what() << std::endl;

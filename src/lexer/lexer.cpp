@@ -29,25 +29,17 @@ const std::map<std::string, TokenType> Lexer::s_keyword_map = {
     {"f64", TokenType::F64},       {"bool", TokenType::BOOL},
     {"String", TokenType::STRING}};
 
-Lexer::Lexer(const std::string& filename)
-    : m_lex_start(0), m_lex_pos(0), m_row(1), m_col(1), m_start_col(1) {
-  std::ifstream file(filename);
-  if (!file.is_open()) {
-    throw std::runtime_error("Could not open file: " + filename);
-  }
+void Lexer::setup() {
+  m_logger.clear();
 
-  std::stringstream buffer;
-  buffer << file.rdbuf();
-  m_source = buffer.str();
+  m_source.clear();
+  m_lex_start = 0;
+  m_lex_pos = 0;
 
-  tokenize();
-
-  if (m_logger.output_diagnostics()) {
-    throw std::runtime_error(
-        "Lexing failed with " + std::to_string(m_logger.num_errors()) +
-        " errors and " + std::to_string(m_logger.num_warnings()) +
-        " warnings.");
-  }
+  m_tokens.clear();
+  m_row = 1;
+  m_col = 1;
+  m_start_col = 1;
 }
 
 std::ostream& operator<<(std::ostream& out, const Lexer& lex) {
@@ -58,7 +50,18 @@ std::ostream& operator<<(std::ostream& out, const Lexer& lex) {
   return out;
 }
 
-void Lexer::tokenize() {
+std::vector<Token> Lexer::tokenize(const std::string& filename) {
+  setup();
+
+  std::ifstream file(filename);
+  if (!file.is_open()) {
+    throw std::runtime_error("Could not open file: " + filename);
+  }
+
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  m_source = buffer.str();
+
   while (!is_at_end()) {
     skip_whitespace_and_comments();
     if (is_at_end()) break;
@@ -67,7 +70,15 @@ void Lexer::tokenize() {
     m_lex_start = m_lex_pos;
     scan_token();
   }
-  m_tokens.push_back(Token(TokenType::EOF_, "", Span(m_row, m_col, m_col)));
+
+  if (m_logger.output_diagnostics()) {
+    throw std::runtime_error(
+        "Lexing failed with " + std::to_string(m_logger.num_errors()) +
+        " errors and " + std::to_string(m_logger.num_warnings()) +
+        " warnings.");
+  }
+
+  return m_tokens;
 }
 
 bool Lexer::is_at_end() const { return m_lex_pos >= m_source.size(); }

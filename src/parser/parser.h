@@ -8,7 +8,9 @@
 
 class Parser {
 public:
-  Parser(SymTab* symtab, std::vector<Token> tokens);
+  Parser() = default;
+
+  std::vector<AstPtr> parse_program(SymTab* symtab, std::vector<Token> tokens);
 
 private:
   Logger m_logger;
@@ -20,7 +22,7 @@ private:
 
   std::vector<AstPtr> m_root;
 
-  const Token* current() const;
+  const Token* current();
   const Token* advance();
   bool consume(TokenType type);
   bool match(TokenType type) const;
@@ -29,7 +31,6 @@ private:
   bool is_sync_point(const Token* tok) const;
   void synchronize();
 
-  void parse_program();
   AstPtr parse_toplevel_declaration();
 
   // Structs
@@ -41,7 +42,7 @@ private:
   FuncDeclPtr parse_function_decl();
   BorrowState parse_param_borrow_state();
   ParamPtr parse_function_param();
-  std::pair<std::string, TypeKind> parse_function_return_type();
+  std::pair<std::string, std::shared_ptr<Type>> parse_function_return_type();
 
   // Statements
   StmtPtr parse_statement();
@@ -70,7 +71,7 @@ private:
   ExprPtr parse_postfix();
 
   std::vector<ArgPtr> parse_args();
-  TypeKind parse_type();
+  std::shared_ptr<Type> parse_type();
 
   // Primary Expressions
   ExprPtr parse_primary();

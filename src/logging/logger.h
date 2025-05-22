@@ -22,6 +22,11 @@ public:
   size_t num_errors() const { return m_errors.size(); }
   size_t num_warnings() const { return m_warnings.size(); }
 
+  void clear() {
+    m_errors.clear();
+    m_warnings.clear();
+  }
+
   bool output_diagnostics() const {
     if (num_errors() == 0) {
       for (const Diagnostic& d : m_warnings) {

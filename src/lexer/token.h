@@ -95,7 +95,6 @@ enum class TokenType {
   ARROW,         // ->
 
   UNKNOWN,
-  EOF_ // End Of File
 };
 
 std::string token_type_to_string(TokenType type);

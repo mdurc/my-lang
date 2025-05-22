@@ -6,16 +6,7 @@
 #include <variant>
 #include <vector>
 
-struct Variable;
-
 // == Type System ==
-struct NamedType;
-struct FunctionType;
-struct PointerType;
-
-using TypeKind =
-    std::variant<std::shared_ptr<NamedType>, std::shared_ptr<FunctionType>,
-                 std::shared_ptr<PointerType>>;
 
 enum BorrowState {
   MutablyOwned,      // as param: owned mut
@@ -24,50 +15,81 @@ enum BorrowState {
   ImmutablyBorrowed, // as param: read
 };
 
-// == Valid Type Kinds: ==
-// Note: Do not consider scope when checking equality. Scope per type is
-// essentially only useful for the lsp to find Type declarations. When comparing
-// for TypeKinds during lookup, we will already be searching in the
-// valid/accessible scopes, and if we included a check for equal scopes, it
-// woudl not consider the inheritence of types from parent scopes.
+class Type {
+public:
+  struct Named {
+    std::string identifier;
+    Named(std::string id) : identifier(std::move(id)) {}
 
-// structs and primitives
-struct NamedType {
-  std::string identifier;
+    friend bool operator==(const Named& a, const Named& b) {
+      return a.identifier == b.identifier;
+    }
+  };
+
+  struct Function {
+    std::vector<std::pair<BorrowState, std::shared_ptr<Type>>> parameters;
+    std::shared_ptr<Type> return_type;
+
+    Function(std::vector<std::pair<BorrowState, std::shared_ptr<Type>>> params,
+             std::shared_ptr<Type> ret_type)
+        : parameters(std::move(params)), return_type(ret_type) {}
+
+    friend bool operator==(const Function& a, const Function& b) {
+      return a.parameters == b.parameters && a.return_type == b.return_type;
+    }
+  };
+
+  struct Pointer {
+    bool is_mutable;
+    std::shared_ptr<Type> pointee;
+
+    Pointer(bool is_mutable, std::shared_ptr<Type> pointee)
+        : is_mutable(is_mutable), pointee(pointee) {}
+
+    friend bool operator==(const Pointer& a, const Pointer& b) {
+      return a.is_mutable == b.is_mutable && a.pointee == b.pointee;
+    }
+  };
+
+  // Public interface
+  template <typename T>
+  bool is() const {
+    return std::holds_alternative<T>(storage);
+  }
+  template <typename T>
+  const T& as() const {
+    return std::get<T>(storage);
+  }
+
+  // Constructors
+  Type(Named n, size_t sc) : storage(std::move(n)), scope_id(sc) {}
+  Type(Function f, size_t sc) : storage(std::move(f)), scope_id(sc) {}
+  Type(Pointer p, size_t sc) : storage(std::move(p)), scope_id(sc) {}
+
+  friend bool operator==(const Type& a, const Type& b) {
+    return a.storage == b.storage;
+  }
+
+private:
+  std::variant<Named, Function, Pointer> storage;
   size_t scope_id;
-  NamedType(const std::string& id, size_t sc) : identifier(id), scope_id(sc) {}
-};
-
-struct FunctionType {
-  std::vector<std::pair<BorrowState, TypeKind>> parameters;
-  TypeKind return_type;
-  size_t scope_id;
-
-  FunctionType(std::vector<std::pair<BorrowState, TypeKind>> params,
-               TypeKind ret_type, size_t sc)
-      : parameters(std::move(params)),
-        return_type(std::move(ret_type)),
-        scope_id(sc) {}
-};
-
-struct PointerType {
-  bool is_mutable;
-  TypeKind pointee;
-  size_t scope_id;
-
-  PointerType(bool is_mutable, TypeKind pointee, size_t sc)
-      : is_mutable(is_mutable), pointee(std::move(pointee)), scope_id(sc) {}
 };
 
 // == Variables ==
-struct Variable {
-  Variable(const std::string& name, BorrowState mod, TypeKind tk, size_t sc)
-      : name(name), modifier(mod), type(std::move(tk)), scope_id(sc) {}
-
+class Variable {
+public:
   std::string name;
   BorrowState modifier;
-  TypeKind type;
+  std::shared_ptr<Type> type;
   size_t scope_id;
+
+  Variable(std::string name, BorrowState mod, std::shared_ptr<Type> tk,
+           size_t sc)
+      : name(std::move(name)), modifier(mod), type(tk), scope_id(sc) {}
+
+  friend bool operator==(const Variable& a, const Variable& b) {
+    return a.name == b.name;
+  }
 };
 
 #endif // PARSER_TYPES_H

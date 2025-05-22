@@ -29,51 +29,78 @@ std::string Diagnostic::format_type() const {
 // == Specific Errors: ==
 
 // ExpectedToken during parsing
-ExpectedToken::ExpectedToken(const Span& span,
-                             const std::string& expected_token)
-    : Diagnostic(DiagType::ERROR, span), m_expected_token(expected_token) {}
+ExpectedToken::ExpectedToken(const Span& span, TokenType expected,
+                             TokenType got)
+    : ExpectedToken(span, token_type_to_string(expected),
+                    token_type_to_string(got)) {}
+ExpectedToken::ExpectedToken(const Span& span, const std::string& expected,
+                             TokenType got)
+    : ExpectedToken(span, expected, token_type_to_string(got)) {}
+ExpectedToken::ExpectedToken(const Span& span, const std::string& expected,
+                             const std::string& got)
+    : Diagnostic(DiagType::ERROR, span), m_expected(expected), m_got(got) {
+  generate_message();
+}
 
 void ExpectedToken::generate_message() {
   std::stringstream ss;
-  ss << format_type() << " " << m_span
-     << ": Expected token: " << m_expected_token;
-  m_msg = ss.str();
+  ss << format_type() << " " << m_span << ": Expected token '" << m_expected
+     << "', got '" << m_got;
+  m_formatted_msg = ss.str();
 }
 
 // TypeMismatchError
 TypeMismatchError::TypeMismatchError(const Span& span,
-                                     const std::string& expected_type,
-                                     const std::string& got_type)
-    : Diagnostic(DiagType::ERROR, span),
-      m_expected_type(expected_type),
-      m_got_type(got_type) {}
+                                     const std::string& expected,
+                                     const std::string& got)
+    : Diagnostic(DiagType::ERROR, span), m_expected(expected), m_got(got) {
+  generate_message();
+}
 
 void TypeMismatchError::generate_message() {
   std::stringstream ss;
   ss << format_type() << " " << m_span << ": Type mismatch: Expected '"
-     << m_expected_type << "', got '" << m_got_type << "'";
-  m_msg = ss.str();
+     << m_expected << "', got '" << m_got << "'";
+  m_formatted_msg = ss.str();
 }
 
 // VariableNotFoundError
 VariableNotFoundError::VariableNotFoundError(const Span& span,
                                              const std::string& identifier)
-    : Diagnostic(DiagType::ERROR, span), m_identifier(identifier) {}
+    : Diagnostic(DiagType::ERROR, span), m_identifier(identifier) {
+  generate_message();
+}
 
 void VariableNotFoundError::generate_message() {
   std::stringstream ss;
-  ss << format_type() << " " << m_span << ": VariableNotFound: identifier '"
+  ss << format_type() << " " << m_span << ": Variable Not Found: identifier '"
      << m_identifier << "'";
-  m_msg = ss.str();
+  m_formatted_msg = ss.str();
 }
 
 // TypeNotFoundError
 TypeNotFoundError::TypeNotFoundError(const Span& span, const std::string& type)
-    : Diagnostic(DiagType::ERROR, span), m_type(type) {}
+    : Diagnostic(DiagType::ERROR, span), m_type(type) {
+  generate_message();
+}
 
 void TypeNotFoundError::generate_message() {
   std::stringstream ss;
-  ss << format_type() << " " << m_span << ": TypeNotFound: identifier '"
+  ss << format_type() << " " << m_span << ": Type Not Found: identifier '"
      << m_type << "'";
-  m_msg = ss.str();
+  m_formatted_msg = ss.str();
+}
+
+// DuplicateDeclarationError
+DuplicateDeclarationError::DuplicateDeclarationError(
+    const Span& span, const std::string& identifier)
+    : Diagnostic(DiagType::ERROR, span), m_identifier(identifier) {
+  generate_message();
+}
+
+void DuplicateDeclarationError::generate_message() {
+  std::stringstream ss;
+  ss << format_type() << " " << m_span
+     << ": Duplicate Declaration: identifier '" << m_identifier << "'";
+  m_formatted_msg = ss.str();
 }

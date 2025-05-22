@@ -8,6 +8,7 @@
 #include <string>
 
 #include "../lexer/span.h"
+#include "../lexer/token.h"
 
 enum class DiagType { FATAL_ERROR, ERROR, WARNING, HINT };
 
@@ -72,21 +73,25 @@ public:
 
 class ExpectedToken : public Diagnostic {
 public:
-  ExpectedToken(const Span& span, const std::string& expected_token);
+  ExpectedToken(const Span& span, TokenType expected, TokenType got);
+  ExpectedToken(const Span& span, const std::string& expected, TokenType got);
+  ExpectedToken(const Span& span, const std::string& expected,
+                const std::string& got);
 
 private:
-  std::string m_expected_token;
+  std::string m_expected;
+  std::string m_got;
   void generate_message() override;
 };
 
 class TypeMismatchError : public Diagnostic {
 public:
-  TypeMismatchError(const Span& span, const std::string& expected_type,
-                    const std::string& got_type);
+  TypeMismatchError(const Span& span, const std::string& expected,
+                    const std::string& got);
 
 private:
-  std::string m_expected_type;
-  std::string m_got_type;
+  std::string m_expected;
+  std::string m_got;
   void generate_message() override;
 };
 
@@ -105,6 +110,15 @@ public:
 
 private:
   std::string m_type;
+  void generate_message() override;
+};
+
+class DuplicateDeclarationError : public Diagnostic {
+public:
+  DuplicateDeclarationError(const Span& span, const std::string& identifier);
+
+private:
+  std::string m_identifier;
   void generate_message() override;
 };
 
