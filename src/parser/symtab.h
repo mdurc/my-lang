@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "types.h"
-#include "variable.h"
 
 class Scope {
 public:

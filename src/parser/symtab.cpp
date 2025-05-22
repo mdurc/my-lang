@@ -1,10 +1,5 @@
 #include "symtab.h"
 
-bool operator==(const TypeKind& a, const TypeKind& b) {
-  if (a.index() != b.index()) return false;
-  return std::visit([&a, &b]() { return a == b; });
-}
-
 const TypeKind* Scope::lookup_type(const TypeKind& target) const {
   for (const TypeKind& type : m_types) {
     if (type == target) {
