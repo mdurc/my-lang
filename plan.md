@@ -148,6 +148,7 @@ func bar () returns (z: i32) {
 - First class functions (note that the function definition syntax above is the
   only way to declare a function 'literal', i.e. you cannot do `x : func = (){}`
   and must instead do `func x (){}`)
+    - Thus there is no support for anonymous functions
 ```
 // First class usage (assignment):
 temp : func()->u0 = foo;
@@ -160,6 +161,7 @@ func foo(mut x: i32, read y: i32, take z: i32) {
     // return; // empty return is valid for u0 return type
 }
 ```
+- `foo` has a type of `func(mut i32, read i32, take i32)->u0`
 - `x` is a mutable reference (not a copy)
     - Argument passed for `x` must be mutable (we cannot make an immutable variable mutable via passing it to a mutable parameter)
 - `y` is an immutable reference
