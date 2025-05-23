@@ -2,14 +2,14 @@ VariableDecl(Mutable: true,
   Name:
     Ident(x),
   Type:
-    Type::Named(i32)
+    {i32} Type::Named(i32)
   Initializer: null
 )
 VariableDecl(Mutable: true,
   Name:
     Ident(y),
   Type:
-    Type::Named(i32)
+    {i32} Type::Named(i32)
   Initializer:
     Int(3)
 )
@@ -17,28 +17,28 @@ VariableDecl(Mutable: false,
   Name:
     Ident(z),
   Type:
-    Type::Named(i32)
+    {i32} Type::Named(i32)
   Initializer:
     Int(5)
 )
 VariableDecl(Mutable: true,
   Name:
     Ident(a),
-  Type:inferred
+  Type: inferred
   Initializer:
     Int(10)
 )
 VariableDecl(Mutable: false,
   Name:
     Ident(b),
-  Type:inferred
+  Type: inferred
   Initializer:
     String("hello")
 )
 VariableDecl(Mutable: true,
   Name:
     Ident(c),
-  Type:inferred
+  Type: inferred
   Initializer:
     Int(3)
 )
@@ -46,7 +46,7 @@ VariableDecl(Mutable: true,
   Name:
     Ident(d),
   Type:
-    Type::Named(i32)
+    {i32} Type::Named(i32)
   Initializer:
     Int(2)
 )

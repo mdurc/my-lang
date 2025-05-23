@@ -2,7 +2,7 @@ VariableDecl(Mutable: true,
   Name:
     Ident(x),
   Type:
-    Type::Named(i32)
+    {i32} Type::Named(i32)
   Initializer:
     Int(3)
 )
@@ -10,9 +10,9 @@ VariableDecl(Mutable: true,
   Name:
     Ident(px),
   Type:
-    Type::Pointer(pointee mutable: false,
+    {ptr<imm i32>} Type::Pointer(pointee mutable: false,
       Pointee:
-        Type::Named(i32)
+        {i32} Type::Named(i32)
     )
   Initializer:
     UnaryOp(&,
@@ -23,9 +23,9 @@ VariableDecl(Mutable: true,
   Name:
     Ident(py),
   Type:
-    Type::Pointer(pointee mutable: true,
+    {ptr<mut i32>} Type::Pointer(pointee mutable: true,
       Pointee:
-        Type::Named(i32)
+        {i32} Type::Named(i32)
     )
   Initializer:
     UnaryOp(&mut,

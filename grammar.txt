@@ -72,9 +72,7 @@
 <StructType>            ::= Identifier
 <PointerType>           ::= 'ptr' '<' <TypePrefix>? <Type> '>'
 
-<FunctionType>          ::= 'func' '(' <FunctionParamTypes>? ')' '->' <Type>
-<FunctionParamTypes>    ::= <FunctionParamType> ( ',' <FunctionParamType> )*
-<FunctionParamType>     ::= <FunctionParamPrefix>? <Type>
+<FunctionType>          ::= 'func' '(' (<Type> ( ',' <Type> )*)? ')' '->' <Type>
 
 <TypePrefix>            ::= 'mut' | 'imm'
 <FunctionParamPrefix>   ::= 'mut' | 'imm' | 'take' <TypePrefix>?

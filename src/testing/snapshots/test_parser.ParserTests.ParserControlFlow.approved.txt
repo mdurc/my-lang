@@ -13,7 +13,7 @@ ForStmt(
     VariableDecl(Mutable: true,
       Name:
         Ident(i),
-      Type:inferred
+      Type: inferred
       Initializer:
         Int(0)
     ),
@@ -59,7 +59,7 @@ VariableDecl(Mutable: true,
   Name:
     Ident(x),
   Type:
-    Type::Named(i32)
+    {i32} Type::Named(i32)
   Initializer:
     Int(5)
 )
@@ -83,7 +83,7 @@ Block([
   VariableDecl(Mutable: true,
     Name:
       Ident(x),
-    Type:inferred
+    Type: inferred
     Initializer:
       Int(3)
   )

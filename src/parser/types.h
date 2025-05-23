@@ -1,7 +1,9 @@
 #ifndef PARSER_TYPES_H
 #define PARSER_TYPES_H
 
+#include <iostream>
 #include <memory>
+#include <ostream>
 #include <string>
 #include <variant>
 #include <vector>
@@ -27,15 +29,15 @@ public:
   };
 
   struct Function {
-    std::vector<std::pair<BorrowState, std::shared_ptr<Type>>> parameters;
+    std::vector<std::shared_ptr<Type>> params;
     std::shared_ptr<Type> return_type;
 
-    Function(std::vector<std::pair<BorrowState, std::shared_ptr<Type>>> params,
+    Function(std::vector<std::shared_ptr<Type>> params,
              std::shared_ptr<Type> ret_type)
-        : parameters(std::move(params)), return_type(ret_type) {}
+        : params(std::move(params)), return_type(ret_type) {}
 
     friend bool operator==(const Function& a, const Function& b) {
-      return a.parameters == b.parameters && a.return_type == b.return_type;
+      return a.params == b.params && a.return_type == b.return_type;
     }
   };
 
@@ -62,6 +64,10 @@ public:
     return std::get<T>(storage);
   }
 
+  // returns the string format that should be used within the language
+  std::string to_string() const;
+  size_t get_scope_id() const { return scope_id; }
+
   // Constructors
   Type(Named n, size_t sc) : storage(std::move(n)), scope_id(sc) {}
   Type(Function f, size_t sc) : storage(std::move(f)), scope_id(sc) {}
@@ -74,6 +80,8 @@ public:
 private:
   std::variant<Named, Function, Pointer> storage;
   size_t scope_id;
+
+  std::string to_string_recursive(std::vector<const Type*>& visited) const;
 };
 
 // == Variables ==

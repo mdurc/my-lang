@@ -1,10 +1,10 @@
 #include "visitor.h"
 
-void AstPrinter::printIndent() {
+void AstPrinter::print_indent() {
   for (int i = 0; i < indent; ++i) out << "  ";
 }
 
-const char* AstPrinter::binOpToString(BinOperator op) {
+const char* AstPrinter::bin_op_to_string(BinOperator op) {
   switch (op) {
     case BinOperator::Plus: return "+";
     case BinOperator::Minus: return "-";
@@ -23,7 +23,7 @@ const char* AstPrinter::binOpToString(BinOperator op) {
   }
 }
 
-const char* AstPrinter::unaryOpToString(UnaryOperator op) {
+const char* AstPrinter::unary_op_to_string(UnaryOperator op) {
   switch (op) {
     case UnaryOperator::Negate: return "-";
     case UnaryOperator::LogicalNot: return "!";
@@ -34,7 +34,7 @@ const char* AstPrinter::unaryOpToString(UnaryOperator op) {
   }
 }
 
-const char* AstPrinter::borrowStateToString(BorrowState bs) {
+const char* AstPrinter::borrow_state_to_string(BorrowState bs) {
   switch (bs) {
     case BorrowState::MutablyOwned: return "MutablyOwned";
     case BorrowState::ImmutableOwned: return "ImmutableOwned";
@@ -44,55 +44,60 @@ const char* AstPrinter::borrowStateToString(BorrowState bs) {
   }
 }
 
-void AstPrinter::printType(const Type& type) {
-  printIndent();
+void AstPrinter::print_type(const Type& type) {
+  // This will print an AST view of the type, on top of printing the type in the
+  // expected type format from the Type class implementation
+  print_indent();
+  out << "{" << type.to_string() << "} ";
   if (type.is<Type::Named>()) {
+    // Named Types
     out << "Type::Named(" << type.as<Type::Named>().identifier << ")";
   } else if (type.is<Type::Function>()) {
+    // Function Types
     out << "Type::Function(\n";
     indent++;
-    printIndent();
+    print_indent();
     out << "Params: [\n";
     indent++;
-    const auto& params = type.as<Type::Function>().parameters;
-    for (size_t i = 0; i < params.size(); ++i) {
-      printIndent();
-      out << "Param(Modifier: " << borrowStateToString(params[i].first)
-          << ", Type:\n";
+    const Type::Function& func = type.as<Type::Function>();
+    for (size_t i = 0; i < func.params.size(); ++i) {
+      print_indent();
+      out << "Type:\n";
       indent++;
-      printType(*params[i].second);
+      print_type(*func.params[i]);
       indent--;
       out << "\n";
-      printIndent();
+      print_indent();
       out << ")";
-      if (i < params.size() - 1) out << ",";
+      if (i < func.params.size() - 1) out << ",";
       out << "\n";
     }
     indent--;
-    printIndent();
+    print_indent();
     out << "],\n";
-    printIndent();
+    print_indent();
     out << "Return Type:\n";
     indent++;
-    printType(*type.as<Type::Function>().return_type);
+    print_type(*func.return_type);
     indent--;
     out << "\n";
     indent--;
-    printIndent();
+    print_indent();
     out << ")";
   } else if (type.is<Type::Pointer>()) {
+    // Ptr types
+    const Type::Pointer& ptr = type.as<Type::Pointer>();
     out << "Type::Pointer(pointee mutable: "
-        << (type.as<Type::Pointer>().is_pointee_mutable ? "true" : "false")
-        << ",\n";
+        << (ptr.is_pointee_mutable ? "true" : "false") << ",\n";
     indent++;
-    printIndent();
+    print_indent();
     out << "Pointee:\n";
     indent++;
-    printType(*type.as<Type::Pointer>().pointee);
+    print_type(*ptr.pointee);
     indent--;
     out << "\n";
     indent--;
-    printIndent();
+    print_indent();
     out << ")";
   } else {
     out << "UnknownType";
@@ -107,7 +112,7 @@ void print_ast(const AstPtr& node, std::ostream& out) {
 
 void print_ast(const std::vector<AstPtr>& nodes, std::ostream& out) {
   AstPrinter printer(out);
-  for (const auto& node : nodes) {
+  for (const AstPtr& node : nodes) {
     node->accept(printer);
     out << std::endl;
   }

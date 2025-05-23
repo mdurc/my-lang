@@ -4,7 +4,7 @@ FunctionDecl(
   Params: [
   ],
   ReturnType: (NamedVar:z)
-    Type::Named(i32),
+    {i32} Type::Named(i32),
   Body:
   Block([
     ExpressionStmt(
@@ -23,7 +23,7 @@ FunctionDecl(
   Params: [
   ],
   ReturnType: (NamedVar:z)
-    Type::Named(i32),
+    {i32} Type::Named(i32),
   Body:
   Block([
     ReturnStmt(
@@ -39,27 +39,49 @@ FunctionDecl(
       Name:
         Ident(x),
       Type:
-        Type::Named(i32)
+        {i32} Type::Named(i32)
     ),
     Param(Modifier: ImmutablyBorrowed,
       Name:
         Ident(y),
       Type:
-        Type::Named(i32)
+        {i32} Type::Named(i32)
     ),
     Param(Modifier: ImmutableOwned,
       Name:
         Ident(z),
       Type:
-        Type::Named(i32)
+        {i32} Type::Named(i32)
     )
   ],
   ReturnType:
-    Type::Named(u0),
+    {u0} Type::Named(u0),
   Body:
   Block([
     PrintStmt(
       String("hi")
     )
   ])
+)
+VariableDecl(Mutable: false,
+  Name:
+    Ident(x),
+  Type:
+    {func(i32, i32, i32)->u0} Type::Function(
+      Params: [
+        Type:
+          {i32} Type::Named(i32)
+        ),
+        Type:
+          {i32} Type::Named(i32)
+        ),
+        Type:
+          {i32} Type::Named(i32)
+        )
+      ],
+      Return Type:
+        {u0} Type::Named(u0)
+    )
+  Initializer:
+    Ident(foo_2)
 )

@@ -18,6 +18,7 @@ set(PARSER_SOURCES
     ../parser/ast.cpp
     ../parser/symtab.cpp
     ../parser/visitor.cpp
+    ../parser/types.cpp
 )
 
 set(LEXER_SOURCES

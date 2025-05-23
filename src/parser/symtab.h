@@ -34,6 +34,8 @@ public:
   std::shared_ptr<Type> lookup_type(const Type& target) const;
   std::shared_ptr<Variable> lookup_variable(const std::string& name) const;
 
+  void print(std::ostream& out, const std::string& indent = "") const;
+
 private:
   size_t m_parent_scope; // parent scope id within symbol table
   std::vector<std::shared_ptr<Type>>
@@ -58,6 +60,9 @@ public:
   std::shared_ptr<Variable> declare_variable(Variable v);
 
   size_t current_scope() const { return m_current_scope; }
+
+  void print(std::ostream& out) const;
+  friend std::ostream& operator<<(std::ostream& out, const SymTab& symtab);
 
 private:
   size_t m_current_scope;      // current scope id

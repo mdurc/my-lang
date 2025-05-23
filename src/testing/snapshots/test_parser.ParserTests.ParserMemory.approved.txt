@@ -2,9 +2,9 @@ VariableDecl(Mutable: true,
   Name:
     Ident(px),
   Type:
-    Type::Pointer(pointee mutable: true,
+    {ptr<mut i32>} Type::Pointer(pointee mutable: true,
       Pointee:
-        Type::Named(i32)
+        {i32} Type::Named(i32)
     )
   Initializer: null
 )
@@ -15,7 +15,7 @@ ExpressionStmt(
     RValue:
       NewExpr(
         TypeToAllocate:(mutable memory, type: array)
-          Type::Named(i32)
+          {i32} Type::Named(i32)
         AllocationSpecifier:
           Int(3)
       )
@@ -39,7 +39,7 @@ ExpressionStmt(
     RValue:
       NewExpr(
         TypeToAllocate:(immutable memory, type: constructor)
-          Type::Named(i32)
+          {i32} Type::Named(i32)
         AllocationSpecifier:
           Int(15)
       )

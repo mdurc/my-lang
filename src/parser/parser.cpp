@@ -254,9 +254,9 @@ FuncDeclPtr Parser::parse_function_decl() {
   m_symtab->exit_scope();
 
   // Construct FunctionType for the symbol table declaration
-  std::vector<std::pair<BorrowState, std::shared_ptr<Type>>> ft_params;
+  std::vector<std::shared_ptr<Type>> ft_params;
   for (const ParamPtr& ast_param : params_vec) {
-    ft_params.emplace_back(ast_param->modifier, ast_param->type);
+    ft_params.push_back(ast_param->type);
   }
 
   // make the function type
@@ -1014,15 +1014,14 @@ std::shared_ptr<Type> Parser::parse_type() {
                                   m_symtab->current_scope());
 
   } else if (match(TokenType::FUNC)) {
-    // <FunctionType> ::= 'func' '(' <FunctionParamTypes>? ')' '->' <Type>
+    // <FunctionType> ::= 'func' '(' (<Type> ( ',' <Type> )*)? ')' '->' <Type>
     advance();
     _consume(TokenType::LPAREN);
 
-    std::vector<std::pair<BorrowState, std::shared_ptr<Type>>> param_types;
+    std::vector<std::shared_ptr<Type>> param_types;
     if (!match(TokenType::RPAREN)) {
       do {
-        BorrowState modifier = parse_function_param_prefix();
-        param_types.push_back(std::make_pair(modifier, parse_type()));
+        param_types.push_back(parse_type());
       } while (match(TokenType::COMMA) && advance());
     }
     _consume(TokenType::RPAREN);

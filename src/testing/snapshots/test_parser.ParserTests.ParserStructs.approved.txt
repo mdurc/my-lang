@@ -6,13 +6,13 @@ StructDecl(
       Name:
         Ident(x),
       Type:
-        Type::Named(i32)
+        {i32} Type::Named(i32)
     ),
     StructField(
       Name:
         Ident(y),
       Type:
-        Type::Named(i32)
+        {i32} Type::Named(i32)
     ),
     FunctionDecl(
       Name:
@@ -20,7 +20,7 @@ StructDecl(
       Params: [
       ],
       ReturnType: (NamedVar:r)
-        Type::Named(u8),
+        {u8} Type::Named(u8),
       Body:
       Block([
         ReturnStmt(
@@ -42,7 +42,7 @@ StructDecl(
 VariableDecl(Mutable: true,
   Name:
     Ident(origin),
-  Type:inferred
+  Type: inferred
   Initializer:
     StructLiteral(
       Type:
@@ -67,7 +67,7 @@ VariableDecl(Mutable: true,
   Name:
     Ident(x_o),
   Type:
-    Type::Named(i32)
+    {i32} Type::Named(i32)
   Initializer:
     MemberAccess(
       Object:
@@ -80,7 +80,7 @@ VariableDecl(Mutable: true,
   Name:
     Ident(y_o),
   Type:
-    Type::Named(i32)
+    {i32} Type::Named(i32)
   Initializer:
     MemberAccess(
       Object:
