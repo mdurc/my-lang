@@ -1,4 +1,4 @@
-Tokens (66):
+Tokens (65):
 [STRUCT        ] struct                      at (row=1, col=1-7)
 [IDENTIFIER    ] Point                       at (row=1, col=8-13)
 [LBRACE        ] {                           at (row=1, col=14-15)
@@ -64,4 +64,3 @@ Tokens (66):
 [DOT           ] .                           at (row=13, col=23-24)
 [IDENTIFIER    ] y                           at (row=13, col=24-25)
 [SEMICOLON     ] ;                           at (row=13, col=25-26)
-[EOF_          ]                             at (row=14, col=1-1)

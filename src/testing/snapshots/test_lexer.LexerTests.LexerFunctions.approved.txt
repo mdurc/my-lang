@@ -1,4 +1,4 @@
-Tokens (55):
+Tokens (54):
 [FUNC          ] func                        at (row=1, col=1-5)
 [IDENTIFIER    ] foo                         at (row=1, col=6-9)
 [LPAREN        ] (                           at (row=1, col=10-11)
@@ -53,4 +53,3 @@ Tokens (55):
 [STRING_LITERAL] "hi"          hi            at (row=9, col=11-15)
 [SEMICOLON     ] ;                           at (row=9, col=15-16)
 [RBRACE        ] }                           at (row=12, col=1-2)
-[EOF_          ]                             at (row=13, col=1-1)

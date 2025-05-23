@@ -1,4 +1,4 @@
-Tokens (44):
+Tokens (43):
 [MUT           ] mut                         at (row=1, col=1-4)
 [IDENTIFIER    ] px                          at (row=1, col=5-7)
 [COLON         ] :                           at (row=1, col=8-9)
@@ -42,4 +42,3 @@ Tokens (44):
 [FREE          ] free                        at (row=9, col=1-5)
 [IDENTIFIER    ] px                          at (row=9, col=6-8)
 [SEMICOLON     ] ;                           at (row=9, col=8-9)
-[EOF_          ]                             at (row=10, col=1-1)

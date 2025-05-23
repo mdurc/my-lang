@@ -1,4 +1,4 @@
-Tokens (21):
+Tokens (20):
 [ASM           ] asm                         at (row=1, col=1-4)
 [LBRACE        ] {                           at (row=1, col=5-6)
 [IDENTIFIER    ] anything                    at (row=3, col=3-11)
@@ -19,4 +19,3 @@ Tokens (21):
 [STRING_LITERAL] "err msg"     err msg       at (row=9, col=7-16)
 [RPAREN        ] )                           at (row=9, col=16-17)
 [SEMICOLON     ] ;                           at (row=9, col=17-18)
-[EOF_          ]                             at (row=10, col=1-1)
