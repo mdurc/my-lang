@@ -62,7 +62,6 @@ public:
   size_t current_scope() const { return m_current_scope; }
 
   void print(std::ostream& out) const;
-  friend std::ostream& operator<<(std::ostream& out, const SymTab& symtab);
 
 private:
   size_t m_current_scope;      // current scope id

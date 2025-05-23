@@ -89,7 +89,7 @@ class Variable {
 public:
   std::string name;
   BorrowState modifier;
-  std::shared_ptr<Type> type;
+  std::shared_ptr<Type> type; // nullptr means it must be inferred
   size_t scope_id;
 
   Variable(std::string name, BorrowState mod, std::shared_ptr<Type> tk,

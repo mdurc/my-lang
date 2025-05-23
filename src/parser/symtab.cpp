@@ -1,5 +1,17 @@
 #include "symtab.h"
 
+// Helper for type output
+static std::string borrowed_state_to_string(BorrowState bs) {
+  switch (bs) {
+    case BorrowState::MutablyOwned: return "take mut";
+    case BorrowState::ImmutableOwned: return "take <imm>";
+    case BorrowState::MutablyBorrowed: return "mut";
+    case BorrowState::ImmutablyBorrowed: return "imm";
+    default: return "";
+  }
+}
+
+// == Scope Implementations ==
 std::shared_ptr<Type> Scope::lookup_type(const Type& target) const {
   for (std::shared_ptr<Type> type : m_types) {
     if (*type == target) {
@@ -19,6 +31,28 @@ std::shared_ptr<Variable> Scope::lookup_variable(
   return nullptr;
 }
 
+void Scope::print(std::ostream& out, const std::string& indent) const {
+  out << indent << "Parent Scope ID: " << m_parent_scope << "\n";
+  out << indent << "Declared Types (" << m_types.size() << "):\n";
+  for (const std::shared_ptr<Type>& type : m_types) {
+    out << indent << "  - "
+        << (type ? type->to_string() : "err:null_type_was_found")
+        << " (declared in scope "
+        << (type ? std::to_string(type->get_scope_id()) : "?err?") << ")\n";
+  }
+
+  out << indent << "Declared Variables (" << m_variables.size() << "):\n";
+  for (const std::shared_ptr<Variable>& var : m_variables) {
+    out << indent << "  - Name: " << var->name << "\n";
+    out << indent << "    Modifier: " << borrowed_state_to_string(var->modifier)
+        << "\n";
+    out << indent << "    Type: "
+        << (var->type ? var->type->to_string() : "nullptr/inferred") << "\n";
+    out << indent << "    Scope ID: " << var->scope_id << "\n";
+  }
+}
+
+// == Symbol Table Implementations ==
 SymTab::SymTab() {
   m_current_scope = 0;
   m_scopes.emplace_back(-1); // global scope
@@ -87,15 +121,29 @@ std::shared_ptr<Type> SymTab::get_primitive_type(std::string primitive) const {
 }
 
 std::shared_ptr<Type> SymTab::declare_type(Type tk) {
-  if (m_scopes[m_current_scope].lookup_type(tk)) {
-    return nullptr;
+  std::shared_ptr<Type> searched = m_scopes[m_current_scope].lookup_type(tk);
+  if (searched) {
+    return searched;
   }
   return m_scopes[m_current_scope].add_type(tk);
 }
 
 std::shared_ptr<Variable> SymTab::declare_variable(Variable v) {
-  if (m_scopes[m_current_scope].lookup_variable(v.name)) {
-    return nullptr;
+  std::shared_ptr<Variable> searched =
+      m_scopes[m_current_scope].lookup_variable(v.name);
+  if (searched) {
+    return searched;
   }
   return m_scopes[m_current_scope].add_variable(std::move(v));
+}
+
+void SymTab::print(std::ostream& out) const {
+  out << "Symbol Table State:\n";
+  out << "Current Scope ID: " << m_current_scope << "\n";
+  out << "Total Scopes: " << m_scopes.size() << "\n\n";
+  for (size_t i = 0; i < m_scopes.size(); ++i) {
+    out << "Scope ID: " << i << "\n";
+    m_scopes[i].print(out, "  ");
+    out << "\n";
+  }
 }
