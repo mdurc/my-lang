@@ -117,9 +117,10 @@ std::vector<AstPtr> Parser::parse_program(SymTab* symtab,
     }
   }
 
-  if (m_logger.output_diagnostics()) {
+  std::string diags = m_logger.get_diagnostic_str();
+  if (m_logger.num_errors() > 0 || m_logger.num_warnings() > 0) {
     throw std::runtime_error(
-        "Parsing failed with " + std::to_string(m_logger.num_errors()) +
+        diags + "Parsing failed with " + std::to_string(m_logger.num_errors()) +
         " errors and " + std::to_string(m_logger.num_warnings()) +
         " warnings.");
   }

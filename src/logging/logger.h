@@ -27,23 +27,27 @@ public:
     m_warnings.clear();
   }
 
-  bool output_diagnostics() const {
+  std::string get_diagnostic_str() const {
+    std::string out;
     if (num_errors() == 0) {
       for (const Diagnostic& d : m_warnings) {
-        std::cerr << d.what() << std::endl;
+        out += d.what();
+        out += "\n";
       }
-      return false;
+      return out;
     }
 
     for (const Diagnostic& d : m_warnings) {
-      std::cerr << d.what() << std::endl;
+      out += d.what();
+      out += "\n";
     }
 
     for (const Diagnostic& d : m_errors) {
-      std::cerr << d.what() << std::endl;
+      out += d.what();
+      out += "\n";
     }
 
-    return true;
+    return out;
   }
 
 private:
