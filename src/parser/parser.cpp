@@ -280,8 +280,8 @@ FuncDeclPtr Parser::parse_function_decl() {
   }
 
   return _AST(FunctionDeclNode, func_tok, m_symtab->current_scope(), name_ident,
-              std::move(params_vec), body_block, return_t.second,
-              std::move(return_t.first));
+              std::move(params_vec), std::move(return_t.first), return_t.second,
+              body_block);
 }
 
 BorrowState Parser::parse_function_param_prefix() {
@@ -417,7 +417,7 @@ StmtPtr Parser::parse_var_decl() {
   IdentPtr var_name = _AST(IdentifierNode, name_tok, m_symtab->current_scope(),
                            name_tok->get_lexeme());
 
-  std::optional<std::shared_ptr<Type>> type_val = std::nullopt;
+  std::shared_ptr<Type> type_val = nullptr;
 
   ExprPtr initializer = nullptr;
 
@@ -430,7 +430,7 @@ StmtPtr Parser::parse_var_decl() {
       initializer = parse_expression();
     }
   } else if (match(TokenType::WALRUS)) { // ':=' <Expr>
-    // inferred type declaration (type_val is nullopt)
+    // inferred type declaration (type_val is nullptr)
     advance();
     initializer = parse_expression();
   } else {
@@ -444,8 +444,7 @@ StmtPtr Parser::parse_var_decl() {
   BorrowState bs =
       is_mutable ? BorrowState::MutablyOwned : BorrowState::ImmutableOwned;
 
-  Variable var_sym(name_tok->get_lexeme(), bs,
-                   type_val == std::nullopt ? nullptr : *type_val,
+  Variable var_sym(name_tok->get_lexeme(), bs, type_val,
                    m_symtab->current_scope());
 
   // check if it is a duplicate variable
@@ -456,7 +455,7 @@ StmtPtr Parser::parse_var_decl() {
   }
 
   return _AST(VariableDeclNode, start_tok, m_symtab->current_scope(),
-              is_mutable, var_name, std::move(type_val), initializer);
+              is_mutable, var_name, type_val, initializer);
 }
 
 // <IfStmt> ::= 'if' '(' <Expr> ')' <Block> ( 'else' ( <Block> | <IfStmt> ) )?
@@ -524,8 +523,8 @@ StmtPtr Parser::parse_for_stmt() {
 
   m_symtab->exit_scope();
 
-  return _AST(ForStmtNode, for_tok, m_symtab->current_scope(), body,
-              std::move(initializer), condition, iteration);
+  return _AST(ForStmtNode, for_tok, m_symtab->current_scope(),
+              std::move(initializer), condition, iteration, body);
 }
 
 // <WhileStmt> ::= 'while' '(' <Expr> ')' <Block>
@@ -1169,7 +1168,7 @@ ExprPtr Parser::parse_new_expr() {
     advance();
   }
 
-  std::shared_ptr<Type> type_to_alloc = parse_type();
+  std::shared_ptr<Type> allocated_type = parse_type();
 
   _consume(TokenType::RANGLE);
 
@@ -1194,5 +1193,5 @@ ExprPtr Parser::parse_new_expr() {
     throw std::runtime_error("Parser error");
   }
   return _AST(NewExprNode, new_tok, m_symtab->current_scope(),
-              is_memory_mutable, is_array, type_to_alloc, specifier);
+              is_memory_mutable, is_array, allocated_type, specifier);
 }

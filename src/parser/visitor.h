@@ -285,10 +285,10 @@ public:
     out << ",\n";
     printIndent();
     out << "Type:";
-    if (node.type.has_value()) {
+    if (node.type != nullptr) {
       out << "\n";
       indent++;
-      printType(*node.type.value());
+      printType(*node.type);
       indent--;
       out << "\n";
     } else {

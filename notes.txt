@@ -42,15 +42,8 @@ Common case is faster during lookup O(n)
 Insertion still O(1)
 
 
-
-
 Grammar notes:
 - Statements do not exist on rhs
-
-
-// TODO
-- go through codebase and find when I should/shouldn't be using std::move
-
 
 Scoping Rules:
 - Functions
@@ -64,3 +57,12 @@ Scoping Rules:
   - Literal arguments scope
 
 
+
+
+// TODO
+- go through codebase and find when I should/shouldn't be using std::move
+
+
+- Symbol Table Snapshot Testing
+- Should I remove all optionals and instead use U0_TYPE? This way type inferring will have a type, and it will actually be associated to a type.
+  - I should be associating NullLiteralNode type to U0_TYPE

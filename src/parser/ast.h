@@ -74,18 +74,26 @@ public:
   virtual void accept(Visitor& v) const = 0;
 };
 
-// == Expression Nodes ==
+// == Base Abstract Nodes (Expressions and Statements) ==
+class ExpressionNode : public AstNode {
+public:
+  std::shared_ptr<Type> expr_type; // filled by type checker
+  using AstNode::AstNode;
+};
 DERIVE_ABSTRACT_NODE(StatementNode, AstNode)
-DERIVE_ABSTRACT_NODE(ExpressionNode, AstNode);
+
+// == Literal Nodes ==
 LITERAL_NODE(IntegerLiteralNode, uint64_t)
 LITERAL_NODE(FloatLiteralNode, double)
 LITERAL_NODE(StringLiteralNode, std::string)
 LITERAL_NODE(BoolLiteralNode, bool)
-
 DERIVE_NODE(NullLiteralNode, ExpressionNode)
+
+// == Basic Nodes ==
 DERIVE_NODE(BreakStmtNode, StatementNode)
 DERIVE_NODE(ContinueStmtNode, StatementNode)
 
+// == Expression Nodes ==
 class IdentifierNode : public ExpressionNode {
 public:
   std::string name;
@@ -213,7 +221,7 @@ public:
   ExprPtr allocation_specifier;
 
   NewExprNode(const Token* tok, size_t sc, bool is_mut, bool is_array,
-              std::shared_ptr<Type> allocated_type, ExprPtr specifier = nullptr)
+              std::shared_ptr<Type> allocated_type, ExprPtr specifier)
       : ExpressionNode(tok, sc),
         is_memory_mutable(is_mut),
         is_array_allocation(is_array),
@@ -227,16 +235,15 @@ class VariableDeclNode : public StatementNode {
 public:
   bool is_mutable;
   IdentPtr var_name;
-  std::optional<std::shared_ptr<Type>> type; // Optional for ':=' type inference
-  ExprPtr initializer;                       // optional
+  std::shared_ptr<Type> type; // optional for ':=' type inference
+  ExprPtr initializer;        // optional
 
   VariableDeclNode(const Token* tok, size_t sc, bool mut, IdentPtr var_name,
-                   std::optional<std::shared_ptr<Type>> tk,
-                   ExprPtr init = nullptr)
+                   std::shared_ptr<Type> tk, ExprPtr init)
       : StatementNode(tok, sc),
         is_mutable(mut),
         var_name(var_name),
-        type(std::move(tk)),
+        type(tk),
         initializer(init) {}
   void accept(Visitor& v) const override;
 };
@@ -245,7 +252,7 @@ class BlockNode : public StatementNode {
 public:
   std::vector<StmtPtr> statements;
 
-  BlockNode(const Token* tok, size_t sc, std::vector<StmtPtr> stmts = {})
+  BlockNode(const Token* tok, size_t sc, std::vector<StmtPtr> stmts)
       : StatementNode(tok, sc), statements(std::move(stmts)) {}
   void accept(Visitor& v) const override;
 };
@@ -257,7 +264,7 @@ public:
   BlockPtr else_branch; // optional
 
   IfStmtNode(const Token* tok, size_t sc, ExprPtr cond, BlockPtr then_b,
-             BlockPtr else_b = nullptr)
+             BlockPtr else_b)
       : StatementNode(tok, sc),
         condition(cond),
         then_branch(then_b),
@@ -267,14 +274,15 @@ public:
 
 class ForStmtNode : public StatementNode {
 public:
-  std::optional<std::variant<ExprPtr, StmtPtr>> initializer;
-  ExprPtr condition;
-  ExprPtr iteration;
+  std::optional<std::variant<ExprPtr, StmtPtr>>
+      initializer;   // has_value ==> non-nullptr
+  ExprPtr condition; // optional
+  ExprPtr iteration; // optional
   BlockPtr body;
 
-  ForStmtNode(const Token* tok, size_t sc, BlockPtr b,
-              std::optional<std::variant<ExprPtr, StmtPtr>> init = std::nullopt,
-              ExprPtr cond = nullptr, ExprPtr iter = nullptr)
+  ForStmtNode(const Token* tok, size_t sc,
+              std::optional<std::variant<ExprPtr, StmtPtr>> init, ExprPtr cond,
+              ExprPtr iter, BlockPtr b)
       : StatementNode(tok, sc),
         initializer(std::move(init)),
         condition(cond),
@@ -295,10 +303,10 @@ public:
 
 class CaseNode : public AstNode {
 public:
-  ExprPtr value; // nullptr for default
+  ExprPtr value; // nullptr for default case
   BlockPtr body;
 
-  CaseNode(const Token* tok, size_t sc, BlockPtr b, ExprPtr val = nullptr)
+  CaseNode(const Token* tok, size_t sc, BlockPtr b, ExprPtr val)
       : AstNode(tok, sc), value(val), body(b) {}
   void accept(Visitor& v) const override;
 };
@@ -333,7 +341,7 @@ public:
 class ReturnStmtNode : public StatementNode {
 public:
   ExprPtr value; // optional
-  ReturnStmtNode(const Token* tok, size_t sc, ExprPtr val = nullptr)
+  ReturnStmtNode(const Token* tok, size_t sc, ExprPtr val)
       : StatementNode(tok, sc), value(val) {}
   void accept(Visitor& v) const override;
 };
@@ -411,9 +419,8 @@ public:
   BlockPtr body;
 
   FunctionDeclNode(const Token* tok, size_t sc, IdentPtr name,
-                   std::vector<ParamPtr> ps, BlockPtr b,
-                   std::shared_ptr<Type> rt,
-                   std::optional<std::string> rt_n = std::nullopt)
+                   std::vector<ParamPtr> ps, std::optional<std::string> rt_n,
+                   std::shared_ptr<Type> rt, BlockPtr b)
       : AstNode(tok, sc),
         name(name),
         params(std::move(ps)),
