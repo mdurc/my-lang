@@ -1144,7 +1144,7 @@ ExprPtr Parser::parse_new_expr() {
   std::shared_ptr<Type> type_to_alloc = parse_type();
   _consume(TokenType::RANGLE);
 
-  std::optional<ExprPtr> specifier = std::nullopt;
+  ExprPtr specifier = nullptr;
   if (match(TokenType::LBRACK)) {
     // Array allocation: '[' <Expr> ']'
     advance();
@@ -1163,5 +1163,5 @@ ExprPtr Parser::parse_new_expr() {
     throw std::runtime_error("Parser error");
   }
   return _AST(NewExprNode, new_tok, m_symtab->current_scope(), type_to_alloc,
-              std::move(specifier));
+              specifier);
 }

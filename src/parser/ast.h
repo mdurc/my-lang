@@ -174,13 +174,13 @@ public:
 class NewExprNode : public ExpressionNode {
 public:
   std::shared_ptr<Type> type_to_allocate; // The <Type> part
-  std::optional<ExprPtr> allocation_specifier;
+  ExprPtr allocation_specifier;
 
   NewExprNode(const Token* tok, size_t sc, std::shared_ptr<Type> allocated_type,
-              std::optional<ExprPtr> specifier)
+              ExprPtr specifier = nullptr)
       : ExpressionNode(tok, sc),
         type_to_allocate(allocated_type),
-        allocation_specifier(std::move(specifier)) {}
+        allocation_specifier(specifier) {}
 };
 
 // == Statement Nodes ==
