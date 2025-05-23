@@ -45,7 +45,7 @@ ExpectedToken::ExpectedToken(const Span& span, const std::string& expected,
 void ExpectedToken::generate_message() {
   std::stringstream ss;
   ss << format_type() << " " << m_span << ": Expected token '" << m_expected
-     << "', got '" << m_got;
+     << "', got '" << m_got << "'";
   m_formatted_msg = ss.str();
 }
 
