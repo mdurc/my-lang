@@ -533,16 +533,12 @@ StmtPtr Parser::parse_while_stmt() {
   const Token* while_tok = current();
   _consume(TokenType::WHILE);
 
-  m_symtab->enter_new_scope();
-
   _consume(TokenType::LPAREN);
 
   ExprPtr condition = parse_expression();
   _consume(TokenType::RPAREN);
 
   BlockPtr body = parse_block(true);
-
-  m_symtab->exit_scope();
 
   return _AST(WhileStmtNode, while_tok, m_symtab->current_scope(), condition,
               body);

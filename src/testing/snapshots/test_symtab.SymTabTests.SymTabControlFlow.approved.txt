@@ -1,0 +1,92 @@
+Symbol Table State:
+Current Scope ID: 0
+Total Scopes: 9
+
+Scope ID: 0
+  Parent Scope ID: 0
+  Declared Types (12):
+    - u0 (declared in scope 0)
+    - u8 (declared in scope 0)
+    - u16 (declared in scope 0)
+    - u32 (declared in scope 0)
+    - u64 (declared in scope 0)
+    - i8 (declared in scope 0)
+    - i16 (declared in scope 0)
+    - i32 (declared in scope 0)
+    - i64 (declared in scope 0)
+    - f64 (declared in scope 0)
+    - bool (declared in scope 0)
+    - string (declared in scope 0)
+  Declared Variables (1):
+    - Name: x
+        Modifier: mut
+        Type: i32
+        Scope ID: 0
+
+Scope ID: 1
+  Parent Scope ID: 0
+  Declared Types (0):
+  Declared Variables (0):
+
+Scope ID: 2
+  Parent Scope ID: 0
+  Declared Types (0):
+  Declared Variables (0):
+
+Scope ID: 3
+  Parent Scope ID: 0
+  Declared Types (0):
+  Declared Variables (1):
+    - Name: i
+        Modifier: mut
+        Type: nullptr/inferred
+        Scope ID: 3
+
+Scope ID: 4
+  Parent Scope ID: 3
+  Declared Types (0):
+  Declared Variables (1):
+    - Name: y
+        Modifier: imm
+        Type: nullptr/inferred
+        Scope ID: 4
+
+Scope ID: 5
+  Parent Scope ID: 4
+  Declared Types (0):
+  Declared Variables (1):
+    - Name: z
+        Modifier: imm
+        Type: nullptr/inferred
+        Scope ID: 5
+
+Scope ID: 6
+  Parent Scope ID: 0
+  Declared Types (0):
+  Declared Variables (2):
+    - Name: z
+        Modifier: imm
+        Type: nullptr/inferred
+        Scope ID: 6
+    - Name: y
+        Modifier: imm
+        Type: i32
+        Scope ID: 6
+
+Scope ID: 7
+  Parent Scope ID: 0
+  Declared Types (0):
+  Declared Variables (1):
+    - Name: z
+        Modifier: imm
+        Type: nullptr/inferred
+        Scope ID: 7
+
+Scope ID: 8
+  Parent Scope ID: 0
+  Declared Types (0):
+  Declared Variables (1):
+    - Name: x
+        Modifier: mut
+        Type: nullptr/inferred
+        Scope ID: 8

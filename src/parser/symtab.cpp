@@ -3,9 +3,9 @@
 // Helper for type output
 static std::string borrowed_state_to_string(BorrowState bs) {
   switch (bs) {
-    case BorrowState::MutablyOwned: return "take mut";
-    case BorrowState::ImmutableOwned: return "take <imm>";
+    case BorrowState::MutablyOwned:
     case BorrowState::MutablyBorrowed: return "mut";
+    case BorrowState::ImmutableOwned:
     case BorrowState::ImmutablyBorrowed: return "imm";
     default: return "";
   }
@@ -44,18 +44,19 @@ void Scope::print(std::ostream& out, const std::string& indent) const {
   out << indent << "Declared Variables (" << m_variables.size() << "):\n";
   for (const std::shared_ptr<Variable>& var : m_variables) {
     out << indent << "  - Name: " << var->name << "\n";
-    out << indent << "    Modifier: " << borrowed_state_to_string(var->modifier)
+    out << indent
+        << "      Modifier: " << borrowed_state_to_string(var->modifier)
         << "\n";
-    out << indent << "    Type: "
+    out << indent << "      Type: "
         << (var->type ? var->type->to_string() : "nullptr/inferred") << "\n";
-    out << indent << "    Scope ID: " << var->scope_id << "\n";
+    out << indent << "      Scope ID: " << var->scope_id << "\n";
   }
 }
 
 // == Symbol Table Implementations ==
 SymTab::SymTab() {
   m_current_scope = 0;
-  m_scopes.emplace_back(-1); // global scope
+  m_scopes.emplace_back(0); // global scope
 
   // define the primitives in the language
   m_scopes[0].add_type(Type(Type::Named("u0"), 0));
@@ -84,34 +85,36 @@ void SymTab::exit_scope() {
 }
 
 std::shared_ptr<Type> SymTab::lookup_type(const Type& target) const {
-  const Scope* scope = &m_scopes[m_current_scope];
+  size_t scope_id = m_current_scope;
+  const Scope* scope = &m_scopes[scope_id];
   while (true) {
     std::shared_ptr<Type> tk = scope->lookup_type(target);
     if (tk != nullptr) {
       return tk;
     }
-    int next_id = scope->get_parent_scope();
-    if (next_id == -1) {
+    if (scope_id == 0) {
       break;
     }
-    scope = &m_scopes[next_id];
+    scope_id = scope->get_parent_scope();
+    scope = &m_scopes[scope_id];
   }
   return nullptr;
 }
 
 std::shared_ptr<Variable> SymTab::lookup_variable(
     const std::string& target_name) const {
+  size_t scope_id = m_current_scope;
   const Scope* scope = &m_scopes[m_current_scope];
   while (true) {
     std::shared_ptr<Variable> v = scope->lookup_variable(target_name);
     if (v != nullptr) {
       return v;
     }
-    int next_id = scope->get_parent_scope();
-    if (next_id == -1) {
+    if (scope_id == 0) {
       break;
     }
-    scope = &m_scopes[next_id];
+    scope_id = scope->get_parent_scope();
+    scope = &m_scopes[scope_id];
   }
   return nullptr;
 }

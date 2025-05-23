@@ -34,6 +34,7 @@ add_executable(${PROJECT_NAME}
     main.cpp
     test_lexer.cpp
     test_parser.cpp
+    test_symtab.cpp
     ${LEXER_SOURCES}
     ${PARSER_SOURCES}
     ${LOGGING_SOURCES}

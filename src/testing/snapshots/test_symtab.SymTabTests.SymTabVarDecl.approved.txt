@@ -1,0 +1,48 @@
+Symbol Table State:
+Current Scope ID: 0
+Total Scopes: 1
+
+Scope ID: 0
+  Parent Scope ID: 0
+  Declared Types (12):
+    - u0 (declared in scope 0)
+    - u8 (declared in scope 0)
+    - u16 (declared in scope 0)
+    - u32 (declared in scope 0)
+    - u64 (declared in scope 0)
+    - i8 (declared in scope 0)
+    - i16 (declared in scope 0)
+    - i32 (declared in scope 0)
+    - i64 (declared in scope 0)
+    - f64 (declared in scope 0)
+    - bool (declared in scope 0)
+    - string (declared in scope 0)
+  Declared Variables (7):
+    - Name: x
+        Modifier: mut
+        Type: i32
+        Scope ID: 0
+    - Name: y
+        Modifier: mut
+        Type: i32
+        Scope ID: 0
+    - Name: z
+        Modifier: imm
+        Type: i32
+        Scope ID: 0
+    - Name: a
+        Modifier: mut
+        Type: nullptr/inferred
+        Scope ID: 0
+    - Name: b
+        Modifier: imm
+        Type: nullptr/inferred
+        Scope ID: 0
+    - Name: c
+        Modifier: mut
+        Type: nullptr/inferred
+        Scope ID: 0
+    - Name: d
+        Modifier: mut
+        Type: i32
+        Scope ID: 0

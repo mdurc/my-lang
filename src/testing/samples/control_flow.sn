@@ -4,17 +4,22 @@ if (condition) {
 
 for (mut i := 0; i < 10; i = i+1) {
     if (i != 5) {
+        z := 1;
         continue;
     }
+    y := 9;
     break;
 }
 
 while (1) {
+  z := 3;
+  y : i32 = z;
 }
 
 mut x : i32 = 5;
 switch (x) {
     case 3: {
+        z := 2;
         print x;
     }
 }
