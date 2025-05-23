@@ -142,6 +142,7 @@ std::string token_type_to_string(TokenType type) {
     case TokenType::BANG_EQUAL: return "BANG_EQUAL";
     case TokenType::LESS_EQUAL: return "LESS_EQUAL";
     case TokenType::GREATER_EQUAL: return "GREATER_EQUAL";
+    case TokenType::ARROW: return "ARROW";
 
     case TokenType::UNKNOWN: return "UNKNOWN";
     default: return "UNHANDLED_TOKEN_TYPE";
