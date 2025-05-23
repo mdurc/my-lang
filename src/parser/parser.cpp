@@ -264,11 +264,8 @@ FuncDeclPtr Parser::parse_function_decl() {
                  m_symtab->current_scope());
 
   // see if it already exists in the table, if so we will use that symbol
-  std::shared_ptr<Type> func_type = m_symtab->lookup_type(ft);
-  if (!func_type) {
-    // it doesn't exist, so we can add it as a new func-type
-    func_type = m_symtab->declare_type(std::move(ft));
-  }
+  // otherwise this will create a new Type and return it
+  std::shared_ptr<Type> func_type = m_symtab->declare_type(std::move(ft));
 
   // declare it as a var with the associated type
   Variable func_var(name_tok->get_lexeme(), BorrowState::ImmutableOwned,
@@ -323,7 +320,11 @@ ParamPtr Parser::parse_function_param() {
   // declare the parameter as a variable in current scope
   Variable param_var(name_tok->get_lexeme(), modifier, type_val,
                      m_symtab->current_scope());
-  m_symtab->declare_variable(std::move(param_var));
+  if (!m_symtab->declare_variable(std::move(param_var))) {
+    m_logger.report(DuplicateDeclarationError(name_tok->get_span(),
+                                              name_tok->get_lexeme()));
+    throw std::runtime_error("Parser error");
+  }
 
   return _AST(ParamNode, first_tok, m_symtab->current_scope(), modifier,
               name_ident, type_val);
