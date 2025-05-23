@@ -4,6 +4,7 @@
 #include "lexer/lexer.h"
 #include "parser/parser.h"
 #include "parser/symtab.h"
+#include "parser/visitor.h"
 
 int main(int argc, char** argv) {
   if (argc != 2) {
@@ -23,7 +24,8 @@ int main(int argc, char** argv) {
     Parser parser;
     std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
 
-    std::cout << "parsed: " << ast.size() << std::endl;
+    print_ast(ast);
+
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
     return 1;
