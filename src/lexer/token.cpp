@@ -1,6 +1,7 @@
 #include "token.h"
 
 #include <iomanip>
+#include <sstream>
 
 Token::Token(TokenType type, const std::string& lexeme, Span span, Lit value)
     : m_type(type),

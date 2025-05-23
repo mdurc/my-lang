@@ -43,9 +43,9 @@ void Lexer::setup() {
 }
 
 std::ostream& operator<<(std::ostream& out, const Lexer& lex) {
-  out << "Tokens (" << lex.m_tokens.size() << "):" << '\n';
+  out << "Tokens (" << lex.m_tokens.size() << "):" << std::endl;
   for (const Token& token : lex.m_tokens) {
-    out << token << '\n';
+    out << token << std::endl;
   }
   return out;
 }
