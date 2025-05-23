@@ -46,6 +46,7 @@ private:
 
   // Statements
   StmtPtr parse_statement();
+  bool is_next_var_decl();
   StmtPtr parse_var_decl();
   StmtPtr parse_if_stmt();
   StmtPtr parse_for_stmt();
@@ -61,6 +62,7 @@ private:
   StmtPtr parse_asm_block();
 
   // Expression Hierarchy
+  ExprPtr parse_assignment();
   ExprPtr parse_logic_or();
   ExprPtr parse_logic_and();
   ExprPtr parse_equality();

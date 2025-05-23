@@ -9,6 +9,25 @@
 
 #define _AST(_type, ...) std::make_shared<_type>(__VA_ARGS__)
 
+// Helpers:
+static bool is_basic_type(TokenType type) {
+  switch (type) {
+    case TokenType::U0:
+    case TokenType::U8:
+    case TokenType::U16:
+    case TokenType::U32:
+    case TokenType::U64:
+    case TokenType::I8:
+    case TokenType::I16:
+    case TokenType::I32:
+    case TokenType::I64:
+    case TokenType::F64:
+    case TokenType::BOOL:
+    case TokenType::STRING: return true;
+    default: return false;
+  }
+}
+
 // == Movement Operations through Tokens ==
 const Token* Parser::current() {
   if (m_pos < m_tokens.size()) {
@@ -328,16 +347,23 @@ Parser::parse_function_return_type() {
   return std::make_pair(ident_tok->get_lexeme(), type_val);
 }
 
-// Statements
-StmtPtr Parser::parse_statement() {
-  // Handle case where the identifier can be the start of a var declaration
+bool Parser::is_next_var_decl() {
   if (match(TokenType::MUT)) {
-    return parse_var_decl();
+    return true;
   } else if (match(TokenType::IDENTIFIER)) {
     // with either colon or walrus it will be a variable declaration
     if ((peek_next(TokenType::COLON) || peek_next(TokenType::WALRUS))) {
-      return parse_var_decl();
+      return true;
     }
+  }
+  return false;
+}
+
+// Statements
+StmtPtr Parser::parse_statement() {
+  // Handle case where the identifier can be the start of a var declaration
+  if (is_next_var_decl()) {
+    return parse_var_decl();
   }
 
   TokenType type = current()->get_type();
@@ -360,21 +386,9 @@ StmtPtr Parser::parse_statement() {
     case TokenType::ERROR_KEYWORD: return parse_error_stmt();
     case TokenType::ASM: return parse_asm_block();
     default: {
-      // <Assignment> ::= <LValue> '=' <Expr>
       // <Expr> ';'
-      // Try parsing an expression. If followed by '=', it's an assignment.
-      // Otherwise, it's an expression statement.
       const Token* expr_start_tok = current();
       ExprPtr expr = parse_expression();
-
-      // Check if we are doing assignment of lhs expression
-      if (match(TokenType::EQUAL)) {
-        advance();
-        ExprPtr rvalue = parse_expression();
-        _consume(TokenType::SEMICOLON);
-        return _AST(AssignmentNode, expr_start_tok, m_symtab->current_scope(),
-                    expr, rvalue);
-      }
 
       // return the expression stmt
       _consume(TokenType::SEMICOLON);
@@ -480,11 +494,15 @@ StmtPtr Parser::parse_for_stmt() {
 
   _consume(TokenType::LPAREN);
 
-  ExprPtr initializer = nullptr;
+  std::optional<std::variant<ExprPtr, StmtPtr>> initializer = std::nullopt;
   if (!match(TokenType::SEMICOLON)) {
-    initializer = parse_expression();
+    if (is_next_var_decl()) {
+      initializer = parse_var_decl();
+    } else {
+      initializer = parse_expression();
+      _consume(TokenType::SEMICOLON);
+    }
   }
-  _consume(TokenType::SEMICOLON);
 
   ExprPtr condition = nullptr;
   if (!match(TokenType::SEMICOLON)) {
@@ -503,7 +521,7 @@ StmtPtr Parser::parse_for_stmt() {
   m_symtab->exit_scope();
 
   return _AST(ForStmtNode, for_tok, m_symtab->current_scope(), body,
-              initializer, condition, iteration);
+              std::move(initializer), condition, iteration);
 }
 
 // <WhileStmt> ::= 'while' '(' <Expr> ')' <Block>
@@ -571,7 +589,7 @@ StmtPtr Parser::parse_switch_stmt() {
 // == Expression Parsing ==
 ExprPtr Parser::parse_expression() {
   // start with lowest precedence in recursive descent
-  return parse_logic_or();
+  return parse_assignment();
 }
 
 // <ReturnStmt> ::= 'return' <Expr>?
@@ -704,6 +722,18 @@ StmtPtr Parser::parse_asm_block() {
 }
 
 // Expression Hierarchy
+ExprPtr Parser::parse_assignment() {
+  ExprPtr left = parse_logic_or();
+
+  if (match(TokenType::EQUAL)) {
+    const Token* tok = advance();
+    ExprPtr right = parse_assignment();
+    return _AST(AssignmentNode, tok, m_symtab->current_scope(), left, right);
+  }
+
+  return left;
+}
+
 // <LogicalOrExpr> ::= <LogicalAndExpr> ( 'or' <LogicalAndExpr> )*
 ExprPtr Parser::parse_logic_or() {
   ExprPtr expr = parse_logic_and();
@@ -927,24 +957,6 @@ std::vector<ArgPtr> Parser::parse_args() {
   } while (match(TokenType::COMMA) && advance());
 
   return args_vec;
-}
-
-static bool is_basic_type(TokenType type) {
-  switch (type) {
-    case TokenType::U0:
-    case TokenType::U8:
-    case TokenType::U16:
-    case TokenType::U32:
-    case TokenType::U64:
-    case TokenType::I8:
-    case TokenType::I16:
-    case TokenType::I32:
-    case TokenType::I64:
-    case TokenType::F64:
-    case TokenType::BOOL:
-    case TokenType::STRING: return true;
-    default: return false;
-  }
 }
 
 // <Type> ::= <BasicType> | <StructType> | <PointerType> | <FunctionType>

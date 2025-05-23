@@ -94,6 +94,16 @@ public:
   void accept(Visitor& v) const override;
 };
 
+class AssignmentNode : public ExpressionNode {
+public:
+  ExprPtr lvalue;
+  ExprPtr rvalue;
+
+  AssignmentNode(const Token* tok, size_t sc, ExprPtr lval, ExprPtr rval)
+      : ExpressionNode(tok, sc), lvalue(lval), rvalue(rval) {}
+  void accept(Visitor& v) const override;
+};
+
 class BinaryOpExprNode : public ExpressionNode {
 public:
   BinOperator op_type;
@@ -227,16 +237,6 @@ public:
   void accept(Visitor& v) const override;
 };
 
-class AssignmentNode : public StatementNode {
-public:
-  ExprPtr lvalue;
-  ExprPtr rvalue;
-
-  AssignmentNode(const Token* tok, size_t sc, ExprPtr lval, ExprPtr rval)
-      : StatementNode(tok, sc), lvalue(lval), rvalue(rval) {}
-  void accept(Visitor& v) const override;
-};
-
 class BlockNode : public StatementNode {
 public:
   std::vector<StmtPtr> statements;
@@ -263,15 +263,16 @@ public:
 
 class ForStmtNode : public StatementNode {
 public:
-  ExprPtr initializer;
+  std::optional<std::variant<ExprPtr, StmtPtr>> initializer;
   ExprPtr condition;
   ExprPtr iteration;
   BlockPtr body;
 
-  ForStmtNode(const Token* tok, size_t sc, BlockPtr b, ExprPtr init = nullptr,
+  ForStmtNode(const Token* tok, size_t sc, BlockPtr b,
+              std::optional<std::variant<ExprPtr, StmtPtr>> init = std::nullopt,
               ExprPtr cond = nullptr, ExprPtr iter = nullptr)
       : StatementNode(tok, sc),
-        initializer(init),
+        initializer(std::move(init)),
         condition(cond),
         iteration(iter),
         body(b) {}

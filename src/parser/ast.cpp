@@ -10,6 +10,7 @@ void NullLiteralNode::accept(Visitor& v) const { v.visit(*this); }
 void BreakStmtNode::accept(Visitor& v) const { v.visit(*this); }
 void ContinueStmtNode::accept(Visitor& v) const { v.visit(*this); }
 void IdentifierNode::accept(Visitor& v) const { v.visit(*this); }
+void AssignmentNode::accept(Visitor& v) const { v.visit(*this); }
 void BinaryOpExprNode::accept(Visitor& v) const { v.visit(*this); }
 void UnaryExprNode::accept(Visitor& v) const { v.visit(*this); }
 void ArgumentNode::accept(Visitor& v) const { v.visit(*this); }
@@ -21,7 +22,6 @@ void StructFieldInitializerNode::accept(Visitor& v) const { v.visit(*this); }
 void StructLiteralNode::accept(Visitor& v) const { v.visit(*this); }
 void NewExprNode::accept(Visitor& v) const { v.visit(*this); }
 void VariableDeclNode::accept(Visitor& v) const { v.visit(*this); }
-void AssignmentNode::accept(Visitor& v) const { v.visit(*this); }
 void BlockNode::accept(Visitor& v) const { v.visit(*this); }
 void IfStmtNode::accept(Visitor& v) const { v.visit(*this); }
 void ForStmtNode::accept(Visitor& v) const { v.visit(*this); }
