@@ -40,14 +40,15 @@ public:
   };
 
   struct Pointer {
-    bool is_mutable;
+    bool is_pointee_mutable;
     std::shared_ptr<Type> pointee;
 
-    Pointer(bool is_mutable, std::shared_ptr<Type> pointee)
-        : is_mutable(is_mutable), pointee(pointee) {}
+    Pointer(bool is_pointee_mutable, std::shared_ptr<Type> pointee)
+        : is_pointee_mutable(is_pointee_mutable), pointee(pointee) {}
 
     friend bool operator==(const Pointer& a, const Pointer& b) {
-      return a.is_mutable == b.is_mutable && a.pointee == b.pointee;
+      return a.is_pointee_mutable == b.is_pointee_mutable &&
+             a.pointee == b.pointee;
     }
   };
 

@@ -1,6 +1,7 @@
 #ifndef PARSER_VISITOR_H
 #define PARSER_VISITOR_H
 
+#include <cassert>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -18,6 +19,7 @@ public:
   virtual void visit(const BoolLiteralNode& node) = 0;
   virtual void visit(const NullLiteralNode&) = 0;
   virtual void visit(const IdentifierNode& node) = 0;
+  virtual void visit(const AssignmentNode& node) = 0;
   virtual void visit(const BinaryOpExprNode& node) = 0;
   virtual void visit(const UnaryExprNode& node) = 0;
   virtual void visit(const FunctionCallNode& node) = 0;
@@ -29,7 +31,6 @@ public:
 
   // Statement Nodes
   virtual void visit(const VariableDeclNode& node) = 0;
-  virtual void visit(const AssignmentNode& node) = 0;
   virtual void visit(const BlockNode& node) = 0;
   virtual void visit(const IfStmtNode& node) = 0;
   virtual void visit(const ForStmtNode& node) = 0;
@@ -54,8 +55,8 @@ public:
   virtual void visit(const StructDeclNode& node) = 0;
 };
 
-void print_ast(const AstPtr& node);
-void print_ast(const std::vector<AstPtr>& nodes);
+void print_ast(const AstPtr& node, std::ostream& out);
+void print_ast(const std::vector<AstPtr>& nodes, std::ostream& out);
 
 class AstPrinter : public Visitor {
   std::ostream& out;
@@ -239,7 +240,17 @@ public:
     out << "NewExpr(\n";
     indent++;
     printIndent();
-    out << "TypeToAllocate:\n";
+    out << "TypeToAllocate:";
+    if (node.is_memory_mutable) {
+      out << "(mutable memory, type:";
+    } else {
+      out << "(immutable memory, type:";
+    }
+    if (node.is_array_allocation) {
+      out << " array)\n";
+    } else {
+      out << " constructor)\n";
+    }
     indent++;
     printType(*node.type_to_allocate);
     indent--;
@@ -273,7 +284,7 @@ public:
     indent--;
     out << ",\n";
     printIndent();
-    out << "Type: ";
+    out << "Type:";
     if (node.type.has_value()) {
       out << "\n";
       indent++;
@@ -366,18 +377,24 @@ public:
     out << "ForStmt(\n";
     indent++;
     printIndent();
-    out << "Initializer: ";
-    if (node.initializer) {
+    out << "Initializer:";
+    if (node.initializer != std::nullopt) {
       out << "\n";
       indent++;
-      node.initializer->accept(*this);
+      if (std::holds_alternative<ExprPtr>(*node.initializer)) {
+        std::get<ExprPtr>(*node.initializer)->accept(*this);
+      } else {
+        // it must be a variable declaration StmtPtr
+        assert(std::holds_alternative<StmtPtr>(*node.initializer));
+        std::get<StmtPtr>(*node.initializer)->accept(*this);
+      }
       indent--;
     } else {
-      out << "null";
+      out << " null";
     }
     out << ",\n";
     printIndent();
-    out << "Condition: ";
+    out << "Condition:";
     if (node.condition) {
       out << "\n";
       indent++;
@@ -388,7 +405,7 @@ public:
     }
     out << ",\n";
     printIndent();
-    out << "Iteration: ";
+    out << "Iteration:";
     if (node.iteration) {
       out << "\n";
       indent++;
@@ -574,7 +591,7 @@ public:
     out << "Case(\n";
     indent++;
     printIndent();
-    out << "Value: ";
+    out << "Value:";
     if (node.value) {
       out << "\n";
       indent++;
@@ -659,7 +676,11 @@ public:
     printIndent();
     out << "],\n";
     printIndent();
-    out << "ReturnType:\n";
+    out << "ReturnType:";
+    if (node.return_type_name != std::nullopt) {
+      out << " (NamedVar:" << *node.return_type_name << ")";
+    }
+    out << '\n';
     indent++;
     printType(*node.return_type);
     indent--;

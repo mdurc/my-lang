@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
     Parser parser;
     std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
 
-    print_ast(ast);
+    print_ast(ast, std::cout);
 
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;

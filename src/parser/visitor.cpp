@@ -29,7 +29,7 @@ const char* AstPrinter::unaryOpToString(UnaryOperator op) {
     case UnaryOperator::LogicalNot: return "!";
     case UnaryOperator::Dereference: return "*";
     case UnaryOperator::AddressOf: return "&";
-    case UnaryOperator::AddressOfMut: return "&mut ";
+    case UnaryOperator::AddressOfMut: return "&mut";
     default: return "?";
   }
 }
@@ -81,8 +81,9 @@ void AstPrinter::printType(const Type& type) {
     printIndent();
     out << ")";
   } else if (type.is<Type::Pointer>()) {
-    out << "Type::Pointer(Mutable: "
-        << (type.as<Type::Pointer>().is_mutable ? "true" : "false") << ",\n";
+    out << "Type::Pointer(pointee mutable: "
+        << (type.as<Type::Pointer>().is_pointee_mutable ? "true" : "false")
+        << ",\n";
     indent++;
     printIndent();
     out << "Pointee:\n";
@@ -98,16 +99,16 @@ void AstPrinter::printType(const Type& type) {
   }
 }
 
-void print_ast(const AstPtr& node) {
-  AstPrinter printer(std::cout);
+void print_ast(const AstPtr& node, std::ostream& out) {
+  AstPrinter printer(out);
   node->accept(printer);
-  std::cout << std::endl;
+  out << std::endl;
 }
 
-void print_ast(const std::vector<AstPtr>& nodes) {
-  AstPrinter printer(std::cout);
+void print_ast(const std::vector<AstPtr>& nodes, std::ostream& out) {
+  AstPrinter printer(out);
   for (const auto& node : nodes) {
     node->accept(printer);
-    std::cout << std::endl;
+    out << std::endl;
   }
 }

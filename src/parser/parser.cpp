@@ -288,7 +288,7 @@ BorrowState Parser::parse_param_borrow_state() {
   if (match(TokenType::MUT)) {
     modifier = BorrowState::MutablyBorrowed;
     advance();
-  } else if (match(TokenType::READ)) {
+  } else if (match(TokenType::READ) || match(TokenType::IMM)) {
     modifier = BorrowState::ImmutablyBorrowed;
     advance();
   } else if (match(TokenType::TAKE)) {
@@ -296,6 +296,9 @@ BorrowState Parser::parse_param_borrow_state() {
     if (match(TokenType::MUT)) {
       advance();
       modifier = BorrowState::MutablyOwned;
+    } else if (match(TokenType::IMM)) {
+      advance();
+      modifier = BorrowState::ImmutableOwned;
     } else {
       modifier = BorrowState::ImmutableOwned;
     }
@@ -406,6 +409,9 @@ StmtPtr Parser::parse_var_decl() {
   if (match(TokenType::MUT)) {
     advance();
     is_mutable = true;
+  } else if (match(TokenType::IMM)) {
+    advance();
+    is_mutable = false;
   }
 
   const Token* name_tok = current();
@@ -696,6 +702,7 @@ StmtPtr Parser::parse_asm_block() {
 
   std::string asm_body_str; // raw string for now
 
+  bool is_first = true;
   int brace_level = 1;
   while (m_pos < m_tokens.size()) {
     if (current()->get_type() == TokenType::LBRACE) {
@@ -706,7 +713,11 @@ StmtPtr Parser::parse_asm_block() {
 
     if (brace_level == 0) break;
 
-    asm_body_str += current()->get_lexeme() + " ";
+    if (!is_first) {
+      asm_body_str += ' ';
+    }
+    is_first = false;
+    asm_body_str += current()->get_lexeme();
     advance();
   }
 
@@ -1153,12 +1164,24 @@ ExprPtr Parser::parse_new_expr() {
 
   _consume(TokenType::LANGLE);
 
+  bool is_memory_mutable = false;
+  if (match(TokenType::MUT)) {
+    advance();
+    is_memory_mutable = true;
+  } else if (match(TokenType::IMM)) {
+    advance();
+    is_memory_mutable = false;
+  }
+
   std::shared_ptr<Type> type_to_alloc = parse_type();
+
   _consume(TokenType::RANGLE);
 
+  bool is_array = false;
   ExprPtr specifier = nullptr;
   if (match(TokenType::LBRACK)) {
     // Array allocation: '[' <Expr> ']'
+    is_array = true;
     advance();
     specifier = parse_expression();
     _consume(TokenType::RBRACK);
@@ -1174,6 +1197,6 @@ ExprPtr Parser::parse_new_expr() {
                                   current()->get_type()));
     throw std::runtime_error("Parser error");
   }
-  return _AST(NewExprNode, new_tok, m_symtab->current_scope(), type_to_alloc,
-              specifier);
+  return _AST(NewExprNode, new_tok, m_symtab->current_scope(),
+              is_memory_mutable, is_array, type_to_alloc, specifier);
 }

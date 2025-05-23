@@ -207,12 +207,16 @@ public:
 
 class NewExprNode : public ExpressionNode {
 public:
+  bool is_memory_mutable;
+  bool is_array_allocation;
   std::shared_ptr<Type> type_to_allocate; // The <Type> part
   ExprPtr allocation_specifier;
 
-  NewExprNode(const Token* tok, size_t sc, std::shared_ptr<Type> allocated_type,
-              ExprPtr specifier = nullptr)
+  NewExprNode(const Token* tok, size_t sc, bool is_mut, bool is_array,
+              std::shared_ptr<Type> allocated_type, ExprPtr specifier = nullptr)
       : ExpressionNode(tok, sc),
+        is_memory_mutable(is_mut),
+        is_array_allocation(is_array),
         type_to_allocate(allocated_type),
         allocation_specifier(specifier) {}
   void accept(Visitor& v) const override;
