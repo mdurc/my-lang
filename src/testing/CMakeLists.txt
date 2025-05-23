@@ -7,8 +7,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../lexer
+    ${CMAKE_CURRENT_SOURCE_DIR}/../parser
     ${CMAKE_CURRENT_SOURCE_DIR}/../logging
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor
+)
+
+
+set(PARSER_SOURCES
+    ../parser/parser.cpp
+    ../parser/ast.cpp
+    ../parser/symtab.cpp
+    ../parser/visitor.cpp
 )
 
 set(LEXER_SOURCES
@@ -23,7 +32,9 @@ set(LOGGING_SOURCES
 add_executable(${PROJECT_NAME}
     main.cpp
     test_lexer.cpp
+    test_parser.cpp
     ${LEXER_SOURCES}
+    ${PARSER_SOURCES}
     ${LOGGING_SOURCES}
 )
 

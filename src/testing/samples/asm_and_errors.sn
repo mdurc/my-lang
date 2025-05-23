@@ -4,6 +4,6 @@ asm {
 
   it is just a buffer for now
 
-}
+};
 
 Error("err msg");

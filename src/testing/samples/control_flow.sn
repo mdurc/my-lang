@@ -19,7 +19,7 @@ switch (x) {
     }
 }
 
-{ 
+{
     // this is a shadow of x from outer scope
     mut x := 3;
 }

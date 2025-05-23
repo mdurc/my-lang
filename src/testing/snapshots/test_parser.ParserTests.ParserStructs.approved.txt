@@ -1,0 +1,91 @@
+StructDecl(
+  Name:
+    Ident(Point),
+  Members: [
+    StructField(
+      Name:
+        Ident(x),
+      Type:
+        Type::Named(i32)
+    ),
+    StructField(
+      Name:
+        Ident(y),
+      Type:
+        Type::Named(i32)
+    ),
+    FunctionDecl(
+      Name:
+        Ident(is_origin),
+      Params: [
+      ],
+      ReturnType: (NamedVar:r)
+        Type::Named(u8),
+      Body:
+      Block([
+        ReturnStmt(
+          BinaryOp(&&,
+            BinaryOp(==,
+              Ident(x),
+              Int(0)
+            ),
+            BinaryOp(==,
+              Ident(y),
+              Int(0)
+            )
+          )
+        )
+      ])
+    )
+  ]
+)
+VariableDecl(Mutable: true,
+  Name:
+    Ident(origin),
+  Type:inferred
+  Initializer:
+    StructLiteral(
+      Type:
+        Ident(Point),
+      Initializers: [
+        StructFieldInitializer(
+          Field:
+            Ident(x),
+          Value:
+            Int(0)
+        ),
+        StructFieldInitializer(
+          Field:
+            Ident(y),
+          Value:
+            Int(0)
+        )
+      ]
+    )
+)
+VariableDecl(Mutable: true,
+  Name:
+    Ident(x_o),
+  Type:
+    Type::Named(i32)
+  Initializer:
+    MemberAccess(
+      Object:
+        Ident(origin),
+      Member:
+        Ident(x)
+    )
+)
+VariableDecl(Mutable: true,
+  Name:
+    Ident(y_o),
+  Type:
+    Type::Named(i32)
+  Initializer:
+    MemberAccess(
+      Object:
+        Ident(origin),
+      Member:
+        Ident(y)
+    )
+)

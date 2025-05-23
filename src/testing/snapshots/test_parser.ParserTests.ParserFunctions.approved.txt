@@ -1,0 +1,65 @@
+FunctionDecl(
+  Name:
+    Ident(foo),
+  Params: [
+  ],
+  ReturnType: (NamedVar:z)
+    Type::Named(i32),
+  Body:
+  Block([
+    ExpressionStmt(
+      Assignment(
+        LValue:
+          Ident(z),
+        RValue:
+          Int(18)
+      )
+    )
+  ])
+)
+FunctionDecl(
+  Name:
+    Ident(bar),
+  Params: [
+  ],
+  ReturnType: (NamedVar:z)
+    Type::Named(i32),
+  Body:
+  Block([
+    ReturnStmt(
+      Int(5)
+    )
+  ])
+)
+FunctionDecl(
+  Name:
+    Ident(foo_2),
+  Params: [
+    Param(Modifier: MutablyBorrowed,
+      Name:
+        Ident(x),
+      Type:
+        Type::Named(i32)
+    ),
+    Param(Modifier: ImmutablyBorrowed,
+      Name:
+        Ident(y),
+      Type:
+        Type::Named(i32)
+    ),
+    Param(Modifier: ImmutableOwned,
+      Name:
+        Ident(z),
+      Type:
+        Type::Named(i32)
+    )
+  ],
+  ReturnType:
+    Type::Named(u0),
+  Body:
+  Block([
+    PrintStmt(
+      String("hi")
+    )
+  ])
+)

@@ -5,5 +5,5 @@ free[] px;
 
 px = null;
 
-px = new<mut i32>(15);
+px = new<imm i32>(15);
 free px;
