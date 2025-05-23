@@ -284,34 +284,31 @@ FuncDeclPtr Parser::parse_function_decl() {
               std::move(return_t.first));
 }
 
-BorrowState Parser::parse_param_borrow_state() {
-  BorrowState modifier = BorrowState::ImmutablyBorrowed; // the default modifier
+BorrowState Parser::parse_function_param_prefix() {
+  BorrowState modifier = BorrowState::ImmutablyBorrowed; // default
   if (match(TokenType::MUT)) {
     modifier = BorrowState::MutablyBorrowed;
     advance();
-  } else if (match(TokenType::READ) || match(TokenType::IMM)) {
-    modifier = BorrowState::ImmutablyBorrowed;
-    advance();
+  } else if (match(TokenType::IMM)) {
+    advance(); // imm borrowed is already the default
   } else if (match(TokenType::TAKE)) {
     advance();
+    modifier = BorrowState::ImmutableOwned; // Take ==> imm owned by default
     if (match(TokenType::MUT)) {
-      advance();
       modifier = BorrowState::MutablyOwned;
+      advance();
     } else if (match(TokenType::IMM)) {
       advance();
-      modifier = BorrowState::ImmutableOwned;
-    } else {
-      modifier = BorrowState::ImmutableOwned;
     }
   }
   return modifier;
 }
 
-// <Param> ::= ( 'mut' | 'read' | 'take' 'mut'? )? Identifier ':' <Type>
+// <Param> ::= <FunctionParamPrefix>? Identifier ':' <Type>
 ParamPtr Parser::parse_function_param() {
   const Token* first_tok = current();
 
-  BorrowState modifier = parse_param_borrow_state();
+  BorrowState modifier = parse_function_param_prefix();
 
   const Token* name_tok = current();
   _consume(TokenType::IDENTIFIER);
@@ -352,7 +349,7 @@ Parser::parse_function_return_type() {
 }
 
 bool Parser::is_next_var_decl() {
-  if (match(TokenType::MUT)) {
+  if (match(TokenType::MUT) || match(TokenType::IMM)) {
     return true;
   } else if (match(TokenType::IDENTIFIER)) {
     // with either colon or walrus it will be a variable declaration
@@ -402,17 +399,17 @@ StmtPtr Parser::parse_statement() {
   }
 }
 
-// <VarDecl> ::= 'mut'? Identifier ( ( ':' <Type> ( '=' <Expr> )? ) | ( ':='
-// <Expr> ) )
+// <VarDecl> ::= <TypePrefix>? Identifier ( ( ':' <Type> ( '=' <Expr> )? ) | (
+// ':=' <Expr> ) )
 StmtPtr Parser::parse_var_decl() {
   const Token* start_tok = current();
-  bool is_mutable = false;
+
+  bool is_mutable = false; // imm by default
   if (match(TokenType::MUT)) {
     advance();
     is_mutable = true;
   } else if (match(TokenType::IMM)) {
     advance();
-    is_mutable = false;
   }
 
   const Token* name_tok = current();
@@ -857,7 +854,7 @@ ExprPtr Parser::parse_multiplicative() {
   return expr;
 }
 
-// <UnaryExpr> ::= ( '&' 'mut'? | '*' | '!' ) <UnaryExpr> | <PostfixExpr>
+// <UnaryExpr> ::= ( '&' <TypePrefix>? | '*' | '!' ) <UnaryExpr> | <PostfixExpr>
 ExprPtr Parser::parse_unary() {
   const Token* op_tok = current();
 
@@ -869,6 +866,8 @@ ExprPtr Parser::parse_unary() {
       if (match(TokenType::MUT)) {
         advance();
         op = UnaryOperator::AddressOfMut;
+      } else if (match(TokenType::IMM)) {
+        advance(); // still just AddressOf which implies immutable ref
       }
       // recur in order to find joined unary chains
       ExprPtr operand = parse_unary();
@@ -995,22 +994,18 @@ std::shared_ptr<Type> Parser::parse_type() {
     return t;
   } else if (match(TokenType::PTR)) {
     // Pointer type
-    // <PointerType> ::= 'ptr' '<' ( 'mut' | 'imm' ) <Type> '>'
+    // <PointerType> ::= 'ptr' '<' <TypePrefix>? <Type> '>'
     advance();
     _consume(TokenType::LANGLE);
 
-    bool is_mutable = false;
+    bool is_mutable = false; // imm by default
     if (match(TokenType::MUT)) {
       advance();
       is_mutable = true;
     } else if (match(TokenType::IMM)) {
       advance();
-      is_mutable = false;
-    } else {
-      m_logger.report(Error(type_start_tok->get_span(),
-                            "Expected 'mut' or 'imm' in pointer type"));
-      throw std::runtime_error("Parser error");
     }
+
     std::shared_ptr<Type> pointee = parse_type();
     _consume(TokenType::RANGLE);
 
@@ -1027,7 +1022,7 @@ std::shared_ptr<Type> Parser::parse_type() {
     std::vector<std::pair<BorrowState, std::shared_ptr<Type>>> param_types;
     if (!match(TokenType::RPAREN)) {
       do {
-        BorrowState modifier = parse_param_borrow_state();
+        BorrowState modifier = parse_function_param_prefix();
         param_types.push_back(std::make_pair(modifier, parse_type()));
       } while (match(TokenType::COMMA) && advance());
     }
@@ -1158,20 +1153,20 @@ ExprPtr Parser::parse_struct_literal() {
               struct_type_ident, std::move(initializers_vec));
 }
 
-// <NewExpr> ::= 'new' '<' <Type> '>' ( '[' <Expr> ']' | '(' <Expr>? ')' )
+// <NewExpr> ::= 'new' '<' <TypePrefix>? <Type> '>' ( '[' <Expr> ']' | '('
+// <Expr>? ')' )
 ExprPtr Parser::parse_new_expr() {
   const Token* new_tok = current();
   _consume(TokenType::NEW);
 
   _consume(TokenType::LANGLE);
 
-  bool is_memory_mutable = false;
+  bool is_memory_mutable = false; // imm by default
   if (match(TokenType::MUT)) {
     advance();
     is_memory_mutable = true;
   } else if (match(TokenType::IMM)) {
     advance();
-    is_memory_mutable = false;
   }
 
   std::shared_ptr<Type> type_to_alloc = parse_type();

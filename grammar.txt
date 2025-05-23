@@ -7,7 +7,7 @@
 
 <FunctionDecl>          ::= 'func' Identifier '(' <Params>? ')' <ReturnType>? <Block>
 <Params>                ::= <Param> ( ',' <Param> )*
-<Param>                 ::= ( 'mut' | 'read' | 'take' )? Identifier ':' <Type>
+<Param>                 ::= <FunctionParamPrefix>? Identifier ':' <Type>
 <ReturnType>            ::= 'returns' '(' Identifier ':' <Type> ')'
 
 <Block>                 ::= '{' <Stmt>* '}'
@@ -27,7 +27,7 @@
                           | <ErrorStmt> ';'
                           | 'asm' <Block> ';'
 
-<VarDecl>               ::= 'mut'? Identifier ( ( ':' <Type> ( '=' <Expr> )? ) | ( ':=' <Expr> ) )
+<VarDecl>               ::= <TypePrefix>? Identifier ( ( ':' <Type> ( '=' <Expr> )? ) | ( ':=' <Expr> ) )
 
 <IfStmt>                ::= 'if' '(' <Expr> ')' <Block> ( 'else' ( <Block> | <IfStmt> ) )?
 <ForStmt>               ::= 'for' '(' <Expr>? ';' <Expr>? ';' <Expr>? ')' <Block>
@@ -49,7 +49,7 @@
 <RelationalExpr>        ::= <AdditiveExpr> ( ( '<' | '>' | '<=' | '>=' ) <AdditiveExpr> )*
 <AdditiveExpr>          ::= <MultiplicativeExpr> ( ( '+' | '-') <MultiplicativeExpr> )*
 <MultiplicativeExpr>    ::= <UnaryExpr> ( ( '*' | '/' | '%' ) <UnaryExpr> )*
-<UnaryExpr>             ::= ( '&' 'mut'? | '*' | '!' ) <UnaryExpr> | <PostfixExpr>
+<UnaryExpr>             ::= ( '&' <TypePrefix>? | '*' | '!' ) <UnaryExpr> | <PostfixExpr>
 <PostfixExpr>           ::= <PrimaryExpr> ( <PostfixSuffix> )*
 <PostfixSuffix>         ::= '.' Identifier | '(' <Args>? ')' | '[' <Expr> ']'
 
@@ -62,7 +62,7 @@
 <PrimitiveLiteral>      ::= Integer | Float | String | Bool | 'null'
 
 <StructLiteral>         ::= Identifier '(' ( Identifier '=' <Expr> ( ',' Identifier '=' <Expr> )* )? ')'
-<NewExpr>               ::= 'new' '<' <Type> '>' ( '[' <Expr> ']' | '(' <Expr>? ')' )
+<NewExpr>               ::= 'new' '<' <TypePrefix>? <Type> '>' ( '[' <Expr> ']' | '(' <Expr>? ')' )
 
 <Args>                  ::= <Arg> ( ',' <Arg> )*
 <Arg>                   ::= 'give'? <Expr>
@@ -70,11 +70,14 @@
 <Type>                  ::= <BasicType> | <StructType> | <PointerType> | <FunctionType>
 <BasicType>             ::= 'i32' | 'u8' | 'String' | 'bool' | 'u0' | 'u16' | 'u32' | 'u64' | 'i8' | 'i16' | 'i64' | 'f64'
 <StructType>            ::= Identifier
-<PointerType>           ::= 'ptr' '<' ( 'mut' | 'imm' ) <Type> '>'
+<PointerType>           ::= 'ptr' '<' <TypePrefix>? <Type> '>'
 
 <FunctionType>          ::= 'func' '(' <FunctionParamTypes>? ')' '->' <Type>
 <FunctionParamTypes>    ::= <FunctionParamType> ( ',' <FunctionParamType> )*
-<FunctionParamType>     ::= ( 'mut' | 'read' | 'take' 'mut'? )? <Type>
+<FunctionParamType>     ::= <FunctionParamPrefix>? <Type>
+
+<TypePrefix>            ::= 'mut' | 'imm'
+<FunctionParamPrefix>   ::= 'mut' | 'imm' | 'take' <TypePrefix>?
 
 Integer                 ::= [0-9]+
 Float                   ::= [0-9]+ '.' [0-9]+

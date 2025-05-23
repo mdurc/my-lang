@@ -31,7 +31,6 @@ enum class TokenType {
   DEFAULT,       // default
   IMM,           // imm
   MUT,           // mut
-  READ,          // read
   TAKE,          // take
   GIVE,          // give
   PTR,           // ptr
