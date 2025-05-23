@@ -124,18 +124,15 @@ std::shared_ptr<Type> SymTab::get_primitive_type(std::string primitive) const {
 }
 
 std::shared_ptr<Type> SymTab::declare_type(Type tk) {
-  std::shared_ptr<Type> searched = m_scopes[m_current_scope].lookup_type(tk);
-  if (searched) {
-    return searched;
+  if (m_scopes[m_current_scope].lookup_type(tk)) {
+    return nullptr;
   }
   return m_scopes[m_current_scope].add_type(tk);
 }
 
 std::shared_ptr<Variable> SymTab::declare_variable(Variable v) {
-  std::shared_ptr<Variable> searched =
-      m_scopes[m_current_scope].lookup_variable(v.name);
-  if (searched) {
-    return searched;
+  if (m_scopes[m_current_scope].lookup_variable(v.name)) {
+    return nullptr;
   }
   return m_scopes[m_current_scope].add_variable(std::move(v));
 }

@@ -264,8 +264,14 @@ FuncDeclPtr Parser::parse_function_decl() {
                  m_symtab->current_scope());
 
   // see if it already exists in the table, if so we will use that symbol
-  // otherwise this will create a new Type and return it
-  std::shared_ptr<Type> func_type = m_symtab->declare_type(std::move(ft));
+  // Function types are unique in that they can be "re-defined" without an
+  // error, as the identifier associated to the func is what matters (and the
+  // method family i.e. the types)
+  std::shared_ptr<Type> func_type = m_symtab->lookup_type(ft);
+  if (!func_type) {
+    // it doesn't exist, so we can add it as a new func-type
+    func_type = m_symtab->declare_type(std::move(ft));
+  }
 
   // declare it as a var with the associated type
   Variable func_var(name_tok->get_lexeme(), BorrowState::ImmutableOwned,
