@@ -658,8 +658,9 @@ StmtPtr Parser::parse_error_stmt() {
   _consume(TokenType::STRING_LITERAL);
 
   if (!str_tok->is_literal()) {
-    m_logger.report(Error(str_tok->get_span(),
-                          "Expected string literal token to have string data"));
+    m_logger.report(Error(
+        str_tok->get_span(),
+        "Internal Error: Expected string literal token to have string data"));
     throw std::runtime_error("Parser error");
   }
   const std::string& msg = str_tok->get_string_val();
