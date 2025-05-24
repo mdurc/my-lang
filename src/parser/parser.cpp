@@ -841,10 +841,9 @@ ExprPtr Parser::parse_multiplicative() {
       case TokenType::STAR: op = BinOperator::Multiply; break;
       case TokenType::SLASH: op = BinOperator::Divide; break;
       case TokenType::MODULO: op = BinOperator::Modulo; break;
-      case TokenType::GREATER_EQUAL: op = BinOperator::GreaterEqual; break;
       default: {
-        m_logger.report(
-            Error(op_tok->get_span(), "Unknown binary operator type"));
+        m_logger.report(Error(op_tok->get_span(),
+                              "Unknown multiplicative binary operator type"));
         throw std::runtime_error("Parser error");
       }
     }
