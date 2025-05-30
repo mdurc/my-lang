@@ -1,3 +1,4 @@
+condition : bool = true;
 if (condition) {
 } else {
 }
@@ -11,7 +12,7 @@ for (mut i := 0; i < 10; i = i+1) {
     break;
 }
 
-while (1) {
+while (true) {
   z := 3;
   y : i32 = z;
 }

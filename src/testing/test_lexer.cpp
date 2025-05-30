@@ -8,8 +8,8 @@ std::string generate_lexer_output(const std::string& input_filepath) {
   std::stringstream ss;
   Lexer lexer;
   try {
-    lexer.tokenize(input_filepath);
-    ss << lexer;
+    std::vector<Token> tokens = lexer.tokenize(input_filepath);
+    print_tokens(tokens, ss);
   } catch (const std::exception& e) {
     ss << "LEXER_EXCEPTION: " << e.what() << std::endl;
   }

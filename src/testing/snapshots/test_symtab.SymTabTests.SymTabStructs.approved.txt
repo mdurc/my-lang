@@ -1,10 +1,10 @@
 Symbol Table State:
 Current Scope ID: 0
-Total Scopes: 3
+Total Scopes: 4
 
 Scope ID: 0
   Parent Scope ID: 0
-  Declared Types (13):
+  Declared Types (14):
     - u0 (declared in scope 0)
     - u8 (declared in scope 0)
     - u16 (declared in scope 0)
@@ -18,7 +18,12 @@ Scope ID: 0
     - bool (declared in scope 0)
     - string (declared in scope 0)
     - Point (declared in scope 0)
-  Declared Variables (3):
+    - func(Point)->u0 (declared in scope 0)
+  Declared Variables (4):
+    - Name: foo
+        Modifier: imm
+        Type: func(Point)->u0
+        Scope ID: 0
     - Name: origin
         Modifier: mut
         Type: nullptr/inferred
@@ -35,7 +40,7 @@ Scope ID: 0
 Scope ID: 1
   Parent Scope ID: 0
   Declared Types (1):
-    - func()->u8 (declared in scope 1)
+    - func()->bool (declared in scope 1)
   Declared Variables (3):
     - Name: x
         Modifier: mut
@@ -47,10 +52,23 @@ Scope ID: 1
         Scope ID: 1
     - Name: is_origin
         Modifier: imm
-        Type: func()->u8
+        Type: func()->bool
         Scope ID: 1
 
 Scope ID: 2
   Parent Scope ID: 1
   Declared Types (0):
-  Declared Variables (0):
+  Declared Variables (1):
+    - Name: r
+        Modifier: mut
+        Type: bool
+        Scope ID: 2
+
+Scope ID: 3
+  Parent Scope ID: 0
+  Declared Types (0):
+  Declared Variables (1):
+    - Name: p
+        Modifier: imm
+        Type: Point
+        Scope ID: 3

@@ -4,7 +4,7 @@ Total Scopes: 1
 
 Scope ID: 0
   Parent Scope ID: 0
-  Declared Types (12):
+  Declared Types (14):
     - u0 (declared in scope 0)
     - u8 (declared in scope 0)
     - u16 (declared in scope 0)
@@ -17,6 +17,8 @@ Scope ID: 0
     - f64 (declared in scope 0)
     - bool (declared in scope 0)
     - string (declared in scope 0)
+    - ptr<imm i32> (declared in scope 0)
+    - ptr<mut i32> (declared in scope 0)
   Declared Variables (3):
     - Name: x
         Modifier: mut

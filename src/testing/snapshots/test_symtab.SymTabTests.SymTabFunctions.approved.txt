@@ -19,7 +19,7 @@ Scope ID: 0
     - string (declared in scope 0)
     - func()->i32 (declared in scope 0)
     - func(i32, i32, i32)->u0 (declared in scope 0)
-  Declared Variables (5):
+  Declared Variables (7):
     - Name: foo
         Modifier: imm
         Type: func()->i32
@@ -40,16 +40,32 @@ Scope ID: 0
         Modifier: imm
         Type: nullptr/inferred
         Scope ID: 0
+    - Name: a
+        Modifier: mut
+        Type: nullptr/inferred
+        Scope ID: 0
+    - Name: b
+        Modifier: mut
+        Type: nullptr/inferred
+        Scope ID: 0
 
 Scope ID: 1
   Parent Scope ID: 0
   Declared Types (0):
-  Declared Variables (0):
+  Declared Variables (1):
+    - Name: z
+        Modifier: mut
+        Type: i32
+        Scope ID: 1
 
 Scope ID: 2
   Parent Scope ID: 0
   Declared Types (0):
-  Declared Variables (0):
+  Declared Variables (1):
+    - Name: z
+        Modifier: mut
+        Type: i32
+        Scope ID: 2
 
 Scope ID: 3
   Parent Scope ID: 0

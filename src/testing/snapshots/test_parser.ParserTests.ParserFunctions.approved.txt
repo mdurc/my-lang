@@ -92,13 +92,27 @@ VariableDecl(Mutable: false,
   Initializer:
     Int(10)
 )
+VariableDecl(Mutable: true,
+  Name:
+    Ident(a),
+  Type: inferred
+  Initializer:
+    Int(1)
+)
+VariableDecl(Mutable: true,
+  Name:
+    Ident(b),
+  Type: inferred
+  Initializer:
+    Int(2)
+)
 ExpressionStmt(
   FunctionCall(
     Callee:
       Ident(x),
     Arguments: [
       Argument(IsGive: false,
-        Int(1)
+        Ident(a)
       ),
       Argument(IsGive: false,
         Int(2)
@@ -115,7 +129,7 @@ ExpressionStmt(
       Ident(x),
     Arguments: [
       Argument(IsGive: false,
-        Int(1)
+        Ident(b)
       ),
       Argument(IsGive: false,
         Int(2)

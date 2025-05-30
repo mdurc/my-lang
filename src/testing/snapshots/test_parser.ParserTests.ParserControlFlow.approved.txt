@@ -1,3 +1,11 @@
+VariableDecl(Mutable: false,
+  Name:
+    Ident(condition),
+  Type:
+    {bool} Type::Named(bool)
+  Initializer:
+    true
+)
 IfStmt(
   Condition:
     Ident(condition),
@@ -64,7 +72,7 @@ ForStmt(
 )
 WhileStmt(
   Condition:
-    Int(1),
+    true,
   Body:
   Block([
     VariableDecl(Mutable: false,

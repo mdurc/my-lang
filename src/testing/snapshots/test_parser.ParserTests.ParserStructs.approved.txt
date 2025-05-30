@@ -1,6 +1,6 @@
 StructDecl(
-  Name:
-    Ident(Point),
+  Type:
+    {Point} Type::Named(Point),
   Members: [
     StructField(
       Name:
@@ -20,7 +20,7 @@ StructDecl(
       Params: [
       ],
       ReturnType: (NamedVar:r)
-        {u8} Type::Named(u8),
+        {bool} Type::Named(bool),
       Body:
       Block([
         ReturnStmt(
@@ -39,6 +39,39 @@ StructDecl(
     )
   ]
 )
+FunctionDecl(
+  Name:
+    Ident(foo),
+  Params: [
+    Param(Modifier: ImmutablyBorrowed,
+      Name:
+        Ident(p),
+      Type:
+        {Point} Type::Named(Point)
+    )
+  ],
+  ReturnType:
+    {u0} Type::Named(u0),
+  Body:
+  Block([
+    PrintStmt(
+      MemberAccess(
+        Object:
+          Ident(p),
+        Member:
+          Ident(x)
+      )
+    ),
+    PrintStmt(
+      MemberAccess(
+        Object:
+          Ident(p),
+        Member:
+          Ident(y)
+      )
+    )
+  ])
+)
 VariableDecl(Mutable: true,
   Name:
     Ident(origin),
@@ -46,7 +79,7 @@ VariableDecl(Mutable: true,
   Initializer:
     StructLiteral(
       Type:
-        Ident(Point),
+        {Point} Type::Named(Point),
       Initializers: [
         StructFieldInitializer(
           Field:

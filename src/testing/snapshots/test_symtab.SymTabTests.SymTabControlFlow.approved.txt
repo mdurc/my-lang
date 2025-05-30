@@ -17,7 +17,11 @@ Scope ID: 0
     - f64 (declared in scope 0)
     - bool (declared in scope 0)
     - string (declared in scope 0)
-  Declared Variables (1):
+  Declared Variables (2):
+    - Name: condition
+        Modifier: imm
+        Type: bool
+        Scope ID: 0
     - Name: x
         Modifier: mut
         Type: i32

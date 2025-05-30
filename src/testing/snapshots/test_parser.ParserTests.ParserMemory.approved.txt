@@ -2,7 +2,7 @@ VariableDecl(Mutable: true,
   Name:
     Ident(px),
   Type:
-    {ptr<mut i32>} Type::Pointer(pointee mutable: true,
+    {ptr<imm i32>} Type::Pointer(pointee mutable: false,
       Pointee:
         {i32} Type::Named(i32)
     )

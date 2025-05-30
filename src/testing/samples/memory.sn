@@ -1,4 +1,4 @@
-mut px : ptr<mut i32>;
+mut px : ptr<imm i32>;
 
 px = new<mut i32>[3];
 free[] px;

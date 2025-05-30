@@ -16,6 +16,8 @@ x : func(i32, i32, i32)->u0 = foo_2;
 
 z := 10;
 
-x(1, 2, z); // will perform a copy on z
+mut a := 1;
+mut b := 2;
+x(a, 2, z); // will perform a copy on z
 
-x(1, 2, give z); // transfer ownership of z
+x(b, 2, give z); // transfer ownership of z
