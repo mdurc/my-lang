@@ -6,28 +6,28 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/../lexer
-    ${CMAKE_CURRENT_SOURCE_DIR}/../parser
-    ${CMAKE_CURRENT_SOURCE_DIR}/../logging
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/lexer
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/parser
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/logging
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor
 )
 
 
 set(PARSER_SOURCES
-    ../parser/parser.cpp
-    ../parser/ast.cpp
-    ../parser/symtab.cpp
-    ../parser/visitor.cpp
-    ../parser/types.cpp
+    ../src/parser/parser.cpp
+    ../src/parser/ast.cpp
+    ../src/parser/symtab.cpp
+    ../src/parser/visitor.cpp
+    ../src/parser/types.cpp
 )
 
 set(LEXER_SOURCES
-    ../lexer/lexer.cpp
-    ../lexer/token.cpp
+    ../src/lexer/lexer.cpp
+    ../src/lexer/token.cpp
 )
 
 set(LOGGING_SOURCES
-    ../logging/diagnostic.cpp
+    ../src/logging/diagnostic.cpp
 )
 
 add_executable(${PROJECT_NAME}
