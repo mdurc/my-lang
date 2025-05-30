@@ -9,32 +9,13 @@
 
 #define _AST(_type, ...) std::make_shared<_type>(__VA_ARGS__)
 
-// Helpers:
-static bool is_basic_type(TokenType type) {
-  switch (type) {
-    case TokenType::U0:
-    case TokenType::U8:
-    case TokenType::U16:
-    case TokenType::U32:
-    case TokenType::U64:
-    case TokenType::I8:
-    case TokenType::I16:
-    case TokenType::I32:
-    case TokenType::I64:
-    case TokenType::F64:
-    case TokenType::BOOL:
-    case TokenType::STRING: return true;
-    default: return false;
-  }
-}
-
 // == Movement Operations through Tokens ==
 const Token* Parser::current() {
   if (m_pos < m_tokens.size()) {
     return &m_tokens[m_pos];
   }
   m_logger.report(
-      FatalError("Attempting to access current position when out of bounds"));
+      Error("Attempting to access current position when out of bounds"));
   throw std::runtime_error("Parser error");
 }
 
@@ -43,7 +24,7 @@ const Token* Parser::advance() {
   if (m_pos < m_tokens.size()) {
     return &m_tokens[m_pos++];
   }
-  m_logger.report(FatalError(
+  m_logger.report(Error(
       "Attempting to access current position and advance when out of bounds"));
   throw std::runtime_error("Parser error");
 }
@@ -147,14 +128,12 @@ AstPtr Parser::parse_struct_decl() {
   const Token* name_tok = current();
   _consume(TokenType::IDENTIFIER);
 
-  IdentPtr name_ident = _AST(IdentifierNode, name_tok,
-                             m_symtab->current_scope(), name_tok->get_lexeme());
-
   Type struct_type =
       Type(Type::Named(name_tok->get_lexeme()), m_symtab->current_scope());
 
   // declare it and see if it already exists (in which an error should occur)
-  if (!m_symtab->declare_type(std::move(struct_type))) {
+  std::shared_ptr<Type> sym_struct_type = m_symtab->declare_type(struct_type);
+  if (!sym_struct_type) {
     m_logger.report(DuplicateDeclarationError(name_tok->get_span(),
                                               name_tok->get_lexeme()));
     throw std::runtime_error("Parser error");
@@ -175,8 +154,8 @@ AstPtr Parser::parse_struct_decl() {
 
   m_symtab->exit_scope();
 
-  return _AST(StructDeclNode, struct_tok, m_symtab->current_scope(), name_ident,
-              std::move(members));
+  return _AST(StructDeclNode, struct_tok, m_symtab->current_scope(),
+              sym_struct_type, std::move(members));
 }
 
 // <StructMember> ::= <StructField>  | <FunctionDecl>
@@ -266,11 +245,12 @@ FuncDeclPtr Parser::parse_function_decl() {
   // see if it already exists in the table, if so we will use that symbol
   // Function types are unique in that they can be "re-defined" without an
   // error, as the identifier associated to the func is what matters (and the
-  // method family i.e. the types)
+  // method family i.e. the types).
+  // This allows for overloading functions.
   std::shared_ptr<Type> func_type = m_symtab->lookup_type(ft);
   if (!func_type) {
     // it doesn't exist, so we can add it as a new func-type
-    func_type = m_symtab->declare_type(std::move(ft));
+    func_type = m_symtab->declare_type(ft);
   }
 
   // declare it as a var with the associated type
@@ -351,6 +331,15 @@ Parser::parse_function_return_type() {
   std::shared_ptr<Type> type_val = parse_type();
 
   _consume(TokenType::RPAREN);
+
+  // MutablyOwned is required
+  Variable return_var(ident_tok->get_lexeme(), BorrowState::MutablyOwned,
+                      type_val, m_symtab->current_scope(), true);
+  if (!m_symtab->declare_variable(std::move(return_var))) {
+    m_logger.report(DuplicateDeclarationError(ident_tok->get_span(),
+                                              ident_tok->get_lexeme()));
+    throw std::runtime_error("Parser error");
+  }
 
   return std::make_pair(ident_tok->get_lexeme(), type_val);
 }
@@ -1012,10 +1001,18 @@ std::shared_ptr<Type> Parser::parse_type() {
     _consume(TokenType::RANGLE);
 
     // we do not check the symbol table for this because ptrs of any valid
-    // pointee types are allowed
-    return std::make_shared<Type>(Type::Pointer(is_mutable, pointee),
-                                  m_symtab->current_scope());
+    // pointee types are allowed. We will add it to the symbol table though.
 
+    Type search_type =
+        Type(Type::Pointer(is_mutable, pointee), m_symtab->current_scope());
+
+    std::shared_ptr<Type> ptr_type = m_symtab->lookup_type(search_type);
+    if (!ptr_type) {
+      // it doesn't exist, so we can add
+      ptr_type = m_symtab->declare_type(search_type);
+    }
+
+    return ptr_type;
   } else if (match(TokenType::FUNC)) {
     // <FunctionType> ::= 'func' '(' (<Type> ( ',' <Type> )*)? ')' '->' <Type>
     advance();
@@ -1062,9 +1059,10 @@ ExprPtr Parser::parse_primary() {
 
     // if it exists as a type, then it is a struct because that is the only
     // other named type that can exist besides primatives
-    if (m_symtab->lookup_type(
-            Type(Type::Named(tok->get_lexeme()), m_symtab->current_scope()))) {
-      return parse_struct_literal();
+    std::shared_ptr<Type> struct_type = m_symtab->lookup_type(
+        Type(Type::Named(tok->get_lexeme()), m_symtab->current_scope()));
+    if (struct_type) {
+      return parse_struct_literal(struct_type);
     }
 
     // otherwise it is an identifier
@@ -1118,13 +1116,9 @@ ExprPtr Parser::parse_primitive_literal() {
 
 // <StructLiteral> ::= Identifier '(' ( Identifier '=' <Expr> ( ',' Identifier
 // '=' <Expr> )* )? ')'
-ExprPtr Parser::parse_struct_literal() {
-  const Token* type_name_tok = current();
+ExprPtr Parser::parse_struct_literal(std::shared_ptr<Type> struct_type) {
+  const Token* type_name_tok = current(); // this is the Type that is passed
   _consume(TokenType::IDENTIFIER);
-
-  IdentPtr struct_type_ident =
-      _AST(IdentifierNode, type_name_tok, m_symtab->current_scope(),
-           type_name_tok->get_lexeme());
 
   _consume(TokenType::LPAREN);
 
@@ -1151,11 +1145,15 @@ ExprPtr Parser::parse_struct_literal() {
   _consume(TokenType::RPAREN);
 
   return _AST(StructLiteralNode, type_name_tok, m_symtab->current_scope(),
-              struct_type_ident, std::move(initializers_vec));
+              struct_type, std::move(initializers_vec));
 }
 
 // <NewExpr> ::= 'new' '<' <TypePrefix>? <Type> '>' ( '[' <Expr> ']' | '('
 // <Expr>? ')' )
+
+// <NewExpr> ::= 'new' '<'<TypePrefix>? <Type>'>'
+// ( '['<Expr>']' | '('(<StructLiteral> | <Expr>)?')' )
+
 ExprPtr Parser::parse_new_expr() {
   const Token* new_tok = current();
   _consume(TokenType::NEW);
@@ -1186,7 +1184,17 @@ ExprPtr Parser::parse_new_expr() {
     // Constructor call: '(' <Expr>? ')'
     advance();
     if (!match(TokenType::RPAREN)) {
-      specifier = parse_expression();
+      // Check if the current token is the start of a declared Struct Type
+      std::shared_ptr<Type> struct_type = m_symtab->lookup_type(Type(
+          Type::Named(current()->get_lexeme()), m_symtab->current_scope()));
+      if (struct_type) {
+        // This must be the start of a struct literal
+        specifier = parse_struct_literal(struct_type);
+      } else {
+        // It is a standard constructor type (primitives, literals, and
+        // expressions that resolve to those)
+        specifier = parse_expression();
+      }
     }
     _consume(TokenType::RPAREN);
   } else {

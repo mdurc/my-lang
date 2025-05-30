@@ -11,10 +11,10 @@
 // == Type System ==
 
 enum BorrowState {
-  MutablyOwned,      // as param: owned mut
-  ImmutableOwned,    // as param: owned
+  MutablyOwned,      // as param: take mut
+  ImmutableOwned,    // as param: take | take imm
   MutablyBorrowed,   // as param: mut
-  ImmutablyBorrowed, // as param: read
+  ImmutablyBorrowed, // as param: imm
 };
 
 class Type {
@@ -91,10 +91,15 @@ public:
   BorrowState modifier;
   std::shared_ptr<Type> type; // nullptr means it must be inferred
   size_t scope_id;
+  bool is_return_var;
 
   Variable(std::string name, BorrowState mod, std::shared_ptr<Type> tk,
-           size_t sc)
-      : name(std::move(name)), modifier(mod), type(tk), scope_id(sc) {}
+           size_t sc, bool ret_var = false)
+      : name(std::move(name)),
+        modifier(mod),
+        type(tk),
+        scope_id(sc),
+        is_return_var(ret_var) {}
 
   friend bool operator==(const Variable& a, const Variable& b) {
     return a.name == b.name;

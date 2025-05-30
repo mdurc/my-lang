@@ -14,8 +14,6 @@ public:
 
   std::vector<Token> tokenize(const std::string& filename);
 
-  friend std::ostream& operator<<(std::ostream& out, const Lexer& lex);
-
 private:
   Logger m_logger;
 

@@ -11,8 +11,9 @@ PARSER_SRC = src/parser/parser.cpp \
 						 src/parser/ast.cpp \
 						 src/parser/visitor.cpp \
 						 src/parser/types.cpp
+CHECKER_SRC = src/checker/typechecker.cpp
 
-SOURCE = $(LEXER_SRCS) $(DIAG_SRCS) $(PARSER_SRC)
+SOURCE = $(LEXER_SRCS) $(DIAG_SRCS) $(PARSER_SRC) $(CHECKER_SRC)
 PROGRAM_SRCS = src/main.cpp $(SOURCE)
 
 PROGRAM_OBJS = $(patsubst src/%.cpp,$(BUILD_DIR)/%.o,$(PROGRAM_SRCS))

@@ -78,7 +78,7 @@ private:
   // Primary Expressions
   ExprPtr parse_primary();
   ExprPtr parse_primitive_literal();
-  ExprPtr parse_struct_literal();
+  ExprPtr parse_struct_literal(std::shared_ptr<Type> struct_type);
   ExprPtr parse_new_expr();
 };
 

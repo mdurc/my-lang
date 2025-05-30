@@ -13,46 +13,46 @@ public:
   virtual ~Visitor() = default;
 
   // Expression Nodes
-  virtual void visit(const IntegerLiteralNode& node) = 0;
-  virtual void visit(const FloatLiteralNode& node) = 0;
-  virtual void visit(const StringLiteralNode& node) = 0;
-  virtual void visit(const BoolLiteralNode& node) = 0;
-  virtual void visit(const NullLiteralNode&) = 0;
-  virtual void visit(const IdentifierNode& node) = 0;
-  virtual void visit(const AssignmentNode& node) = 0;
-  virtual void visit(const BinaryOpExprNode& node) = 0;
-  virtual void visit(const UnaryExprNode& node) = 0;
-  virtual void visit(const FunctionCallNode& node) = 0;
-  virtual void visit(const MemberAccessNode& node) = 0;
-  virtual void visit(const ArrayIndexNode& node) = 0;
-  virtual void visit(const GroupedExprNode& node) = 0;
-  virtual void visit(const StructLiteralNode& node) = 0;
-  virtual void visit(const NewExprNode& node) = 0;
+  virtual void visit(IntegerLiteralNode& node) = 0;
+  virtual void visit(FloatLiteralNode& node) = 0;
+  virtual void visit(StringLiteralNode& node) = 0;
+  virtual void visit(BoolLiteralNode& node) = 0;
+  virtual void visit(NullLiteralNode&) = 0;
+  virtual void visit(IdentifierNode& node) = 0;
+  virtual void visit(AssignmentNode& node) = 0;
+  virtual void visit(BinaryOpExprNode& node) = 0;
+  virtual void visit(UnaryExprNode& node) = 0;
+  virtual void visit(FunctionCallNode& node) = 0;
+  virtual void visit(MemberAccessNode& node) = 0;
+  virtual void visit(ArrayIndexNode& node) = 0;
+  virtual void visit(GroupedExprNode& node) = 0;
+  virtual void visit(StructLiteralNode& node) = 0;
+  virtual void visit(NewExprNode& node) = 0;
 
   // Statement Nodes
-  virtual void visit(const VariableDeclNode& node) = 0;
-  virtual void visit(const BlockNode& node) = 0;
-  virtual void visit(const IfStmtNode& node) = 0;
-  virtual void visit(const ForStmtNode& node) = 0;
-  virtual void visit(const WhileStmtNode& node) = 0;
-  virtual void visit(const BreakStmtNode&) = 0;
-  virtual void visit(const ContinueStmtNode&) = 0;
-  virtual void visit(const SwitchStmtNode& node) = 0;
-  virtual void visit(const PrintStmtNode& node) = 0;
-  virtual void visit(const ExpressionStatementNode& node) = 0;
-  virtual void visit(const ReturnStmtNode& node) = 0;
-  virtual void visit(const FreeStmtNode& node) = 0;
-  virtual void visit(const ErrorStmtNode& node) = 0;
-  virtual void visit(const AsmBlockNode& node) = 0;
+  virtual void visit(VariableDeclNode& node) = 0;
+  virtual void visit(BlockNode& node) = 0;
+  virtual void visit(IfStmtNode& node) = 0;
+  virtual void visit(ForStmtNode& node) = 0;
+  virtual void visit(WhileStmtNode& node) = 0;
+  virtual void visit(BreakStmtNode&) = 0;
+  virtual void visit(ContinueStmtNode&) = 0;
+  virtual void visit(SwitchStmtNode& node) = 0;
+  virtual void visit(PrintStmtNode& node) = 0;
+  virtual void visit(ExpressionStatementNode& node) = 0;
+  virtual void visit(ReturnStmtNode& node) = 0;
+  virtual void visit(FreeStmtNode& node) = 0;
+  virtual void visit(ErrorStmtNode& node) = 0;
+  virtual void visit(AsmBlockNode& node) = 0;
 
   // Other Nodes
-  virtual void visit(const ArgumentNode& node) = 0;
-  virtual void visit(const StructFieldInitializerNode& node) = 0;
-  virtual void visit(const CaseNode& node) = 0;
-  virtual void visit(const StructFieldNode& node) = 0;
-  virtual void visit(const ParamNode& node) = 0;
-  virtual void visit(const FunctionDeclNode& node) = 0;
-  virtual void visit(const StructDeclNode& node) = 0;
+  virtual void visit(ArgumentNode& node) = 0;
+  virtual void visit(StructFieldInitializerNode& node) = 0;
+  virtual void visit(CaseNode& node) = 0;
+  virtual void visit(StructFieldNode& node) = 0;
+  virtual void visit(ParamNode& node) = 0;
+  virtual void visit(FunctionDeclNode& node) = 0;
+  virtual void visit(StructDeclNode& node) = 0;
 };
 
 void print_ast(const AstPtr& node, std::ostream& out);
@@ -71,37 +71,37 @@ class AstPrinter : public Visitor {
 public:
   AstPrinter(std::ostream& out) : out(out) {}
 
-  void visit(const IntegerLiteralNode& node) override {
+  void visit(IntegerLiteralNode& node) override {
     print_indent();
     out << "Int(" << node.value << ")";
   }
 
-  void visit(const FloatLiteralNode& node) override {
+  void visit(FloatLiteralNode& node) override {
     print_indent();
     out << "Float(" << node.value << ")";
   }
 
-  void visit(const StringLiteralNode& node) override {
+  void visit(StringLiteralNode& node) override {
     print_indent();
     out << "String(\"" << node.value << "\")";
   }
 
-  void visit(const BoolLiteralNode& node) override {
+  void visit(BoolLiteralNode& node) override {
     print_indent();
     out << (node.value ? "true" : "false");
   }
 
-  void visit(const NullLiteralNode&) override {
+  void visit(NullLiteralNode&) override {
     print_indent();
     out << "null";
   }
 
-  void visit(const IdentifierNode& node) override {
+  void visit(IdentifierNode& node) override {
     print_indent();
     out << "Ident(" << node.name << ")";
   }
 
-  void visit(const BinaryOpExprNode& node) override {
+  void visit(BinaryOpExprNode& node) override {
     print_indent();
     out << "BinaryOp(" << bin_op_to_string(node.op_type) << ",\n";
     indent++;
@@ -115,7 +115,7 @@ public:
   }
 
   // Expression Nodes
-  void visit(const UnaryExprNode& node) override {
+  void visit(UnaryExprNode& node) override {
     print_indent();
     out << "UnaryOp(" << unary_op_to_string(node.op_type) << ",\n";
     indent++;
@@ -126,7 +126,7 @@ public:
     out << ")";
   }
 
-  void visit(const FunctionCallNode& node) override {
+  void visit(FunctionCallNode& node) override {
     print_indent();
     out << "FunctionCall(\n";
     indent++;
@@ -154,7 +154,7 @@ public:
     out << ")";
   }
 
-  void visit(const MemberAccessNode& node) override {
+  void visit(MemberAccessNode& node) override {
     print_indent();
     out << "MemberAccess(\n";
     indent++;
@@ -175,7 +175,7 @@ public:
     out << ")";
   }
 
-  void visit(const ArrayIndexNode& node) override {
+  void visit(ArrayIndexNode& node) override {
     print_indent();
     out << "ArrayIndex(\n";
     indent++;
@@ -196,7 +196,7 @@ public:
     out << ")";
   }
 
-  void visit(const GroupedExprNode& node) override {
+  void visit(GroupedExprNode& node) override {
     print_indent();
     out << "GroupedExpr(\n";
     indent++;
@@ -207,14 +207,14 @@ public:
     out << ")";
   }
 
-  void visit(const StructLiteralNode& node) override {
+  void visit(StructLiteralNode& node) override {
     print_indent();
     out << "StructLiteral(\n";
     indent++;
     print_indent();
     out << "Type:\n";
     indent++;
-    node.struct_type->accept(*this);
+    print_type(*node.struct_type);
     indent--;
     out << ",\n";
     print_indent();
@@ -235,7 +235,7 @@ public:
     out << ")";
   }
 
-  void visit(const NewExprNode& node) override {
+  void visit(NewExprNode& node) override {
     print_indent();
     out << "NewExpr(\n";
     indent++;
@@ -272,7 +272,7 @@ public:
   }
 
   // Statement Nodes
-  void visit(const VariableDeclNode& node) override {
+  void visit(VariableDeclNode& node) override {
     print_indent();
     out << "VariableDecl(Mutable: " << (node.is_mutable ? "true" : "false")
         << ",\n";
@@ -310,7 +310,7 @@ public:
     out << ")";
   }
 
-  void visit(const AssignmentNode& node) override {
+  void visit(AssignmentNode& node) override {
     print_indent();
     out << "Assignment(\n";
     indent++;
@@ -331,7 +331,7 @@ public:
     out << ")";
   }
 
-  void visit(const BlockNode& node) override {
+  void visit(BlockNode& node) override {
     print_indent();
     out << "Block([\n";
     indent++;
@@ -347,7 +347,7 @@ public:
     out << "])";
   }
 
-  void visit(const IfStmtNode& node) override {
+  void visit(IfStmtNode& node) override {
     print_indent();
     out << "IfStmt(\n";
     indent++;
@@ -372,7 +372,7 @@ public:
     out << ")";
   }
 
-  void visit(const ForStmtNode& node) override {
+  void visit(ForStmtNode& node) override {
     print_indent();
     out << "ForStmt(\n";
     indent++;
@@ -424,7 +424,7 @@ public:
     out << ")";
   }
 
-  void visit(const WhileStmtNode& node) override {
+  void visit(WhileStmtNode& node) override {
     print_indent();
     out << "WhileStmt(\n";
     indent++;
@@ -443,17 +443,17 @@ public:
     out << ")";
   }
 
-  void visit(const BreakStmtNode&) override {
+  void visit(BreakStmtNode&) override {
     print_indent();
     out << "BreakStmt";
   }
 
-  void visit(const ContinueStmtNode&) override {
+  void visit(ContinueStmtNode&) override {
     print_indent();
     out << "ContinueStmt";
   }
 
-  void visit(const SwitchStmtNode& node) override {
+  void visit(SwitchStmtNode& node) override {
     print_indent();
     out << "SwitchStmt(\n";
     indent++;
@@ -481,7 +481,7 @@ public:
     out << ")";
   }
 
-  void visit(const PrintStmtNode& node) override {
+  void visit(PrintStmtNode& node) override {
     print_indent();
     out << "PrintStmt(\n";
     indent++;
@@ -492,7 +492,7 @@ public:
     out << ")";
   }
 
-  void visit(const ExpressionStatementNode& node) override {
+  void visit(ExpressionStatementNode& node) override {
     print_indent();
     out << "ExpressionStmt(\n";
     indent++;
@@ -503,7 +503,7 @@ public:
     out << ")";
   }
 
-  void visit(const ReturnStmtNode& node) override {
+  void visit(ReturnStmtNode& node) override {
     print_indent();
     out << "ReturnStmt(";
     if (node.value) {
@@ -517,7 +517,7 @@ public:
     out << ")";
   }
 
-  void visit(const FreeStmtNode& node) override {
+  void visit(FreeStmtNode& node) override {
     print_indent();
     out << "FreeStmt(IsArray: "
         << (node.is_array_deallocation ? "true" : "false") << ",\n";
@@ -529,12 +529,12 @@ public:
     out << ")";
   }
 
-  void visit(const ErrorStmtNode& node) override {
+  void visit(ErrorStmtNode& node) override {
     print_indent();
     out << "ErrorStmt(Message: \"" << node.message_content << "\")";
   }
 
-  void visit(const AsmBlockNode& node) override {
+  void visit(AsmBlockNode& node) override {
     print_indent();
     out << "AsmBlock(\n";
     indent++;
@@ -554,7 +554,7 @@ public:
   }
 
   // Other Nodes
-  void visit(const ArgumentNode& node) override {
+  void visit(ArgumentNode& node) override {
     print_indent();
     out << "Argument(IsGive: " << (node.is_give ? "true" : "false") << ",\n";
     indent++;
@@ -565,7 +565,7 @@ public:
     out << ")";
   }
 
-  void visit(const StructFieldInitializerNode& node) override {
+  void visit(StructFieldInitializerNode& node) override {
     print_indent();
     out << "StructFieldInitializer(\n";
     indent++;
@@ -586,7 +586,7 @@ public:
     out << ")";
   }
 
-  void visit(const CaseNode& node) override {
+  void visit(CaseNode& node) override {
     print_indent();
     out << "Case(\n";
     indent++;
@@ -610,7 +610,7 @@ public:
     out << ")";
   }
 
-  void visit(const StructFieldNode& node) override {
+  void visit(StructFieldNode& node) override {
     print_indent();
     out << "StructField(\n";
     indent++;
@@ -631,7 +631,7 @@ public:
     out << ")";
   }
 
-  void visit(const ParamNode& node) override {
+  void visit(ParamNode& node) override {
     print_indent();
     out << "Param(Modifier: " << borrow_state_to_string(node.modifier) << ",\n";
     indent++;
@@ -652,7 +652,7 @@ public:
     out << ")";
   }
 
-  void visit(const FunctionDeclNode& node) override {
+  void visit(FunctionDeclNode& node) override {
     print_indent();
     out << "FunctionDecl(\n";
     indent++;
@@ -694,14 +694,14 @@ public:
     out << ")";
   }
 
-  void visit(const StructDeclNode& node) override {
+  void visit(StructDeclNode& node) override {
     print_indent();
     out << "StructDecl(\n";
     indent++;
     print_indent();
-    out << "Name:\n";
+    out << "Type:\n";
     indent++;
-    node.name->accept(*this);
+    print_type(*node.type);
     indent--;
     out << ",\n";
     print_indent();

@@ -85,7 +85,7 @@ void SymTab::exit_scope() {
 }
 
 std::shared_ptr<Type> SymTab::lookup_type(const Type& target) const {
-  size_t scope_id = m_current_scope;
+  size_t scope_id = target.get_scope_id();
   const Scope* scope = &m_scopes[scope_id];
   while (true) {
     std::shared_ptr<Type> tk = scope->lookup_type(target);
@@ -119,11 +119,23 @@ std::shared_ptr<Variable> SymTab::lookup_variable(
   return nullptr;
 }
 
+std::shared_ptr<Variable> SymTab::lookup_variable(
+    const std::string& target_name, size_t starting_scope) {
+  if (starting_scope >= m_scopes.size()) { // scope_id is unsigned
+    return nullptr;
+  }
+  size_t old_scope = m_current_scope;
+  m_current_scope = starting_scope;
+  std::shared_ptr<Variable> var = lookup_variable(target_name);
+  m_current_scope = old_scope;
+  return var;
+}
+
 std::shared_ptr<Type> SymTab::get_primitive_type(std::string primitive) const {
   return m_scopes[0].lookup_type(Type(Type::Named(std::move(primitive)), 0));
 }
 
-std::shared_ptr<Type> SymTab::declare_type(Type tk) {
+std::shared_ptr<Type> SymTab::declare_type(const Type& tk) {
   if (m_scopes[m_current_scope].lookup_type(tk)) {
     return nullptr;
   }

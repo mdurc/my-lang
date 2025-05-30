@@ -41,14 +41,6 @@ void Lexer::setup() {
   m_start_col = 1;
 }
 
-std::ostream& operator<<(std::ostream& out, const Lexer& lex) {
-  out << "Tokens (" << lex.m_tokens.size() << "):" << std::endl;
-  for (const Token& token : lex.m_tokens) {
-    out << token << std::endl;
-  }
-  return out;
-}
-
 std::vector<Token> Lexer::tokenize(const std::string& filename) {
   setup();
 

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 
+#include "checker/typechecker.h"
 #include "lexer/lexer.h"
 #include "parser/parser.h"
 #include "parser/symtab.h"
@@ -17,14 +18,19 @@ int main(int argc, char** argv) {
   try {
     Lexer lexer;
     const std::vector<Token>& tokens = lexer.tokenize(filename);
-    std::cout << lexer; // prints out last tokenized file
+    // print_tokens(tokens, std::cout);
 
     SymTab symtab;
 
     Parser parser;
     std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
+    // print_ast(ast, std::cout);
 
-    print_ast(ast, std::cout);
+    std::cout << "SYMTAB:" << std::endl;
+    symtab.print(std::cout);
+
+    TypeChecker type_checker(&symtab);
+    type_checker.check_program(ast);
 
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;

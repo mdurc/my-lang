@@ -6,6 +6,7 @@
 #include <ostream>
 #include <string>
 #include <variant>
+#include <vector>
 
 #include "span.h"
 
@@ -96,6 +97,8 @@ enum class TokenType {
   UNKNOWN,
 };
 
+bool is_basic_type(TokenType type);
+
 std::string token_type_to_string(TokenType type);
 
 class Token {
@@ -126,5 +129,7 @@ private:
   Span m_span;
   Lit m_literal_value;
 };
+
+void print_tokens(const std::vector<Token>& toks, std::ostream& out);
 
 #endif // LEXER_TOKEN_H

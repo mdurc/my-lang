@@ -52,11 +52,14 @@ public:
   void exit_scope();
 
   std::shared_ptr<Type> lookup_type(const Type& target) const;
+
   std::shared_ptr<Variable> lookup_variable(const std::string& name) const;
+  std::shared_ptr<Variable> lookup_variable(const std::string& name,
+                                            size_t starting_scope);
 
   std::shared_ptr<Type> get_primitive_type(std::string primitive) const;
 
-  std::shared_ptr<Type> declare_type(Type tk);
+  std::shared_ptr<Type> declare_type(const Type& tk);
   std::shared_ptr<Variable> declare_variable(Variable v);
 
   size_t current_scope() const { return m_current_scope; }

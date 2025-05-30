@@ -68,3 +68,14 @@ Scoping Rules:
 - Throwing Exceptions in parser should make sure to close the current scope
 
 
+- Symbol table lookup of raw types instead of Type objects made on the stack
+  - Ex:
+    - std::shared_ptr<Type> lookup_named_type(const std::string& name, size_t current_scope_id) const;
+    - std::shared_ptr<Type> lookup_function_type(std::vector<std::shared_ptr<Type>> param_types, std::shared_ptr<Type> ret_type, size_t current_scope_id) const;
+
+- Decide on how struct/field mutability should work and what it should look like syntactically
+
+Type checker:
+- Identifiers are expressions, thus they have a resolved type
+- Variable declarations have a type as a part of the Node, thus the identifier's resolved type will equal that one.
+  - Note that we can set that resolved type to that identifier, but what is stored in the symbol table is a 'Variable', thus we have to mark that one as well, so that when we reach an identifier we can access the resolved type from the symtab
