@@ -139,8 +139,8 @@ void IrVisitor::visit(VariableDeclNode& node) {
     node.initializer->accept(*this);
     m_ir_gen.emitMov(var_reg, m_last_expr_reg);
   } else {
-    // TODO: default values, likely will want to put in zeros and nulls
-    // for now, just leave it.
+    // default initialization value (0)
+    m_ir_gen.emitMov(var_reg, IR_Immediate(0));
   }
 }
 
