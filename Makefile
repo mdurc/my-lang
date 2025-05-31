@@ -1,3 +1,5 @@
+OS := $(shell uname)
+
 CC = g++
 CFLAGS = -std=c++17 -Wall -Wextra
 PROGRAM = sunnyc
@@ -35,12 +37,16 @@ clean:
 	rm -rf $(BUILD_DIR)
 	rm -f $(PROGRAM) x86_64_lib.o asm-output.asm asm-output.o asm-output.exe
 
+
 compile: $(PROGRAM)
-	# does not work on mac
+ifeq ($(OS),Darwin)
+	@echo "Compilation not supported on macOS"
+else
 	./$(PROGRAM) asm-test.sn > asm-output.asm
 	nasm -f elf64 codegen/runtime/x86_64_lib.asm
 	nasm -f elf64 asm-output.asm
 	ld x86_64_lib.o asm-output.o -o asm-output.exe
 	./asm-output.exe
+endif
 
 .PHONY: all clean compile
