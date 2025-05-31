@@ -1,0 +1,7 @@
+func foo(a: i32, b: bool) returns (z: i32) {
+  i : i32 = 18;
+  z = 15;
+  return i;
+}
+
+foo(3, true);

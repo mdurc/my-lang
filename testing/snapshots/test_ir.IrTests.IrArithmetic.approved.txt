@@ -12,6 +12,7 @@ SUB    r10, r2, r9
 NEG    r11, r0
 ADD    r12, r10, r11
 MOV    r7, r12
+MOV    r13, 0
 MOV    r14, 100
 ADD    r15, r7, r14
 MOV    r13, r15

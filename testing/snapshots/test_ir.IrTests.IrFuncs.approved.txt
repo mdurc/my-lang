@@ -1,0 +1,13 @@
+--- IR Instructions ---
+FUNC   L0
+MOV    r4, 18
+MOV    r3, r4
+MOV    r5, 15
+MOV    r2, r5
+RET    r3
+MOV    r6, 3
+MOV    r7, 1
+PARAM  r7
+PARAM  r6
+CALL   L0, 2
+-----------------------

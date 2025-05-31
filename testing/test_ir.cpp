@@ -51,6 +51,10 @@ TEST(IrTests, IrLoops) {
   ApprovalTests::Approvals::verify(generate_ir_output("./ir-samples/loops.sn"));
 }
 
+TEST(IrTests, IrFuncs) {
+  ApprovalTests::Approvals::verify(generate_ir_output("./ir-samples/funcs.sn"));
+}
+
 /*
 TEST(IrTests, IrVarDecl) {
   ApprovalTests::Approvals::verify(generate_ir_output("./samples/var_decl.sn"));
