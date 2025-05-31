@@ -4,7 +4,7 @@ void AstPrinter::print_indent() {
   for (int i = 0; i < indent; ++i) out << "  ";
 }
 
-const char* AstPrinter::bin_op_to_string(BinOperator op) {
+std::string AstPrinter::bin_op_to_string(BinOperator op) {
   switch (op) {
     case BinOperator::Plus: return "+";
     case BinOperator::Minus: return "-";
@@ -23,7 +23,7 @@ const char* AstPrinter::bin_op_to_string(BinOperator op) {
   }
 }
 
-const char* AstPrinter::unary_op_to_string(UnaryOperator op) {
+std::string AstPrinter::unary_op_to_string(UnaryOperator op) {
   switch (op) {
     case UnaryOperator::Negate: return "-";
     case UnaryOperator::LogicalNot: return "!";
@@ -34,7 +34,7 @@ const char* AstPrinter::unary_op_to_string(UnaryOperator op) {
   }
 }
 
-const char* AstPrinter::borrow_state_to_string(BorrowState bs) {
+std::string AstPrinter::borrow_state_to_string(BorrowState bs) {
   switch (bs) {
     case BorrowState::MutablyOwned: return "MutablyOwned";
     case BorrowState::ImmutableOwned: return "ImmutableOwned";

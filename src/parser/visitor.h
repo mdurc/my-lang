@@ -64,13 +64,14 @@ class AstPrinter : public Visitor {
   int indent = 0;
 
   void print_indent();
-  const char* bin_op_to_string(BinOperator op);
-  const char* unary_op_to_string(UnaryOperator op);
-  const char* borrow_state_to_string(BorrowState bs);
   void print_type(const Type& type);
 
 public:
   AstPrinter(std::ostream& out) : out(out) {}
+
+  static std::string bin_op_to_string(BinOperator op);
+  static std::string unary_op_to_string(UnaryOperator op);
+  static std::string borrow_state_to_string(BorrowState bs);
 
   void visit(IntegerLiteralNode& node) override {
     print_indent();

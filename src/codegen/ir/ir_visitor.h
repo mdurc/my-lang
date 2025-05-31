@@ -1,6 +1,7 @@
 #ifndef CODEGEN_IR_IR_VISITOR_H
 #define CODEGEN_IR_IR_VISITOR_H
 
+#include <stack>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -63,6 +64,7 @@ private:
   IrGenerator m_ir_gen;
   std::unordered_map<std::string, IR_Register> m_var_registers;
   IR_Register m_last_expr_reg;
+  std::stack<std::pair<IR_Label, IR_Label>> m_loop_contexts; // {start, end}
 
   void unimpl(const std::string& nodeName);
 };
