@@ -278,9 +278,9 @@ void IrVisitor::visit(FunctionCallNode& node) {
     arg_regs.push_back(m_last_expr_reg);
   }
 
-  // Emit PARAM instructions in reverse order (convention)
-  for (int i = arg_regs.size() - 1; i >= 0; --i) {
-    m_ir_gen.emitParam(arg_regs[i]);
+  // Emit PARAM instructions (not in reverse order yet)
+  for (const IR_Register& arg : arg_regs) {
+    m_ir_gen.emitParam(arg);
   }
 
   IdentPtr callee_ident =

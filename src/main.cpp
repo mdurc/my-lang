@@ -4,6 +4,7 @@
 #include "checker/typechecker.h"
 #include "codegen/ir/ir_printer.h"
 #include "codegen/ir/ir_visitor.h"
+#include "codegen/x86_64/asm.h"
 #include "lexer/lexer.h"
 #include "parser/parser.h"
 #include "parser/symtab.h"
@@ -34,7 +35,11 @@ int main(int argc, char** argv) {
 
     IrVisitor ir_visitor;
     ir_visitor.visit_all(ast);
-    print_ir_instructions(ir_visitor.getInstructions(), std::cout);
+    const std::vector<IRInstruction>& instrs = ir_visitor.getInstructions();
+    // print_ir_instructions(instrs, std::cout);
+
+    X86_64CodeGenerator gen;
+    gen.generate(instrs, std::cout);
 
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
