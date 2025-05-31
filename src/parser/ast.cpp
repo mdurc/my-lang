@@ -28,6 +28,7 @@ void ForStmtNode::accept(Visitor& v) { v.visit(*this); }
 void WhileStmtNode::accept(Visitor& v) { v.visit(*this); }
 void CaseNode::accept(Visitor& v) { v.visit(*this); }
 void SwitchStmtNode::accept(Visitor& v) { v.visit(*this); }
+void ReadStmtNode::accept(Visitor& v) { v.visit(*this); }
 void PrintStmtNode::accept(Visitor& v) { v.visit(*this); }
 void ExpressionStatementNode::accept(Visitor& v) { v.visit(*this); }
 void ReturnStmtNode::accept(Visitor& v) { v.visit(*this); }

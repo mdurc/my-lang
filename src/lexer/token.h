@@ -39,6 +39,7 @@ enum class TokenType {
   FREE,          // free
   ASM,           // asm
   ERROR_KEYWORD, // Error
+  READ,          // read
   PRINT,         // print
 
   IDENTIFIER,

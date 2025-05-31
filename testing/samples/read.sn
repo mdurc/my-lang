@@ -1,0 +1,7 @@
+mut x : i32;
+read x;
+print x;
+
+mut y : string;
+read y;
+print y;

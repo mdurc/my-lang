@@ -17,6 +17,7 @@
                           | <ForStmt>
                           | <WhileStmt>
                           | <SwitchStmt>
+                          | 'read' <Expr> ';'
                           | 'print' <Expr> ';'
                           | <Block>
                           | <Expr> ';'

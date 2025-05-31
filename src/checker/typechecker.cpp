@@ -328,6 +328,37 @@ void TypeChecker::visit(ExpressionStatementNode& node) {
   get_expr_type(node.expression);
 }
 
+// Read statement
+void TypeChecker::visit(ReadStmtNode& node) {
+  std::shared_ptr<Type> expr_type = get_expr_type(node.expression);
+  if (!expr_type) {
+    // err already handled
+    return;
+  }
+
+  auto log_error = [&](const std::string& message) {
+    m_logger.report(Error(node.expression->token->get_span(), message));
+  };
+
+  std::shared_ptr<Type> mutable_lvalue_type =
+      get_lvalue_type_if_mutable(node.expression);
+
+  if (!mutable_lvalue_type) {
+    log_error("Expression for 'read' statement must be a mutable l-value");
+    return;
+  }
+
+  bool is_allowed_type = is_integer_type(expr_type) ||
+                         (expr_type->is<Type::Named>() &&
+                          expr_type->as<Type::Named>().identifier == "string");
+
+  if (!is_allowed_type) {
+    log_error("Cannot 'read' into a variable of type '" +
+              expr_type->to_string() +
+              "'. Must be a mutable integer or string variable.");
+  }
+}
+
 // Print Statement
 void TypeChecker::visit(PrintStmtNode& node) {
   std::shared_ptr<Type> expr_type = get_expr_type(node.expression);
@@ -769,7 +800,8 @@ void TypeChecker::visit(FunctionCallNode& node) {
     }
 
     if (arg->is_give) {
-      // the parameter must be either mutably owned or immutably owned (take kw)
+      // the parameter must be either mutably owned or immutably owned (take
+      // kw)
       if (param_ast_node->modifier != BorrowState::MutablyOwned &&
           param_ast_node->modifier != BorrowState::ImmutableOwned) {
         m_logger.report(Error(span,
@@ -800,11 +832,12 @@ void TypeChecker::visit(MemberAccessNode& node) {
   // Auto-dereference pointers
   if (object_type->is<Type::Pointer>()) {
     base_object_type = object_type->as<Type::Pointer>().pointee;
-    // is_obj_ptr_to_mut = object_type->as<Type::Pointer>().is_pointee_mutable;
+    // is_obj_ptr_to_mut =
+    // object_type->as<Type::Pointer>().is_pointee_mutable;
     if (!base_object_type) {
-      m_logger.report(Error(
-          node.object->token->get_span(),
-          "Cannot access member of a pointer to an unresolved or void type."));
+      m_logger.report(Error(node.object->token->get_span(),
+                            "Cannot access member of a pointer to an "
+                            "unresolved or void type."));
       return;
     }
   }
@@ -907,8 +940,9 @@ void TypeChecker::visit(StructLiteralNode& node) {
   }
 
   for (const StructFieldInitPtr& initializer : node.initializers) {
-    // we do not resolve the field because it simply must be an identifier that
-    // matches with the member field names which we will check in a moment.
+    // we do not resolve the field because it simply must be an identifier
+    // that matches with the member field names which we will check in a
+    // moment.
 
     // resolve the value
     std::shared_ptr<Type> value_type = get_expr_type(initializer->value);
@@ -967,8 +1001,8 @@ void TypeChecker::visit(NewExprNode& node) {
     return;
   }
 
-  // Find the pointer type in the symbol table (though it may not exist because
-  // the parser doesn't declare types that are used/created by new)
+  // Find the pointer type in the symbol table (though it may not exist
+  // because the parser doesn't declare types that are used/created by new)
   Type ptr_t =
       Type(Type::Pointer(node.is_memory_mutable, node.type_to_allocate),
            node.scope_id);

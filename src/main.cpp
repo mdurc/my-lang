@@ -26,8 +26,7 @@ int main(int argc, char** argv) {
     std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
     // print_ast(ast, std::cout);
 
-    std::cout << "SYMTAB:" << std::endl;
-    symtab.print(std::cout);
+    // symtab.print(std::cout);
 
     TypeChecker type_checker(&symtab);
     type_checker.check_program(ast);

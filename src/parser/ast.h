@@ -325,6 +325,14 @@ public:
   void accept(Visitor& v) override;
 };
 
+class ReadStmtNode : public StatementNode {
+public:
+  ExprPtr expression; // identifier to store stdin into
+  ReadStmtNode(const Token* tok, size_t sc, ExprPtr expr)
+      : StatementNode(tok, sc), expression(expr) {}
+  void accept(Visitor& v) override;
+};
+
 class PrintStmtNode : public StatementNode {
 public:
   ExprPtr expression;

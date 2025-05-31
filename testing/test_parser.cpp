@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
-#include "../lexer/lexer.h"
-#include "../parser/parser.h"
-#include "../parser/visitor.h"
+#include "../src/lexer/lexer.h"
+#include "../src/parser/parser.h"
+#include "../src/parser/visitor.h"
 #include "util.h"
 #include "vendor/ApprovalTests.hpp"
 
@@ -59,5 +59,9 @@ TEST(ParserTests, ParserMemory) {
 
 TEST(ParserTests, ParserAsmAndErrors) {
   ApprovalTests::Approvals::verify(
-      generate_parser_output("samples/asm_and_errors.sn"));
+      generate_parser_output("./samples/asm_and_errors.sn"));
+}
+
+TEST(ParserTests, ParserRead) {
+  ApprovalTests::Approvals::verify(generate_parser_output("./samples/read.sn"));
 }

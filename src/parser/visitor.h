@@ -38,6 +38,7 @@ public:
   virtual void visit(BreakStmtNode&) = 0;
   virtual void visit(ContinueStmtNode&) = 0;
   virtual void visit(SwitchStmtNode& node) = 0;
+  virtual void visit(ReadStmtNode& node) = 0;
   virtual void visit(PrintStmtNode& node) = 0;
   virtual void visit(ExpressionStatementNode& node) = 0;
   virtual void visit(ReturnStmtNode& node) = 0;
@@ -477,6 +478,17 @@ public:
     print_indent();
     out << "]\n";
     indent--;
+    print_indent();
+    out << ")";
+  }
+
+  void visit(ReadStmtNode& node) override {
+    print_indent();
+    out << "ReadStmt(\n";
+    indent++;
+    node.expression->accept(*this);
+    indent--;
+    out << "\n";
     print_indent();
     out << ")";
   }

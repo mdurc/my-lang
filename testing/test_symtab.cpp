@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include "../lexer/lexer.h"
-#include "../parser/parser.h"
+#include "../src/lexer/lexer.h"
+#include "../src/parser/parser.h"
 #include "util.h"
 #include "vendor/ApprovalTests.hpp"
 
@@ -58,5 +58,9 @@ TEST(SymTabTests, SymTabMemory) {
 
 TEST(SymTabTests, SymTabAsmAndErrors) {
   ApprovalTests::Approvals::verify(
-      generate_symtab_output("samples/asm_and_errors.sn"));
+      generate_symtab_output("./samples/asm_and_errors.sn"));
+}
+
+TEST(SymTabTests, SymTabRead) {
+  ApprovalTests::Approvals::verify(generate_symtab_output("./samples/read.sn"));
 }

@@ -41,6 +41,7 @@ public:
   void visit(BreakStmtNode& node) override;
   void visit(ContinueStmtNode& node) override;
   void visit(SwitchStmtNode& node) override;
+  void visit(ReadStmtNode& node) override;
   void visit(PrintStmtNode& node) override;
   void visit(ExpressionStatementNode& node) override;
   void visit(ReturnStmtNode& node) override;

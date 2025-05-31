@@ -63,6 +63,7 @@ bool Parser::is_sync_point(const Token* tok) const {
     case TokenType::WHILE:
     case TokenType::FOR:
     case TokenType::RETURN:
+    case TokenType::READ:
     case TokenType::PRINT:
     case TokenType::LBRACE: return true;
     default: return false;
@@ -369,6 +370,13 @@ StmtPtr Parser::parse_statement() {
     case TokenType::FOR: return parse_for_stmt();
     case TokenType::WHILE: return parse_while_stmt();
     case TokenType::SWITCH: return parse_switch_stmt();
+    case TokenType::READ: {
+      const Token* read_tok = advance();
+      ExprPtr expr = parse_expression(); // should be an identifier, verified by
+                                         // type checker
+      _consume(TokenType::SEMICOLON);
+      return _AST(ReadStmtNode, read_tok, m_symtab->current_scope(), expr);
+    }
     case TokenType::PRINT: {
       const Token* print_tok = advance();
       ExprPtr expr = parse_expression();

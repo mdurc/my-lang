@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "../lexer/lexer.h"
+#include "../src/lexer/lexer.h"
 #include "util.h"
 #include "vendor/ApprovalTests.hpp"
 
@@ -35,7 +35,6 @@ TEST(LexerTests, LexerStructs) {
   ApprovalTests::Approvals::verify(
       generate_lexer_output("./samples/structs.sn"));
 }
-
 TEST(LexerTests, LexerPointers) {
   ApprovalTests::Approvals::verify(
       generate_lexer_output("./samples/pointers.sn"));
@@ -48,5 +47,9 @@ TEST(LexerTests, LexerMemory) {
 
 TEST(LexerTests, LexerAsmAndErrors) {
   ApprovalTests::Approvals::verify(
-      generate_lexer_output("samples/asm_and_errors.sn"));
+      generate_lexer_output("./samples/asm_and_errors.sn"));
+}
+
+TEST(LexerTests, LexerRead) {
+  ApprovalTests::Approvals::verify(generate_lexer_output("./samples/read.sn"));
 }

@@ -89,6 +89,7 @@ std::string token_type_to_string(TokenType type) {
     case TokenType::ELSE: return "ELSE";
     case TokenType::FOR: return "FOR";
     case TokenType::WHILE: return "WHILE";
+    case TokenType::READ: return "READ";
     case TokenType::PRINT: return "PRINT";
     case TokenType::RETURN: return "RETURN";
     case TokenType::RETURNS: return "RETURNS";
