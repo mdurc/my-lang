@@ -12,3 +12,9 @@ while (i < 10) {
     i = i;
   }
 }
+
+for (mut x : i32 = 5; x < 10; x = x + 1) {
+  print 2;
+  continue;
+  print 3;
+}

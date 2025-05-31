@@ -24,4 +24,22 @@ MOV    r0, r0
 LABEL  L5
 GOTO   L0
 LABEL  L1
+MOV    r12, 5
+MOV    r11, r12
+LABEL  L6
+MOV    r13, 10
+CMP_LT r14, r11, r13
+GOTO_F r14, L9
+LABEL  L8
+MOV    r15, 2
+PRINT  r15
+GOTO   L7
+MOV    r16, 3
+PRINT  r16
+LABEL  L7
+MOV    r17, 1
+ADD    r18, r11, r17
+MOV    r11, r18
+GOTO   L6
+LABEL  L9
 -----------------------

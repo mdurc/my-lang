@@ -1,0 +1,9 @@
+--- IR Instructions ---
+MOV    r1, 8
+MOV    r0, r1
+READ   r0
+PRINT  r0
+MOV    r2, 0
+READ   r2
+PRINT  r2
+-----------------------
