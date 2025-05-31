@@ -70,6 +70,10 @@ void IrGenerator::emitLabel(IR_Label label) {
   m_instructions.emplace_back(IROpCode::LABEL, label);
 }
 
+void IrGenerator::emitFunc(IR_Label label) {
+  m_instructions.emplace_back(IROpCode::FUNC, label);
+}
+
 void IrGenerator::emitGoto(IR_Label target) {
   m_instructions.emplace_back(IROpCode::GOTO, target);
 }
@@ -80,6 +84,23 @@ void IrGenerator::emitGotoTrue(IROperand cond, IR_Label target) {
 
 void IrGenerator::emitGotoFalse(IROperand cond, IR_Label target) {
   m_instructions.emplace_back(IROpCode::GOTO_F, cond, target);
+}
+
+void IrGenerator::emitParam(IROperand src) {
+  m_instructions.emplace_back(IROpCode::PARAM, src);
+}
+
+void IrGenerator::emitCall(std::optional<IR_Register> dest,
+                           IROperand func_target, IR_Immediate num_args) {
+  m_instructions.emplace_back(IROpCode::CALL, dest, func_target, num_args);
+}
+
+void IrGenerator::emitRet() {
+  m_instructions.emplace_back(IROpCode::RET); // void return
+}
+
+void IrGenerator::emitRet(IROperand retval) {
+  m_instructions.emplace_back(IROpCode::RET, retval);
 }
 
 const std::vector<IRInstruction>& IrGenerator::getInstructions() const {

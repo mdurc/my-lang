@@ -41,6 +41,7 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
     case IROpCode::NOT: out << "NOT    "; break;
     case IROpCode::MOV: out << "MOV    "; break;
     case IROpCode::NEG: out << "NEG    "; break;
+    case IROpCode::FUNC: out << "FUNC   "; break;
     case IROpCode::LABEL: out << "LABEL  "; break;
     case IROpCode::GOTO: out << "GOTO   "; break;
     case IROpCode::GOTO_T: out << "GOTO_T "; break;

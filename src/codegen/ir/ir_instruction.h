@@ -1,6 +1,7 @@
 #ifndef CODEGEN_IR_IR_INSTRUCTION_H
 #define CODEGEN_IR_IR_INSTRUCTION_H
 
+#include <cassert>
 #include <optional>
 #include <string>
 #include <variant>
@@ -30,13 +31,14 @@ enum class IROpCode {
 
   // Control Flow
   LABEL,  // LABEL L1 (defines L1)
+  FUNC,   // FUNC L1 (defines function entry L1)
   GOTO,   // GOTO L1
   GOTO_T, // GOTO_T cond_reg, L1 (Jump if true)
   GOTO_F, // GOTO_F cond_reg, L1 (Jump if false)
 
   // Procedure calls
-  PARAM, // param src1
-  CALL,  // call <param sources>
+  PARAM, // PARAM src1
+  CALL,  // CALL dest_opt, func_target, num_args
   RET    // Return from function
 
   // Subscript operator: x = y[i] and x[i] = y
@@ -75,12 +77,15 @@ struct IRInstruction {
                                    // define something (e.g. LABEL)
   std::vector<IROperand> operands; // Source operands, jump targets, etc.
 
-  // LABEL Lbl; GOTO Lbl; PARAM val;
+  // LABEL Lbl; FUNC Lbl; GOTO Lbl; PARAM val; RET val;
   IRInstruction(IROpCode op, IROperand val_for_result_or_operand) : opcode(op) {
-    if (op == IROpCode::LABEL) {
+    if (op == IROpCode::LABEL || op == IROpCode::FUNC) {
       result = val_for_result_or_operand;
-    } else if (op == IROpCode::GOTO || op == IROpCode::PARAM) {
+    } else if (op == IROpCode::GOTO || op == IROpCode::PARAM ||
+               op == IROpCode::RET) {
       operands.push_back(val_for_result_or_operand);
+    } else {
+      assert(false && "Invalid construction of instruction");
     }
   }
 

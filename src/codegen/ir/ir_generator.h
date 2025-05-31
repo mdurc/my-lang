@@ -38,9 +38,16 @@ public:
   void emitLogicalOr(IR_Register dest, IROperand src1, IROperand src2);
   // Control Flow
   void emitLabel(IR_Label label);
+  void emitFunc(IR_Label label);
   void emitGoto(IR_Label target);
   void emitGotoTrue(IROperand cond, IR_Label target);
   void emitGotoFalse(IROperand cond, IR_Label target);
+  // Procedure calls
+  void emitParam(IROperand src);
+  void emitCall(std::optional<IR_Register> dest, IROperand func_target,
+                IR_Immediate num_args);
+  void emitRet();
+  void emitRet(IROperand retval);
 
   const std::vector<IRInstruction>& getInstructions() const;
 
