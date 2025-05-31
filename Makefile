@@ -12,8 +12,11 @@ PARSER_SRC = src/parser/parser.cpp \
 						 src/parser/visitor.cpp \
 						 src/parser/types.cpp
 CHECKER_SRC = src/checker/typechecker.cpp
+IR_SRC = src/codegen/ir/ir_generator.cpp \
+				 src/codegen/ir/ir_printer.cpp \
+				 src/codegen/ir/ir_visitor.cpp
 
-SOURCE = $(LEXER_SRCS) $(DIAG_SRCS) $(PARSER_SRC) $(CHECKER_SRC)
+SOURCE = $(LEXER_SRCS) $(DIAG_SRCS) $(PARSER_SRC) $(CHECKER_SRC) $(IR_SRC)
 PROGRAM_SRCS = src/main.cpp $(SOURCE)
 
 PROGRAM_OBJS = $(patsubst src/%.cpp,$(BUILD_DIR)/%.o,$(PROGRAM_SRCS))

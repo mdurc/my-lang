@@ -2,10 +2,11 @@
 #include <string>
 
 #include "checker/typechecker.h"
+#include "codegen/ir/ir_printer.h"
+#include "codegen/ir/ir_visitor.h"
 #include "lexer/lexer.h"
 #include "parser/parser.h"
 #include "parser/symtab.h"
-#include "parser/visitor.h"
 
 int main(int argc, char** argv) {
   if (argc != 2) {
@@ -28,8 +29,12 @@ int main(int argc, char** argv) {
 
     // symtab.print(std::cout);
 
-    TypeChecker type_checker(&symtab);
-    type_checker.check_program(ast);
+    TypeChecker type_checker;
+    type_checker.check_program(&symtab, ast);
+
+    IrVisitor ir_visitor;
+    ir_visitor.visit_all(ast);
+    print_ir_instructions(ir_visitor.getInstructions(), std::cout);
 
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;

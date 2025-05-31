@@ -35,12 +35,17 @@ bool TypeChecker::is_primitive_type(const std::shared_ptr<Type>& type) const {
          type->as<Type::Named>().identifier == "bool";
 }
 
-TypeChecker::TypeChecker(SymTab* symtab)
-    : m_symtab(symtab),
+TypeChecker::TypeChecker()
+    : m_symtab(nullptr),
       m_current_function_return_type(nullptr),
       m_in_loop(false) {}
 
-void TypeChecker::check_program(const std::vector<AstPtr>& program_nodes) {
+void TypeChecker::check_program(SymTab* symtab,
+                                const std::vector<AstPtr>& program_nodes) {
+  m_symtab = symtab;
+  m_current_function_return_type = nullptr;
+  m_in_loop = false;
+
   for (const AstPtr& node : program_nodes) {
     if (node) {
       node->accept(*this);

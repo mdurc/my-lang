@@ -10,9 +10,9 @@
 
 class TypeChecker : public Visitor {
 public:
-  TypeChecker(SymTab* symtab);
+  TypeChecker();
 
-  void check_program(const std::vector<AstPtr>& program_nodes);
+  void check_program(SymTab* symtab, const std::vector<AstPtr>& program_nodes);
 
   // For ExpressionNode derivatives, they will compute and store the type.
   // For StatementNode derivatives, they will enforce type rules.
