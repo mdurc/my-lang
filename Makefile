@@ -25,15 +25,15 @@ PROGRAM_OBJS = $(patsubst src/%.cpp,$(BUILD_DIR)/%.o,$(PROGRAM_SRCS))
 all: $(PROGRAM)
 
 $(PROGRAM): $(PROGRAM_OBJS)
-	@$(CC) $(CFLAGS) $^ -o $@
+	$(CC) $(CFLAGS) $^ -o $@
 
 $(BUILD_DIR)/%.o: src/%.cpp
-	@mkdir -p $(@D)
-	@$(CC) $(CFLAGS) -c $< -o $@
+	mkdir -p $(@D)
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	@rm -rf $(BUILD_DIR)
-	@rm -f $(PROGRAM) x86_64_lib.o asm-output.asm asm-output.o asm-output.exe
+	rm -rf $(BUILD_DIR)
+	rm -f $(PROGRAM) x86_64_lib.o asm-output.asm asm-output.o asm-output.exe
 
 compile: $(PROGRAM)
 	# does not work on mac
