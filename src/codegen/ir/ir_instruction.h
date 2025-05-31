@@ -21,6 +21,7 @@ enum class IROpCode {
   CMP_GE,
   AND,
   OR,
+  MOD,
 
   // Data movement: dest = src1
   MOV, // src1 can be immediate or register
@@ -39,7 +40,11 @@ enum class IROpCode {
   // Procedure calls
   PARAM, // PARAM src1
   CALL,  // CALL dest_opt, func_target, num_args
-  RET    // Return from function
+  RET,   // Return from function
+
+  // I/O
+  READ,  // READ dest_reg
+  PRINT, // PRINT src_reg_or_imm
 
   // Subscript operator: x = y[i] and x[i] = y
   // Addressof (mut)? operator
@@ -77,12 +82,13 @@ struct IRInstruction {
                                    // define something (e.g. LABEL)
   std::vector<IROperand> operands; // Source operands, jump targets, etc.
 
-  // LABEL Lbl; FUNC Lbl; GOTO Lbl; PARAM val; RET val;
+  // LABEL Lbl; FUNC Lbl; GOTO Lbl; PARAM val; RET val; PRINT val; READ dest
   IRInstruction(IROpCode op, IROperand val_for_result_or_operand) : opcode(op) {
     if (op == IROpCode::LABEL || op == IROpCode::FUNC) {
       result = val_for_result_or_operand;
     } else if (op == IROpCode::GOTO || op == IROpCode::PARAM ||
-               op == IROpCode::RET) {
+               op == IROpCode::RET || op == IROpCode::PRINT ||
+               op == IROpCode::READ) {
       operands.push_back(val_for_result_or_operand);
     } else {
       assert(false && "Invalid construction of instruction");

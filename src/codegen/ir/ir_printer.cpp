@@ -30,6 +30,7 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
     case IROpCode::SUB: out << "SUB    "; break;
     case IROpCode::MUL: out << "MUL    "; break;
     case IROpCode::DIV: out << "DIV    "; break;
+    case IROpCode::MOD: out << "MOD    "; break;
     case IROpCode::CMP_EQ: out << "CMP_EQ "; break;
     case IROpCode::CMP_NE: out << "CMP_NE "; break;
     case IROpCode::CMP_LT: out << "CMP_LT "; break;
@@ -49,6 +50,8 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
     case IROpCode::PARAM: out << "PARAM  "; break;
     case IROpCode::CALL: out << "CALL   "; break;
     case IROpCode::RET: out << "RET    "; break;
+    case IROpCode::READ: out << "READ   "; break;
+    case IROpCode::PRINT: out << "PRINT  "; break;
     default: out << "UNKNOWN_OP "; break;
   }
 

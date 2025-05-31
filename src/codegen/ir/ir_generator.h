@@ -26,6 +26,8 @@ public:
   void emitNeg(IR_Register dest, IROperand src);
   // Emits a NOT instruction: dest_bool = !src_bool
   void emitLogicalNot(IR_Register dest, IROperand src);
+  // Emits a MOD instruction: dest = src1 % src2
+  void emitMod(IR_Register dest, IROperand src1, IROperand src2);
   // Comparison: dest_bool = src1 op src2
   void emitCmpEq(IR_Register dest, IROperand src1, IROperand src2);
   void emitCmpNe(IR_Register dest, IROperand src1, IROperand src2);
@@ -48,6 +50,9 @@ public:
                 IR_Immediate num_args);
   void emitRet();
   void emitRet(IROperand retval);
+  // I/O
+  void emitRead(IR_Register dest);
+  void emitPrint(IROperand src);
 
   const std::vector<IRInstruction>& getInstructions() const;
 

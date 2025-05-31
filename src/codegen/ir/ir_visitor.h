@@ -65,7 +65,8 @@ private:
   std::unordered_map<std::string, IR_Register> m_var_registers;
   std::unordered_map<std::string, IR_Label> m_func_labels;
   IR_Register m_last_expr_reg;
-  std::stack<std::pair<IR_Label, IR_Label>> m_loop_contexts; // {start, end}
+  std::stack<std::pair<IR_Label, IR_Label>>
+      m_loop_contexts; // {continue_target, break_target}
   bool m_emitted_return;
 
   void unimpl(const std::string& nodeName);

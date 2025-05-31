@@ -66,6 +66,10 @@ void IrGenerator::emitLogicalOr(IR_Register dest, IROperand src1,
   m_instructions.emplace_back(IROpCode::OR, dest, src1, src2);
 }
 
+void IrGenerator::emitMod(IR_Register dest, IROperand src1, IROperand src2) {
+  m_instructions.emplace_back(IROpCode::MOD, dest, src1, src2);
+}
+
 void IrGenerator::emitLabel(IR_Label label) {
   m_instructions.emplace_back(IROpCode::LABEL, label);
 }
@@ -101,6 +105,14 @@ void IrGenerator::emitRet() {
 
 void IrGenerator::emitRet(IROperand retval) {
   m_instructions.emplace_back(IROpCode::RET, retval);
+}
+
+void IrGenerator::emitRead(IR_Register dest) {
+  m_instructions.emplace_back(IROpCode::READ, dest);
+}
+
+void IrGenerator::emitPrint(IROperand src) {
+  m_instructions.emplace_back(IROpCode::PRINT, src);
 }
 
 const std::vector<IRInstruction>& IrGenerator::getInstructions() const {
