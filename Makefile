@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -std=c++17 -Wall -Wextra -g -Isrc
+CFLAGS = -std=c++17 -Wall -Wextra
 PROGRAM = sunnyc
 BUILD_DIR = build
 
