@@ -1,4 +1,4 @@
-CC = g++-14
+CC = g++
 CFLAGS = -std=c++17 -Wall -Wextra -g -Isrc
 PROGRAM = sunnyc
 BUILD_DIR = build

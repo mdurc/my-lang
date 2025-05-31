@@ -24,7 +24,7 @@ using StructFieldPtr = ShrdPtr<class StructFieldNode>;
 using ParamPtr = ShrdPtr<class ParamNode>;
 using FuncDeclPtr = ShrdPtr<class FunctionDeclNode>;
 
-struct Visitor;
+class Visitor;
 
 enum BinOperator {
   Plus,
