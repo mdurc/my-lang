@@ -398,5 +398,5 @@ void IrVisitor::visit(AsmBlockNode&) { unimpl("AsmBlockNode"); }
 void IrVisitor::visit(StructFieldInitializerNode&) { unimpl("FieldInitNode"); }
 void IrVisitor::visit(CaseNode&) { unimpl("CaseNode"); }
 void IrVisitor::visit(StructFieldNode&) { unimpl("StructFieldNode"); }
-void IrVisitor::visit(SwitchStmtNode& node) { unimpl("SwitchStmtNode"); }
+void IrVisitor::visit(SwitchStmtNode&) { unimpl("SwitchStmtNode"); }
 void IrVisitor::visit(StructDeclNode&) { unimpl("StructDeclNode"); }
