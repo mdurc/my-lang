@@ -99,6 +99,10 @@ void X86_64CodeGenerator::generate(
       handle_instruction(instr);
     }
   }
+
+  // epligoue
+  emit("mov rdi, 0 ; exit code 0");
+  emit("call exit"); // from x86_64_lib
 }
 
 void X86_64CodeGenerator::handle_instruction(const IRInstruction& instr) {
