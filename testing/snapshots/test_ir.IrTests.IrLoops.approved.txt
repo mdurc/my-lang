@@ -1,0 +1,27 @@
+--- IR Instructions ---
+MOV    r1, 0
+MOV    r0, r1
+LABEL  L0
+MOV    r2, 10
+CMP_LT r3, r0, r2
+GOTO_F r3, L1
+MOV    r4, 1
+ADD    r5, r0, r4
+MOV    r0, r5
+MOV    r6, 5
+CMP_EQ r7, r0, r6
+GOTO_F r7, L2
+GOTO   L1
+LABEL  L2
+MOV    r8, 3
+CMP_EQ r9, r0, r8
+GOTO_F r9, L4
+GOTO   L0
+MOV    r10, 18
+GOTO   L5
+LABEL  L4
+MOV    r0, r0
+LABEL  L5
+GOTO   L0
+LABEL  L1
+-----------------------

@@ -44,7 +44,11 @@ std::string generate_ir_output(const std::string& input_filepath) {
 
 TEST(IrTests, IrArithmetic) {
   ApprovalTests::Approvals::verify(
-      generate_ir_output("./samples/ir_arithmetic.sn"));
+      generate_ir_output("./ir-samples/arithmetic.sn"));
+}
+
+TEST(IrTests, IrLoops) {
+  ApprovalTests::Approvals::verify(generate_ir_output("./ir-samples/loops.sn"));
 }
 
 /*
