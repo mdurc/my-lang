@@ -386,17 +386,22 @@ void IrVisitor::visit(PrintStmtNode& node) {
 }
 
 void IrVisitor::visit(FloatLiteralNode&) { unimpl("FloatLiteralNode"); }
-void IrVisitor::visit(StringLiteralNode&) { unimpl("StringLiteralNode"); }
 void IrVisitor::visit(NullLiteralNode&) { unimpl("NullLiteralNode"); }
-void IrVisitor::visit(MemberAccessNode&) { unimpl("MemberAccessNode"); }
-void IrVisitor::visit(ArrayIndexNode&) { unimpl("ArrayIndexNode"); }
-void IrVisitor::visit(StructLiteralNode&) { unimpl("StructLiteralNode"); }
+
+void IrVisitor::visit(StringLiteralNode&) { unimpl("StringLiteralNode"); }
+void IrVisitor::visit(ErrorStmtNode&) { unimpl("ErrorStmtNode"); }
+
 void IrVisitor::visit(NewExprNode&) { unimpl("NewExprNode"); }
 void IrVisitor::visit(FreeStmtNode&) { unimpl("FreeStmtNode"); }
-void IrVisitor::visit(ErrorStmtNode&) { unimpl("ErrorStmtNode"); }
-void IrVisitor::visit(AsmBlockNode&) { unimpl("AsmBlockNode"); }
-void IrVisitor::visit(StructFieldInitializerNode&) { unimpl("FieldInitNode"); }
-void IrVisitor::visit(CaseNode&) { unimpl("CaseNode"); }
-void IrVisitor::visit(StructFieldNode&) { unimpl("StructFieldNode"); }
-void IrVisitor::visit(SwitchStmtNode&) { unimpl("SwitchStmtNode"); }
+
 void IrVisitor::visit(StructDeclNode&) { unimpl("StructDeclNode"); }
+void IrVisitor::visit(StructFieldNode&) { unimpl("StructFieldNode"); }
+void IrVisitor::visit(MemberAccessNode&) { unimpl("MemberAccessNode"); }
+void IrVisitor::visit(StructLiteralNode&) { unimpl("StructLiteralNode"); }
+void IrVisitor::visit(StructFieldInitializerNode&) { unimpl("FieldInitNode"); }
+
+void IrVisitor::visit(SwitchStmtNode&) { unimpl("SwitchStmtNode"); }
+void IrVisitor::visit(CaseNode&) { unimpl("CaseNode"); }
+
+void IrVisitor::visit(ArrayIndexNode&) { unimpl("ArrayIndexNode"); }
+void IrVisitor::visit(AsmBlockNode&) { unimpl("AsmBlockNode"); }
