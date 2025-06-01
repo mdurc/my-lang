@@ -696,6 +696,7 @@ StmtPtr Parser::parse_asm_block() {
   const Token* asm_tok = current();
   _consume(TokenType::ASM);
 
+  Span prev_span = current()->get_span();
   _consume(TokenType::LBRACE);
 
   std::string asm_body_str; // raw string for now
@@ -703,19 +704,37 @@ StmtPtr Parser::parse_asm_block() {
   bool is_first = true;
   int brace_level = 1;
   while (m_pos < m_tokens.size()) {
-    if (current()->get_type() == TokenType::LBRACE) {
+    const Token* current_tok = current();
+    TokenType current_type = current_tok->get_type();
+
+    if (current_type == TokenType::LBRACE) {
       brace_level++;
-    } else if (current()->get_type() == TokenType::RBRACE) {
+    } else if (current_type == TokenType::RBRACE) {
       brace_level--;
     }
 
-    if (brace_level == 0) break;
+    if (brace_level == 0) {
+      // final closing RBRACE
+      break;
+    }
 
+    const Span& curr_span = current_tok->get_span();
+
+    // Add newlines if current token is on a new line relative to the prev
     if (!is_first) {
-      asm_body_str += ' ';
+      if (curr_span.row > prev_span.row) {
+        for (size_t i = 0; i < curr_span.row - prev_span.row; ++i) {
+          asm_body_str += '\n';
+        }
+      } else {
+        // curr token is on the same line, separate by space
+        asm_body_str += ' ';
+      }
     }
     is_first = false;
-    asm_body_str += current()->get_lexeme();
+
+    asm_body_str += current_tok->get_lexeme();
+    prev_span = curr_span;
     advance();
   }
 

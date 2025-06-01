@@ -53,6 +53,8 @@ public:
   // I/O
   void emitRead(IR_Register dest);
   void emitPrint(IROperand src);
+  // Raw Assembly
+  void emitAsmBlock(const std::string& asm_code);
 
   const std::vector<IRInstruction>& getInstructions() const;
 

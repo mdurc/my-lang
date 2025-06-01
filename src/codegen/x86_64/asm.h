@@ -54,6 +54,7 @@ private:
   void handle_ret(const IRInstruction& instr);
   void handle_print(const IRInstruction& instr);
   void handle_read(const IRInstruction& instr);
+  void handle_asm_block(const IRInstruction& instr);
 };
 
 #endif // CODEGEN_X86_64_ASM_H

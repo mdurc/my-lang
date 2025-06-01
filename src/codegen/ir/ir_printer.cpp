@@ -1,5 +1,6 @@
 #include "ir_printer.h"
 
+#include <iomanip>
 #include <variant>
 
 void print_ir_register(const IR_Register& reg, std::ostream& out) {
@@ -21,6 +22,9 @@ void print_ir_operand(const IROperand& operand, std::ostream& out) {
     print_ir_immediate(std::get<IR_Immediate>(operand), out);
   } else if (std::holds_alternative<IR_Label>(operand)) {
     print_ir_label(std::get<IR_Label>(operand), out);
+  } else if (std::holds_alternative<std::string>(operand)) {
+    // ASM_BLOCK
+    out << "\"" << std::get<std::string>(operand) << "\"";
   }
 }
 
@@ -52,6 +56,7 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
     case IROpCode::RET: out << "RET    "; break;
     case IROpCode::READ: out << "READ   "; break;
     case IROpCode::PRINT: out << "PRINT  "; break;
+    case IROpCode::ASM_BLOCK: out << "ASMBLK "; break;
     default: out << "UNKNOWN_OP "; break;
   }
 

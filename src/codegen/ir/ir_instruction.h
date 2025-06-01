@@ -47,6 +47,8 @@ enum class IROpCode {
   READ,  // READ dest_reg
   PRINT, // PRINT src_reg_or_imm
 
+  ASM_BLOCK,
+
   // Subscript operator: x = y[i] and x[i] = y
   // Addressof (mut)? operator
   // Star operator: x = *y and *x = y
@@ -75,7 +77,9 @@ struct IR_Label {
   bool operator<(const IR_Label& other) const { return id < other.id; }
 };
 
-using IROperand = std::variant<IR_Register, IR_Immediate, IR_Label>;
+// string for ASM_BLOCK
+using IROperand =
+    std::variant<IR_Register, IR_Immediate, IR_Label, std::string>;
 
 struct IRInstruction {
   IROpCode opcode;
@@ -94,6 +98,11 @@ struct IRInstruction {
     } else {
       assert(false && "Invalid construction of instruction");
     }
+  }
+
+  IRInstruction(IROpCode op, const std::string& code_str) : opcode(op) {
+    assert(op == IROpCode::ASM_BLOCK && "This constructor is for ASM_BLOCK");
+    operands.push_back(code_str);
   }
 
   // MOV dest, src; NEG dest, src; NOT dest, src

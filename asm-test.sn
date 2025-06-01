@@ -2,4 +2,6 @@ mut x: i64 = 10;
 mut y: i64 = (x + 5) * 2;
 
 print x;
+asm { call print_newline };
 print y;
+asm { call print_newline };

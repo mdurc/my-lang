@@ -43,6 +43,7 @@ std::string X86_64CodeGenerator::operand_to_string(const IROperand& operand) {
   } else if (std::holds_alternative<IR_Label>(operand)) {
     return ".L" + std::to_string(std::get<IR_Label>(operand).id);
   }
+  // std::string is not included here as option because it is already a string
   throw std::runtime_error("Unknown IROperand type");
 }
 
@@ -134,6 +135,7 @@ void X86_64CodeGenerator::handle_instruction(const IRInstruction& instr) {
     case IROpCode::RET: handle_ret(instr); break;
     case IROpCode::PRINT: handle_print(instr); break;
     case IROpCode::READ: handle_read(instr); break;
+    case IROpCode::ASM_BLOCK: handle_asm_block(instr); break;
     // TODO: AND, OR, NOT
     default:
       throw std::runtime_error("Unsupported IR opcode for x86_64: " +
@@ -356,4 +358,12 @@ void X86_64CodeGenerator::handle_read(const IRInstruction& instr) {
 
   emit("mov " + dest_reg_str + ", rax"); // Move parsed int to destination
   emit("add rsp, 32");                   // cleanup stack
+}
+void X86_64CodeGenerator::handle_asm_block(const IRInstruction& instr) {
+  assert(!instr.operands.empty() &&
+         std::holds_alternative<std::string>(instr.operands[0]) &&
+         "std::string operand must exist for ASM_BLOCK in IR");
+
+  const std::string& asm_code = std::get<std::string>(instr.operands[0]);
+  *m_out << asm_code << std::endl;
 }

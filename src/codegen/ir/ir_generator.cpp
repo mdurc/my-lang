@@ -115,6 +115,10 @@ void IrGenerator::emitPrint(IROperand src) {
   m_instructions.emplace_back(IROpCode::PRINT, src);
 }
 
+void IrGenerator::emitAsmBlock(const std::string& asm_code) {
+  m_instructions.emplace_back(IROpCode::ASM_BLOCK, asm_code);
+}
+
 const std::vector<IRInstruction>& IrGenerator::getInstructions() const {
   return m_instructions;
 }

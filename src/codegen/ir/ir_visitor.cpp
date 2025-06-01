@@ -385,6 +385,8 @@ void IrVisitor::visit(PrintStmtNode& node) {
   m_ir_gen.emitPrint(m_last_expr_reg);
 }
 
+void IrVisitor::visit(AsmBlockNode& node) { m_ir_gen.emitAsmBlock(node.body); }
+
 void IrVisitor::visit(FloatLiteralNode&) { unimpl("FloatLiteralNode"); }
 void IrVisitor::visit(NullLiteralNode&) { unimpl("NullLiteralNode"); }
 
@@ -404,4 +406,3 @@ void IrVisitor::visit(SwitchStmtNode&) { unimpl("SwitchStmtNode"); }
 void IrVisitor::visit(CaseNode&) { unimpl("CaseNode"); }
 
 void IrVisitor::visit(ArrayIndexNode&) { unimpl("ArrayIndexNode"); }
-void IrVisitor::visit(AsmBlockNode&) { unimpl("AsmBlockNode"); }
