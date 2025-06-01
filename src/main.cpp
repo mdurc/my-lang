@@ -10,25 +10,57 @@
 #include "parser/symtab.h"
 
 int main(int argc, char** argv) {
-  if (argc != 2) {
-    std::cerr << "Usage: " << argv[0] << " <file_name>" << std::endl;
+  if (argc < 2) {
+    std::cerr << "Usage: " << argv[0]
+              << " <file_name> [--tokens] [--ast] [--symtab] [--ir] [--gen]"
+              << std::endl;
     return 1;
   }
 
   const std::string& filename = argv[1];
 
+  bool print_tokens_flag = false;
+  bool print_ast_flag = false;
+  bool print_symtab_flag = false;
+  bool print_ir_flag = false;
+  bool generate_code_flag = false;
+
+  for (int i = 2; i < argc; ++i) {
+    std::string arg = argv[i];
+    if (arg == "--tokens")
+      print_tokens_flag = true;
+    else if (arg == "--ast")
+      print_ast_flag = true;
+    else if (arg == "--symtab")
+      print_symtab_flag = true;
+    else if (arg == "--ir")
+      print_ir_flag = true;
+    else if (arg == "--gen")
+      generate_code_flag = true;
+    else {
+      std::cerr << "Unknown option: " << arg << std::endl;
+      return 1;
+    }
+  }
+
   try {
     Lexer lexer;
     const std::vector<Token>& tokens = lexer.tokenize(filename);
-    // print_tokens(tokens, std::cout);
+    if (print_tokens_flag) {
+      print_tokens(tokens, std::cout);
+    }
 
     SymTab symtab;
 
     Parser parser;
     std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
-    // print_ast(ast, std::cout);
+    if (print_ast_flag) {
+      print_ast(ast, std::cout);
+    }
 
-    // symtab.print(std::cout);
+    if (print_symtab_flag) {
+      symtab.print(std::cout);
+    }
 
     TypeChecker type_checker;
     type_checker.check_program(&symtab, ast);
@@ -36,10 +68,14 @@ int main(int argc, char** argv) {
     IrVisitor ir_visitor;
     ir_visitor.visit_all(ast);
     const std::vector<IRInstruction>& instrs = ir_visitor.get_instructions();
-    // print_ir_instructions(instrs, std::cout);
+    if (print_ir_flag) {
+      print_ir_instructions(instrs, std::cout);
+    }
 
-    X86_64CodeGenerator gen;
-    gen.generate(instrs, std::cout);
+    if (generate_code_flag) {
+      X86_64CodeGenerator gen;
+      gen.generate(instrs, std::cout);
+    }
 
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
