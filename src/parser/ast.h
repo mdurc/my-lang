@@ -429,16 +429,19 @@ public:
   std::optional<std::string> return_type_name; // optional for u0 return type
   std::shared_ptr<Type> return_type;
   BlockPtr body;
+  std::shared_ptr<Type> type;
 
   FunctionDeclNode(const Token* tok, size_t sc, IdentPtr name,
                    std::vector<ParamPtr> ps, std::optional<std::string> rt_n,
-                   std::shared_ptr<Type> rt, BlockPtr b)
+                   std::shared_ptr<Type> rt, BlockPtr b,
+                   std::shared_ptr<Type> t)
       : AstNode(tok, sc),
         name(name),
         params(std::move(ps)),
         return_type_name(std::move(rt_n)),
         return_type(rt),
-        body(b) {}
+        body(b),
+        type(t) {}
   void accept(Visitor& v) override;
 };
 

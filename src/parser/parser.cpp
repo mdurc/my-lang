@@ -129,8 +129,9 @@ AstPtr Parser::parse_struct_decl() {
   const Token* name_tok = current();
   _consume(TokenType::IDENTIFIER);
 
+  // TODO: actually calculate the size of the struct
   Type struct_type =
-      Type(Type::Named(name_tok->get_lexeme()), m_symtab->current_scope());
+      Type(Type::Named(name_tok->get_lexeme()), m_symtab->current_scope(), 64);
 
   // declare it and see if it already exists (in which an error should occur)
   std::shared_ptr<Type> sym_struct_type = m_symtab->declare_type(struct_type);
@@ -240,8 +241,9 @@ FuncDeclPtr Parser::parse_function_decl() {
   }
 
   // make the function type
+  // TODO: actually calculate the size of the func
   Type ft = Type(Type::Function(std::move(ft_params), return_t.second),
-                 m_symtab->current_scope());
+                 m_symtab->current_scope(), 64);
 
   // see if it already exists in the table, if so we will use that symbol
   // Function types are unique in that they can be "re-defined" without an
@@ -265,7 +267,7 @@ FuncDeclPtr Parser::parse_function_decl() {
 
   return _AST(FunctionDeclNode, func_tok, m_symtab->current_scope(), name_ident,
               std::move(params_vec), std::move(return_t.first), return_t.second,
-              body_block);
+              body_block, func_type);
 }
 
 BorrowState Parser::parse_function_param_prefix() {
@@ -1002,8 +1004,9 @@ std::shared_ptr<Type> Parser::parse_type() {
   if (match(TokenType::IDENTIFIER)) {
     // Struct type
     advance();
-    std::shared_ptr<Type> t = m_symtab->lookup_type(Type(
-        Type::Named(type_start_tok->get_lexeme()), m_symtab->current_scope()));
+    std::shared_ptr<Type> t =
+        m_symtab->lookup_type(Type(Type::Named(type_start_tok->get_lexeme()),
+                                   m_symtab->current_scope(), -1));
     if (t == nullptr) {
       m_logger.report(TypeNotFoundError(type_start_tok->get_span(),
                                         type_start_tok->get_lexeme()));
@@ -1031,7 +1034,7 @@ std::shared_ptr<Type> Parser::parse_type() {
     // pointee types are allowed. We will add it to the symbol table though.
 
     Type search_type =
-        Type(Type::Pointer(is_mutable, pointee), m_symtab->current_scope());
+        Type(Type::Pointer(is_mutable, pointee), m_symtab->current_scope(), -1);
 
     std::shared_ptr<Type> ptr_type = m_symtab->lookup_type(search_type);
     if (!ptr_type) {
@@ -1059,7 +1062,7 @@ std::shared_ptr<Type> Parser::parse_type() {
 
     std::shared_ptr<Type> t = m_symtab->lookup_type(
         Type(Type::Function(std::move(param_types), ret_type),
-             m_symtab->current_scope()));
+             m_symtab->current_scope(), -1));
     if (t == nullptr) {
       m_logger.report(TypeNotFoundError(type_start_tok->get_span(),
                                         type_start_tok->get_lexeme()));
@@ -1087,7 +1090,7 @@ ExprPtr Parser::parse_primary() {
     // if it exists as a type, then it is a struct because that is the only
     // other named type that can exist besides primatives
     std::shared_ptr<Type> struct_type = m_symtab->lookup_type(
-        Type(Type::Named(tok->get_lexeme()), m_symtab->current_scope()));
+        Type(Type::Named(tok->get_lexeme()), m_symtab->current_scope(), -1));
     if (struct_type) {
       return parse_struct_literal(struct_type);
     }
@@ -1213,7 +1216,7 @@ ExprPtr Parser::parse_new_expr() {
     if (!match(TokenType::RPAREN)) {
       // Check if the current token is the start of a declared Struct Type
       std::shared_ptr<Type> struct_type = m_symtab->lookup_type(Type(
-          Type::Named(current()->get_lexeme()), m_symtab->current_scope()));
+          Type::Named(current()->get_lexeme()), m_symtab->current_scope(), -1));
       if (struct_type) {
         // This must be the start of a struct literal
         specifier = parse_struct_literal(struct_type);

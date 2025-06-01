@@ -3,8 +3,9 @@
 std::string Type::to_string_recursive(std::vector<const Type*>& visited) const {
   for (const Type* t : visited) {
     if (t == this) {
-      if (std::holds_alternative<Named>(storage)) {
-        return "[recursive_ref_to:" + std::get<Named>(storage).identifier + "]";
+      if (std::holds_alternative<Named>(m_storage)) {
+        return "[recursive_ref_to:" + std::get<Named>(m_storage).identifier +
+               "]";
       }
       return "[recursive_type_ref]";
     }
@@ -35,7 +36,7 @@ std::string Type::to_string_recursive(std::vector<const Type*>& visited) const {
       str += "uninitialized_return_type";
     }
   } else if (this->is<Pointer>()) {
-    const Pointer& ptr = std::get<Pointer>(storage);
+    const Pointer& ptr = std::get<Pointer>(m_storage);
     str = "ptr<";
     str += (ptr.is_pointee_mutable ? "mut " : "imm ");
     if (ptr.pointee) {

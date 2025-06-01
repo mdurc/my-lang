@@ -59,18 +59,18 @@ SymTab::SymTab() {
   m_scopes.emplace_back(0); // global scope
 
   // define the primitives in the language
-  m_scopes[0].add_type(Type(Type::Named("u0"), 0));
-  m_scopes[0].add_type(Type(Type::Named("u8"), 0));
-  m_scopes[0].add_type(Type(Type::Named("u16"), 0));
-  m_scopes[0].add_type(Type(Type::Named("u32"), 0));
-  m_scopes[0].add_type(Type(Type::Named("u64"), 0));
-  m_scopes[0].add_type(Type(Type::Named("i8"), 0));
-  m_scopes[0].add_type(Type(Type::Named("i16"), 0));
-  m_scopes[0].add_type(Type(Type::Named("i32"), 0));
-  m_scopes[0].add_type(Type(Type::Named("i64"), 0));
-  m_scopes[0].add_type(Type(Type::Named("f64"), 0));
-  m_scopes[0].add_type(Type(Type::Named("bool"), 0));
-  m_scopes[0].add_type(Type(Type::Named("string"), 0));
+  m_scopes[0].add_type(Type(Type::Named("u0"), 0, 8));
+  m_scopes[0].add_type(Type(Type::Named("u8"), 0, 1));
+  m_scopes[0].add_type(Type(Type::Named("u16"), 0, 2));
+  m_scopes[0].add_type(Type(Type::Named("u32"), 0, 4));
+  m_scopes[0].add_type(Type(Type::Named("u64"), 0, 8));
+  m_scopes[0].add_type(Type(Type::Named("i8"), 0, 1));
+  m_scopes[0].add_type(Type(Type::Named("i16"), 0, 2));
+  m_scopes[0].add_type(Type(Type::Named("i32"), 0, 4));
+  m_scopes[0].add_type(Type(Type::Named("i64"), 0, 8));
+  m_scopes[0].add_type(Type(Type::Named("f64"), 0, 8));
+  m_scopes[0].add_type(Type(Type::Named("bool"), 0, 1));
+  m_scopes[0].add_type(Type(Type::Named("string"), 0, 64));
 }
 
 void SymTab::enter_new_scope() {
@@ -132,7 +132,8 @@ std::shared_ptr<Variable> SymTab::lookup_variable(
 }
 
 std::shared_ptr<Type> SymTab::get_primitive_type(std::string primitive) const {
-  return m_scopes[0].lookup_type(Type(Type::Named(std::move(primitive)), 0));
+  return m_scopes[0].lookup_type(
+      Type(Type::Named(std::move(primitive)), 0, -1));
 }
 
 std::shared_ptr<Type> SymTab::declare_type(const Type& tk) {

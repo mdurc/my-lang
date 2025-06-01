@@ -57,29 +57,34 @@ public:
   // Public interface
   template <typename T>
   bool is() const {
-    return std::holds_alternative<T>(storage);
+    return std::holds_alternative<T>(m_storage);
   }
   template <typename T>
   const T& as() const {
-    return std::get<T>(storage);
+    return std::get<T>(m_storage);
   }
 
   // returns the string format that should be used within the language
   std::string to_string() const;
-  size_t get_scope_id() const { return scope_id; }
+  size_t get_scope_id() const { return m_scope_id; }
+  uint64_t get_byte_size() const { return m_bytes; }
 
   // Constructors
-  Type(Named n, size_t sc) : storage(std::move(n)), scope_id(sc) {}
-  Type(Function f, size_t sc) : storage(std::move(f)), scope_id(sc) {}
-  Type(Pointer p, size_t sc) : storage(std::move(p)), scope_id(sc) {}
+  Type(Named n, size_t sc, uint64_t bytes)
+      : m_storage(std::move(n)), m_scope_id(sc), m_bytes(bytes) {}
+  Type(Function f, size_t sc, uint64_t bytes)
+      : m_storage(std::move(f)), m_scope_id(sc), m_bytes(bytes) {}
+  Type(Pointer p, size_t sc, uint64_t bytes)
+      : m_storage(std::move(p)), m_scope_id(sc), m_bytes(bytes) {}
 
   friend bool operator==(const Type& a, const Type& b) {
-    return a.storage == b.storage;
+    return a.m_storage == b.m_storage;
   }
 
 private:
-  std::variant<Named, Function, Pointer> storage;
-  size_t scope_id;
+  std::variant<Named, Function, Pointer> m_storage;
+  size_t m_scope_id;
+  uint64_t m_bytes;
 
   std::string to_string_recursive(std::vector<const Type*>& visited) const;
 };
