@@ -5,9 +5,7 @@
 IrVisitor::IrVisitor()
     : m_last_expr_operand(IR_Register(-1)),
       m_emitted_return(false),
-      m_main_function_defined(false) {
-  m_entrypoint = m_ir_gen.new_func_label("main");
-}
+      m_main_function_defined(false) {}
 
 const std::vector<IRInstruction>& IrVisitor::get_instructions() const {
   return m_ir_gen.get_instructions();
@@ -15,29 +13,7 @@ const std::vector<IRInstruction>& IrVisitor::get_instructions() const {
 
 void IrVisitor::visit_all(const std::vector<AstPtr>& ast) {
   for (const AstPtr& ast_node : ast) {
-    // mark as entrypoint if we haven't already
-    if (!m_main_function_defined &&
-        !std::dynamic_pointer_cast<FunctionDeclNode>(ast_node)) {
-      bool already_emitted_global_entry = false;
-      for (const IRInstruction& instr : m_ir_gen.get_instructions()) {
-        if (instr.opcode == IROpCode::LABEL && instr.result.has_value() &&
-            std::holds_alternative<IR_Label>(instr.result.value()) &&
-            std::get<IR_Label>(instr.result.value()).name ==
-                m_entrypoint.name) {
-          already_emitted_global_entry = true;
-          break;
-        }
-      }
-      if (!already_emitted_global_entry) {
-        m_ir_gen.emit_label(m_entrypoint);
-      }
-    }
-
     ast_node->accept(*this);
-  }
-
-  if (!m_main_function_defined) {
-    m_ir_gen.emit_exit();
   }
 }
 
@@ -306,7 +282,7 @@ void IrVisitor::visit(FunctionDeclNode& node) {
   }
 
   IR_Label func_label = m_ir_gen.new_func_label(func_ir_name);
-  m_func_labels[original_func_name] = func_label;
+  m_func_labels.insert({original_func_name, func_label});
 
   uint64_t stack_size = node.type->get_byte_size();
   m_ir_gen.emit_begin_func(func_label, IR_Immediate(stack_size));
@@ -336,10 +312,6 @@ void IrVisitor::visit(FunctionDeclNode& node) {
   }
 
   m_ir_gen.emit_end_func();
-
-  if (original_func_name == "main") {
-    m_ir_gen.emit_exit();
-  }
 
   // restore var context
   m_vars = prev_var_operands;
@@ -461,21 +433,33 @@ void IrVisitor::visit(ForStmtNode& node) {
   }
 }
 
+static bool is_unsigned_int(std::shared_ptr<Type> type) {
+  if (!type->is<Type::Named>()) return false;
+  const std::string& n = type->as<Type::Named>().identifier;
+  return n == "u8" || n == "u16" || n == "u32" || n == "u64" || n == "bool";
+}
+
+static bool is_signed_int(std::shared_ptr<Type> type) {
+  if (!type->is<Type::Named>()) return false;
+  const std::string& n = type->as<Type::Named>().identifier;
+  return n == "i8" || n == "i16" || n == "i32" || n == "i64";
+}
+
 void IrVisitor::visit(ReadStmtNode& node) {
   assert(node.expression->expr_type &&
          "Read expression must have a type from typechecker");
   std::shared_ptr<Type> expr_type = node.expression->expr_type;
-  IR_Label read_func_label;
-
-  if (expr_type->is<Type::Named>() &&
-      expr_type->as<Type::Named>().identifier == "string") {
-    read_func_label = IR_Label("_ReadString");
-  } else {
-    read_func_label = IR_Label("_ReadInt");
-  }
 
   IR_Register temp_val_reg = m_ir_gen.new_temp_reg();
-  m_ir_gen.emit_lcall(temp_val_reg, read_func_label);
+  m_ir_gen.emit_lcall(temp_val_reg, IR_Label("read_word"));
+
+  // Convert the word to an int
+  if (is_unsigned_int(expr_type)) {
+    m_ir_gen.emit_lcall(temp_val_reg, IR_Label("parse_uint"));
+  } else {
+    assert(is_signed_int(expr_type));
+    m_ir_gen.emit_lcall(temp_val_reg, IR_Label("parse_int"));
+  }
 
   if (auto ident_node =
           std::dynamic_pointer_cast<IdentifierNode>(node.expression)) {
@@ -548,12 +532,12 @@ IR_Label IrVisitor::get_runtime_print_call(const std::shared_ptr<Type>& type) {
   assert(type && "Type must be known for print function selection");
   if (type->is<Type::Named>()) {
     const std::string& name = type->as<Type::Named>().identifier;
-    if (name == "string") return IR_Label("_PrintString");
-    if (name == "bool") return IR_Label("_PrintInt");
+    if (name == "string") return IR_Label("print_string");
+    if (name == "bool") return IR_Label("print_int");
     if (name == "i64" || name == "u64" || name == "i32" || name == "u32" ||
         name == "i16" || name == "u16" || name == "i8" || name == "u8") {
-      return IR_Label("_PrintInt");
+      return IR_Label("print_int");
     }
   }
-  return IR_Label("_PrintInt");
+  return IR_Label("print_int");
 }

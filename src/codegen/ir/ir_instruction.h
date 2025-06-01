@@ -9,7 +9,7 @@
 #include <vector>
 
 enum class IROpCode {
-  BEGIN_FUNC, // Operands: label_func_name (result), imm_stack_size (operand)
+  BEGIN_FUNC, // Result: label_func_name, Operands: imm_stack_size
   END_FUNC,   // No operands
   EXIT,       // No operands
 

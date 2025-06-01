@@ -15,7 +15,7 @@ public:
   X86_64CodeGenerator();
 
   void generate(const std::vector<IRInstruction>& instructions,
-                std::ostream& out);
+                bool is_main_defined, std::ostream& out);
 
 private:
   std::ostream* m_out;
@@ -27,7 +27,7 @@ private:
   std::vector<std::string> m_string_literals_data;
   std::unordered_map<std::string, std::string> m_string_literal_to_label;
 
-  std::vector<std::string> m_physical_regs_pool;
+  std::vector<std::string> m_temp_regs;
   std::vector<std::string> m_callee_saved_regs;
   std::vector<std::string> m_caller_saved_regs;
   std::vector<std::string> m_arg_regs;

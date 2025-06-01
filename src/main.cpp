@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
 
     if (generate_code_flag) {
       X86_64CodeGenerator gen;
-      gen.generate(instrs, std::cout);
+      gen.generate(instrs, ir_visitor.is_main_defined(), std::cout);
     }
 
   } catch (const std::exception& e) {

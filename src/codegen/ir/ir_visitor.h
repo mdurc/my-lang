@@ -15,6 +15,7 @@ public:
   IrVisitor();
 
   const std::vector<IRInstruction>& get_instructions() const;
+  bool is_main_defined() const { return m_main_function_defined; }
   void visit_all(const std::vector<AstPtr>& ast);
 
   // Expression Nodes
@@ -69,7 +70,6 @@ private:
   IROperand m_last_expr_operand;
   bool m_emitted_return;
   bool m_main_function_defined;
-  IR_Label m_entrypoint; // main, otherwise a default label
 
   IR_Label get_runtime_print_call(const std::shared_ptr<Type>& type);
 
