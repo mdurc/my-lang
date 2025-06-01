@@ -77,7 +77,7 @@ struct IR_Label {
   bool operator<(const IR_Label& other) const { return id < other.id; }
 };
 
-// string for ASM_BLOCK
+// string for ASM_BLOCK, string literals, etc.
 using IROperand =
     std::variant<IR_Register, IR_Immediate, IR_Label, std::string>;
 

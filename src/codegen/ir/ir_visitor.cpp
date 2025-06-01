@@ -29,6 +29,12 @@ void IrVisitor::visit(BoolLiteralNode& node) {
   m_ir_gen.emit_mov(m_last_expr_reg, IR_Immediate(node.value ? 1 : 0));
 }
 
+void IrVisitor::visit(StringLiteralNode& node) {
+  m_last_expr_reg = m_ir_gen.new_register();
+  // m_last_expr_reg will now hold the address of the string
+  m_ir_gen.emit_mov(m_last_expr_reg, node.value);
+}
+
 void IrVisitor::visit(IdentifierNode& node) {
   assert(m_var_registers.count(node.name) &&
          "Type checker should identifier use of undeclared identifiers");
@@ -392,7 +398,6 @@ void IrVisitor::visit(AsmBlockNode& node) {
 void IrVisitor::visit(FloatLiteralNode&) { unimpl("FloatLiteralNode"); }
 void IrVisitor::visit(NullLiteralNode&) { unimpl("NullLiteralNode"); }
 
-void IrVisitor::visit(StringLiteralNode&) { unimpl("StringLiteralNode"); }
 void IrVisitor::visit(ErrorStmtNode&) { unimpl("ErrorStmtNode"); }
 
 void IrVisitor::visit(NewExprNode&) { unimpl("NewExprNode"); }

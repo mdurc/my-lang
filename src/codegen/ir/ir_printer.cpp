@@ -22,7 +22,6 @@ void print_ir_operand(const IROperand& operand, std::ostream& out) {
   } else if (std::holds_alternative<IR_Label>(operand)) {
     print_ir_label(std::get<IR_Label>(operand), out);
   } else if (std::holds_alternative<std::string>(operand)) {
-    // ASM_BLOCK
     out << "\"" << std::get<std::string>(operand) << "\"";
   }
 }
