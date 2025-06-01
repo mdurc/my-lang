@@ -134,12 +134,12 @@ void IrGenerator::emit_if_z(IROperand cond, IR_Label target) {
 }
 
 void IrGenerator::emit_push_param(IROperand src) {
-  m_instructions.emplace_back(IROpCode::PUSH_PARAM, std::nullopt,
+  m_instructions.emplace_back(IROpCode::PUSH_ARG, std::nullopt,
                               std::vector<IROperand>{src});
 }
 
 void IrGenerator::emit_pop_params(IR_Immediate num_bytes) {
-  m_instructions.emplace_back(IROpCode::POP_PARAMS, std::nullopt,
+  m_instructions.emplace_back(IROpCode::POP_ARGS, std::nullopt,
                               std::vector<IROperand>{num_bytes});
 }
 

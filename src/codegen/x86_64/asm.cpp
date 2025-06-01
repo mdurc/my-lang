@@ -4,7 +4,10 @@
 #include <functional>
 
 X86_64CodeGenerator::X86_64CodeGenerator()
-    : m_out(nullptr), m_next_available_reg_idx(0), m_current_stack_offset(0) {
+    : m_out(nullptr),
+      m_next_available_reg_idx(0),
+      m_current_stack_offset(0),
+      m_current_arg_count(0) {
   // Conventions:
   // - callee-saved: rsp, rbp, rbx, r12, r13, r14, r15
   // - caller-saved: rax, rcx, rdx, rsi, rdi, r8-11
@@ -195,8 +198,8 @@ void X86_64CodeGenerator::handle_instruction(const IRInstruction& instr) {
     case IROpCode::LABEL: handle_label(instr); break;
     case IROpCode::GOTO: handle_goto(instr); break;
     case IROpCode::IF_Z: handle_if_z(instr); break;
-    case IROpCode::PUSH_PARAM: handle_push_param(instr); break;
-    case IROpCode::POP_PARAMS: handle_pop_params(instr); break;
+    case IROpCode::PUSH_ARG: handle_push_arg(instr); break;
+    case IROpCode::POP_ARGS: handle_pop_args(instr); break;
     case IROpCode::LCALL: handle_lcall(instr); break;
     case IROpCode::RETURN: handle_ret(instr); break;
     case IROpCode::ASM_BLOCK: handle_asm_block(instr); break;
@@ -517,12 +520,22 @@ void X86_64CodeGenerator::handle_if_z(const IRInstruction& instr) {
   emit("jz " + target_label_str);                   // Jump if Zero (ZF=1)
 }
 
-void X86_64CodeGenerator::handle_push_param(const IRInstruction& instr) {
+void X86_64CodeGenerator::handle_push_arg(const IRInstruction& instr) {
   std::string src_str = operand_to_string(instr.operands[0]);
-  emit("push " + src_str);
+  if (m_current_arg_count < (int)m_arg_regs.size()) {
+    emit("mov " + m_arg_regs[m_current_arg_count++] + ", " + src_str);
+  } else {
+    if (src_str.front() == '[') {
+      std::string temp = get_temp_x86_reg();
+      emit("mov " + temp + ", " + src_str);
+      src_str = temp;
+    }
+    emit("push " + src_str);
+  }
 }
 
-void X86_64CodeGenerator::handle_pop_params(const IRInstruction& instr) {
+void X86_64CodeGenerator::handle_pop_args(const IRInstruction& instr) {
+  // we simply have to add back the total number of bytes
   uint64_t num_bytes = std::get<IR_Immediate>(instr.operands[0]).val;
   if (num_bytes > 0) {
     emit("add rsp, " + std::to_string(num_bytes));
@@ -540,6 +553,9 @@ void X86_64CodeGenerator::handle_lcall(const IRInstruction& instr) {
         get_x86_reg(std::get<IR_Register>(instr.result.value()));
     emit("mov " + dest_ir_reg_str + ", rax");
   }
+
+  // reset the arg count for the next push_args
+  m_current_arg_count = 0;
 }
 
 void X86_64CodeGenerator::handle_ret(const IRInstruction& instr) {

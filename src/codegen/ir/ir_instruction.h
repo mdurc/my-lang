@@ -44,10 +44,10 @@ enum class IROpCode {
   IF_Z,  // Operands: cond_operand, target_label_operand (IfZero/IfFalse)
 
   // Procedure calls
-  PUSH_PARAM, // Operands: src_operand
-  POP_PARAMS, // Operands: imm_num_bytes
-  LCALL,      // Result: opt_dest_temp, Operands: func_label_operand
-  RETURN,     // Operands: opt_val_operand
+  PUSH_ARG, // Operands: src_operand
+  POP_ARGS, // Operands: imm_num_bytes
+  LCALL,    // Result: opt_dest_temp, Operands: func_label_operand
+  RETURN,   // Operands: opt_val_operand
 
   ASM_BLOCK,
 };

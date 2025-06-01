@@ -22,6 +22,7 @@ private:
   std::unordered_map<int, std::string> m_ir_reg_to_x86_reg;
   size_t m_next_available_reg_idx;
   int m_current_stack_offset;
+  int m_current_arg_count;
 
   std::unordered_map<std::string, std::string> m_var_locations; // in stack
   std::vector<std::string> m_string_literals_data;
@@ -65,8 +66,8 @@ private:
   void handle_goto(const IRInstruction& instr);
   void handle_if_z(const IRInstruction& instr);
 
-  void handle_push_param(const IRInstruction& instr);
-  void handle_pop_params(const IRInstruction& instr);
+  void handle_push_arg(const IRInstruction& instr);
+  void handle_pop_args(const IRInstruction& instr);
   void handle_lcall(const IRInstruction& instr);
   void handle_ret(const IRInstruction& instr);
   void handle_asm_block(const IRInstruction& instr);
