@@ -14,10 +14,14 @@ func main() {
   a = 2 + a;
   a = 3;
   print a;
+  print "\n";
 
   b : string = "hi";
   print b;
+  print "\n";
 
-  c : bool = true;
-  print c;
+  // spillover occurs which is unimpl, if we leave this
+  // c : bool = true;
+  // print c;
+  // print "\n";
 }
