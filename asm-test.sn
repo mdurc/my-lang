@@ -12,6 +12,7 @@ asm { call print_newline };
 func main() {
   mut a : i32;
   a = 2 + a;
+  a = 3;
   print a;
 
   b : string = "hi";

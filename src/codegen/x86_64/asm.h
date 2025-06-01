@@ -33,6 +33,7 @@ private:
   std::vector<std::string> m_arg_regs;
   std::set<std::string> m_used_callee_saved_regs_in_current_func;
 
+  std::string get_temp_x86_reg();
   std::string get_x86_reg(const IR_Register& ir_reg);
   std::string operand_to_string(const IROperand& operand);
   void emit(const std::string& instruction);

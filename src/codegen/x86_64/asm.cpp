@@ -18,6 +18,20 @@ X86_64CodeGenerator::X86_64CodeGenerator()
   m_arg_regs = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 }
 
+std::string X86_64CodeGenerator::get_temp_x86_reg() {
+  // This function doesn't associate the IR reg to an x86 reg
+  if (m_next_available_reg_idx >= m_temp_regs.size()) {
+    throw std::runtime_error(
+        "Ran out of physical registers. Spilling not implemented.");
+  }
+  std::string assigned_reg = m_temp_regs[m_next_available_reg_idx++];
+  if (std::find(m_callee_saved_regs.begin(), m_callee_saved_regs.end(),
+                assigned_reg) != m_callee_saved_regs.end()) {
+    m_used_callee_saved_regs_in_current_func.insert(assigned_reg);
+  }
+  return assigned_reg;
+}
+
 std::string X86_64CodeGenerator::get_x86_reg(const IR_Register& ir_reg) {
   auto itr = m_ir_reg_to_x86_reg.find(ir_reg.id);
   if (itr == m_ir_reg_to_x86_reg.end()) {
@@ -270,9 +284,9 @@ void X86_64CodeGenerator::handle_assign(const IRInstruction& instr) {
     // This is also the case if it is an immediate.
     if (std::holds_alternative<IR_Immediate>(src_op) ||
         (src_str.front() == '[' && src_str.back() == ']')) {
-      std::string temp = get_x86_reg(IR_Register(m_next_available_reg_idx++));
+      std::string temp = get_temp_x86_reg();
       emit("mov " + temp + ", " + src_str);
-      src_op = temp;
+      src_str = temp;
     }
 
     // now we can move it to the register
@@ -295,15 +309,13 @@ void X86_64CodeGenerator::handle_load(const IRInstruction& instr) {
   // it can be: Label/String (m), Var (m), Reg, Imm
 
   if (std::holds_alternative<IR_Variable>(op)) {
-    // must have been accessed from the stack, we must use a temp register
-    std::string temp = dest;
-    temp = get_x86_reg(IR_Register(m_next_available_reg_idx++));
-    emit("mov " + temp + ", " + addr_str);
+    // must have been accessed from the stack, it already is the content
+    emit("mov " + dest + ", " + addr_str);
+  } else {
+    // Label/String, reg, imm will all work as expected here.
+    // Note that imm will treat the imm as an address and load that value.
+    emit("mov " + dest + ", [" + addr_str + "]");
   }
-
-  // Label/String, reg, imm will all work as expected here.
-  // Note that imm will treat the imm as an address and load that value.
-  emit("mov " + dest + ", [" + addr_str + "]");
 }
 
 void X86_64CodeGenerator::handle_store(const IRInstruction& instr) {
@@ -315,7 +327,7 @@ void X86_64CodeGenerator::handle_store(const IRInstruction& instr) {
   if (addr_dest_str.front() == '[') {
     // if the dest is from a variable, where it is on the stack, we will have
     // to use a temp here.
-    std::string temp = get_x86_reg(IR_Register(m_next_available_reg_idx++));
+    std::string temp = get_temp_x86_reg();
     emit("mov " + temp + ", " + addr_dest_str);
     final_addr_str = "[" + temp + "]";
   } else {
@@ -325,7 +337,7 @@ void X86_64CodeGenerator::handle_store(const IRInstruction& instr) {
 
   // If src_str is memory, load to temp reg first
   if (src_str.front() == '[' && src_str.back() == ']') {
-    std::string temp = get_x86_reg(IR_Register(m_next_available_reg_idx++));
+    std::string temp = get_temp_x86_reg();
     emit("mov " + temp + ", " + src_str);
     src_str = temp;
   }
@@ -460,7 +472,7 @@ void X86_64CodeGenerator::handle_cmp(const IRInstruction& instr) {
   // If both operands are memory, one must be moved to a register first.
   if (src1_str.front() == '[' && src1_str.back() == ']' &&
       src2_str.front() == '[' && src2_str.back() == ']') {
-    std::string temp_reg = get_x86_reg(IR_Register(m_next_available_reg_idx++));
+    std::string temp_reg = get_temp_x86_reg();
     emit("mov " + temp_reg + ", " + src1_str);
     src1_str = temp_reg;
   }
