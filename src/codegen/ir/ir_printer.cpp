@@ -1,6 +1,5 @@
 #include "ir_printer.h"
 
-#include <iomanip>
 #include <variant>
 
 void print_ir_register(const IR_Register& reg, std::ostream& out) {

@@ -359,6 +359,7 @@ void X86_64CodeGenerator::handle_read(const IRInstruction& instr) {
   emit("mov " + dest_reg_str + ", rax"); // Move parsed int to destination
   emit("add rsp, 32");                   // cleanup stack
 }
+
 void X86_64CodeGenerator::handle_asm_block(const IRInstruction& instr) {
   assert(!instr.operands.empty() &&
          std::holds_alternative<std::string>(instr.operands[0]) &&

@@ -7,7 +7,7 @@ MOV    r2, r5
 RET    r3
 MOV    r6, 3
 MOV    r7, 1
-PARAM  r7
 PARAM  r6
+PARAM  r7
 CALL   L0, 2
 -----------------------

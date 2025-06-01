@@ -9,54 +9,54 @@ class IrGenerator {
 public:
   IrGenerator();
 
-  IR_Register newRegister();
-  IR_Label newLabel();
+  IR_Register new_register();
+  IR_Label new_label();
 
   // Emits an ADD instruction: dest = src1 + src2
-  void emitAdd(IR_Register dest, IROperand src1, IROperand src2);
+  void emit_add(IR_Register dest, IROperand src1, IROperand src2);
   // Emits a SUB instruction: dest = src1 - src2
-  void emitSub(IR_Register dest, IROperand src1, IROperand src2);
+  void emit_sub(IR_Register dest, IROperand src1, IROperand src2);
   // Emits a MUL instruction: dest = src1 * src2
-  void emitMul(IR_Register dest, IROperand src1, IROperand src2);
+  void emit_mul(IR_Register dest, IROperand src1, IROperand src2);
   // Emits a DIV instruction: dest = src1 / src2
-  void emitDiv(IR_Register dest, IROperand src1, IROperand src2);
+  void emit_div(IR_Register dest, IROperand src1, IROperand src2);
   // Emits a MOV instruction: dest = src (src can be imm or reg)
-  void emitMov(IR_Register dest, IROperand src);
+  void emit_mov(IR_Register dest, IROperand src);
   // Emits a NEG instruction: dest = -src
-  void emitNeg(IR_Register dest, IROperand src);
+  void emit_neg(IR_Register dest, IROperand src);
   // Emits a NOT instruction: dest_bool = !src_bool
-  void emitLogicalNot(IR_Register dest, IROperand src);
+  void emit_logical_not(IR_Register dest, IROperand src);
   // Emits a MOD instruction: dest = src1 % src2
-  void emitMod(IR_Register dest, IROperand src1, IROperand src2);
+  void emit_mod(IR_Register dest, IROperand src1, IROperand src2);
   // Comparison: dest_bool = src1 op src2
-  void emitCmpEq(IR_Register dest, IROperand src1, IROperand src2);
-  void emitCmpNe(IR_Register dest, IROperand src1, IROperand src2);
-  void emitCmpLt(IR_Register dest, IROperand src1, IROperand src2);
-  void emitCmpLe(IR_Register dest, IROperand src1, IROperand src2);
-  void emitCmpGt(IR_Register dest, IROperand src1, IROperand src2);
-  void emitCmpGe(IR_Register dest, IROperand src1, IROperand src2);
+  void emit_cmp_eq(IR_Register dest, IROperand src1, IROperand src2);
+  void emit_cmp_ne(IR_Register dest, IROperand src1, IROperand src2);
+  void emit_cmp_lt(IR_Register dest, IROperand src1, IROperand src2);
+  void emit_cmp_le(IR_Register dest, IROperand src1, IROperand src2);
+  void emit_cmp_gt(IR_Register dest, IROperand src1, IROperand src2);
+  void emit_cmp_ge(IR_Register dest, IROperand src1, IROperand src2);
   // Logical: dest_bool = src1 op src2
-  void emitLogicalAnd(IR_Register dest, IROperand src1, IROperand src2);
-  void emitLogicalOr(IR_Register dest, IROperand src1, IROperand src2);
+  void emit_logical_and(IR_Register dest, IROperand src1, IROperand src2);
+  void emit_logical_or(IR_Register dest, IROperand src1, IROperand src2);
   // Control Flow
-  void emitLabel(IR_Label label);
-  void emitFunc(IR_Label label);
-  void emitGoto(IR_Label target);
-  void emitGotoTrue(IROperand cond, IR_Label target);
-  void emitGotoFalse(IROperand cond, IR_Label target);
+  void emit_label(IR_Label label);
+  void emit_func(IR_Label label);
+  void emit_goto(IR_Label target);
+  void emit_goto_true(IROperand cond, IR_Label target);
+  void emit_goto_false(IROperand cond, IR_Label target);
   // Procedure calls
-  void emitParam(IROperand src);
-  void emitCall(std::optional<IR_Register> dest, IROperand func_target,
-                IR_Immediate num_args);
-  void emitRet();
-  void emitRet(IROperand retval);
+  void emit_param(IROperand src);
+  void emit_call(std::optional<IR_Register> dest, IROperand func_target,
+                 IR_Immediate num_args);
+  void emit_ret();
+  void emit_ret(IROperand retval);
   // I/O
-  void emitRead(IR_Register dest);
-  void emitPrint(IROperand src);
+  void emit_read(IR_Register dest);
+  void emit_print(IROperand src);
   // Raw Assembly
-  void emitAsmBlock(const std::string& asm_code);
+  void emit_asm_block(const std::string& asm_code);
 
-  const std::vector<IRInstruction>& getInstructions() const;
+  const std::vector<IRInstruction>& get_instructions() const;
 
 private:
   std::vector<IRInstruction> m_instructions;

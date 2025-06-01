@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
 
     IrVisitor ir_visitor;
     ir_visitor.visit_all(ast);
-    const std::vector<IRInstruction>& instrs = ir_visitor.getInstructions();
+    const std::vector<IRInstruction>& instrs = ir_visitor.get_instructions();
     // print_ir_instructions(instrs, std::cout);
 
     X86_64CodeGenerator gen;

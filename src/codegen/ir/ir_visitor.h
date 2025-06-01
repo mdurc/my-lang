@@ -14,7 +14,7 @@ class IrVisitor : public Visitor {
 public:
   IrVisitor();
 
-  const std::vector<IRInstruction>& getInstructions() const;
+  const std::vector<IRInstruction>& get_instructions() const;
   void visit_all(const std::vector<AstPtr>& ast);
 
   // Expression Nodes

@@ -25,7 +25,7 @@ std::string generate_ir_output(const std::string& input_filepath) {
 
         try {
           ir_visitor.visit_all(ast);
-          print_ir_instructions(ir_visitor.getInstructions(), ss);
+          print_ir_instructions(ir_visitor.get_instructions(), ss);
         } catch (const std::exception& e) {
           ss << "IR_EXCEPTION: " << e.what() << std::endl;
         }
