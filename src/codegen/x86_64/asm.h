@@ -23,6 +23,10 @@ private:
   size_t m_next_available_reg_idx;
   int m_current_stack_offset;
 
+  std::unordered_map<std::string, std::string> m_var_locations; // in stack
+  std::vector<std::string> m_string_literals_data;
+  std::unordered_map<std::string, std::string> m_string_literal_to_label;
+
   std::vector<std::string> m_physical_regs_pool;
   std::vector<std::string> m_callee_saved_regs;
   std::vector<std::string> m_caller_saved_regs;
@@ -36,24 +40,34 @@ private:
 
   void handle_instruction(const IRInstruction& instr);
 
-  void handle_mov(const IRInstruction& instr);
+  void handle_begin_func(const IRInstruction& instr);
+  void handle_end_func(const IRInstruction& instr);
+  void handle_exit(const IRInstruction& instr);
+
+  void handle_assign(const IRInstruction& instr);
+  void handle_load(const IRInstruction& instr);
+  void handle_store(const IRInstruction& instr);
+
   void handle_add(const IRInstruction& instr);
   void handle_sub(const IRInstruction& instr);
   void handle_mul(const IRInstruction& instr);
   void handle_div(const IRInstruction& instr);
   void handle_mod(const IRInstruction& instr);
   void handle_neg(const IRInstruction& instr);
+  void handle_logical_not(const IRInstruction& instr);
+  void handle_logical_and_or(const IRInstruction& instr,
+                             const std::string& op_mnemonic);
+
   void handle_cmp(const IRInstruction& instr); // For all CMP_XX
+
   void handle_label(const IRInstruction& instr);
-  void handle_func(const IRInstruction& instr);
   void handle_goto(const IRInstruction& instr);
-  void handle_goto_cond(const IRInstruction& instr,
-                        const std::string& jmp_mnemonic); // GOTO_T, GOTO_F
-  void handle_param(const IRInstruction& instr, int param_idx);
-  void handle_call(const IRInstruction& instr);
+  void handle_if_z(const IRInstruction& instr);
+
+  void handle_push_param(const IRInstruction& instr);
+  void handle_pop_params(const IRInstruction& instr);
+  void handle_lcall(const IRInstruction& instr);
   void handle_ret(const IRInstruction& instr);
-  void handle_print(const IRInstruction& instr);
-  void handle_read(const IRInstruction& instr);
   void handle_asm_block(const IRInstruction& instr);
 };
 

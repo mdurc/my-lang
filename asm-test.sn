@@ -1,3 +1,4 @@
+/*
 mut x: i64 = 10;
 mut y: i64 = (x + 5) * 2;
 mut z : string = "hi";
@@ -6,3 +7,16 @@ print x;
 asm { call print_newline };
 print y;
 asm { call print_newline };
+*/
+
+func main() {
+  mut a : i32;
+  a = 2 + a;
+  print a;
+
+  b : string = "hi";
+  print b;
+
+  c : bool = true;
+  print c;
+}

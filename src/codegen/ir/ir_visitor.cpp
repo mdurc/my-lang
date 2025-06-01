@@ -2,7 +2,12 @@
 
 #include "../../parser/visitor.h"
 
-IrVisitor::IrVisitor() : m_last_expr_reg(-1), m_emitted_return(false) {}
+IrVisitor::IrVisitor()
+    : m_last_expr_operand(IR_Register(-1)),
+      m_emitted_return(false),
+      m_main_function_defined(false) {
+  m_entrypoint = m_ir_gen.new_func_label("main");
+}
 
 const std::vector<IRInstruction>& IrVisitor::get_instructions() const {
   return m_ir_gen.get_instructions();
@@ -10,7 +15,29 @@ const std::vector<IRInstruction>& IrVisitor::get_instructions() const {
 
 void IrVisitor::visit_all(const std::vector<AstPtr>& ast) {
   for (const AstPtr& ast_node : ast) {
+    // mark as entrypoint if we haven't already
+    if (!m_main_function_defined &&
+        !std::dynamic_pointer_cast<FunctionDeclNode>(ast_node)) {
+      bool already_emitted_global_entry = false;
+      for (const IRInstruction& instr : m_ir_gen.get_instructions()) {
+        if (instr.opcode == IROpCode::LABEL && instr.result.has_value() &&
+            std::holds_alternative<IR_Label>(instr.result.value()) &&
+            std::get<IR_Label>(instr.result.value()).name ==
+                m_entrypoint.name) {
+          already_emitted_global_entry = true;
+          break;
+        }
+      }
+      if (!already_emitted_global_entry) {
+        m_ir_gen.emit_label(m_entrypoint);
+      }
+    }
+
     ast_node->accept(*this);
+  }
+
+  if (!m_main_function_defined) {
+    m_ir_gen.emit_exit();
   }
 }
 
@@ -20,156 +47,193 @@ void IrVisitor::unimpl(const std::string& note) {
 
 // Expression Nodes
 void IrVisitor::visit(IntegerLiteralNode& node) {
-  m_last_expr_reg = m_ir_gen.new_register();
-  m_ir_gen.emit_mov(m_last_expr_reg, IR_Immediate(node.value));
+  IR_Register temp_reg = m_ir_gen.new_temp_reg();
+  m_ir_gen.emit_assign(temp_reg, IR_Immediate(node.value));
+  m_last_expr_operand = temp_reg;
 }
 
 void IrVisitor::visit(BoolLiteralNode& node) {
-  m_last_expr_reg = m_ir_gen.new_register();
-  m_ir_gen.emit_mov(m_last_expr_reg, IR_Immediate(node.value ? 1 : 0));
+  IR_Register temp_reg = m_ir_gen.new_temp_reg();
+  m_ir_gen.emit_assign(temp_reg, IR_Immediate(node.value ? 1 : 0));
+  m_last_expr_operand = temp_reg;
 }
 
 void IrVisitor::visit(StringLiteralNode& node) {
-  m_last_expr_reg = m_ir_gen.new_register();
-  // m_last_expr_reg will now hold the address of the string
-  m_ir_gen.emit_mov(m_last_expr_reg, node.value);
+  // backend handles putting string in memory
+  IR_Register temp_reg = m_ir_gen.new_temp_reg();
+  m_ir_gen.emit_assign(temp_reg, node.value);
+  m_last_expr_operand = temp_reg;
 }
 
 void IrVisitor::visit(IdentifierNode& node) {
-  assert(m_var_registers.count(node.name) &&
+  assert(m_vars.count(node.name) &&
          "Type checker should identifier use of undeclared identifiers");
-  m_last_expr_reg = m_var_registers.at(node.name);
+  m_last_expr_operand = m_vars.at(node.name);
 }
 
 void IrVisitor::visit(BinaryOpExprNode& node) {
   node.left->accept(*this);
-  IR_Register left_reg = m_last_expr_reg;
+  IROperand left_op = m_last_expr_operand;
 
   node.right->accept(*this);
-  IR_Register right_reg = m_last_expr_reg;
+  IROperand right_op = m_last_expr_operand;
 
-  m_last_expr_reg = m_ir_gen.new_register();
+  IR_Register dest_reg = m_ir_gen.new_temp_reg();
 
   switch (node.op_type) {
     case BinOperator::Plus:
-      m_ir_gen.emit_add(m_last_expr_reg, left_reg, right_reg);
+      m_ir_gen.emit_add(dest_reg, left_op, right_op);
       break;
     case BinOperator::Minus:
-      m_ir_gen.emit_sub(m_last_expr_reg, left_reg, right_reg);
+      m_ir_gen.emit_sub(dest_reg, left_op, right_op);
       break;
     case BinOperator::Multiply:
-      m_ir_gen.emit_mul(m_last_expr_reg, left_reg, right_reg);
+      m_ir_gen.emit_mul(dest_reg, left_op, right_op);
       break;
     case BinOperator::Divide:
-      m_ir_gen.emit_div(m_last_expr_reg, left_reg, right_reg);
+      m_ir_gen.emit_div(dest_reg, left_op, right_op);
       break;
     case BinOperator::Equal:
-      m_ir_gen.emit_cmp_eq(m_last_expr_reg, left_reg, right_reg);
+      m_ir_gen.emit_cmp_eq(dest_reg, left_op, right_op);
       break;
     case BinOperator::NotEqual:
-      m_ir_gen.emit_cmp_ne(m_last_expr_reg, left_reg, right_reg);
+      m_ir_gen.emit_cmp_ne(dest_reg, left_op, right_op);
       break;
     case BinOperator::LessThan:
-      m_ir_gen.emit_cmp_lt(m_last_expr_reg, left_reg, right_reg);
+      m_ir_gen.emit_cmp_lt(dest_reg, left_op, right_op);
       break;
     case BinOperator::LessEqual:
-      m_ir_gen.emit_cmp_le(m_last_expr_reg, left_reg, right_reg);
+      m_ir_gen.emit_cmp_le(dest_reg, left_op, right_op);
       break;
     case BinOperator::GreaterThan:
-      m_ir_gen.emit_cmp_gt(m_last_expr_reg, left_reg, right_reg);
+      m_ir_gen.emit_cmp_gt(dest_reg, left_op, right_op);
       break;
     case BinOperator::GreaterEqual:
-      m_ir_gen.emit_cmp_ge(m_last_expr_reg, left_reg, right_reg);
+      m_ir_gen.emit_cmp_ge(dest_reg, left_op, right_op);
       break;
     case BinOperator::LogicalAnd:
-      m_ir_gen.emit_logical_and(m_last_expr_reg, left_reg, right_reg);
+      m_ir_gen.emit_logical_and(dest_reg, left_op, right_op);
       break;
     case BinOperator::LogicalOr:
-      m_ir_gen.emit_logical_or(m_last_expr_reg, left_reg, right_reg);
+      m_ir_gen.emit_logical_or(dest_reg, left_op, right_op);
       break;
     case BinOperator::Modulo:
-      m_ir_gen.emit_mod(m_last_expr_reg, left_reg, right_reg);
+      m_ir_gen.emit_mod(dest_reg, left_op, right_op);
       break;
   }
+
+  m_last_expr_operand = dest_reg;
 }
 
 void IrVisitor::visit(UnaryExprNode& node) {
   node.operand->accept(*this);
-  IR_Register operand_reg = m_last_expr_reg;
+  IROperand operand_op = m_last_expr_operand;
 
-  m_last_expr_reg = m_ir_gen.new_register();
+  IR_Register dest_reg = m_ir_gen.new_temp_reg();
 
   switch (node.op_type) {
     case UnaryOperator::Negate:
       // dest = -operand
-      m_ir_gen.emit_neg(m_last_expr_reg, operand_reg);
+      m_ir_gen.emit_neg(dest_reg, operand_op);
       break;
     case UnaryOperator::LogicalNot:
-      m_ir_gen.emit_logical_not(m_last_expr_reg, operand_reg);
+      m_ir_gen.emit_logical_not(dest_reg, operand_op);
       break;
     case UnaryOperator::Dereference:
+      m_ir_gen.emit_load(dest_reg, operand_op);
+      break;
     case UnaryOperator::AddressOf:
     case UnaryOperator::AddressOfMut:
-      // TODO
+      // TODO addressof and addressofmut
       unimpl("UnaryExprNode (unsupported op: " +
              AstPrinter::unary_op_to_string(node.op_type) + ")");
       break;
   }
+
+  m_last_expr_operand = dest_reg;
 }
 
 void IrVisitor::visit(AssignmentNode& node) {
   node.rvalue->accept(*this);
-  IR_Register rval_reg = m_last_expr_reg;
+  IROperand rval_op = m_last_expr_operand;
 
   // Handle all possible L-values
-  IdentPtr lval_ident = std::dynamic_pointer_cast<IdentifierNode>(node.lvalue);
-  if (lval_ident) {
-    assert(m_var_registers.count(lval_ident->name) &&
+  if (auto lval_ident =
+          std::dynamic_pointer_cast<IdentifierNode>(node.lvalue)) {
+    assert(m_vars.count(lval_ident->name) &&
            "Type checker should identify use of undeclared variable");
-    IR_Register lval_reg = m_var_registers.at(lval_ident->name);
-    m_ir_gen.emit_mov(lval_reg, rval_reg);
-    m_last_expr_reg = rval_reg; // result of assignment is the rvalue
+    IR_Variable lval_var = m_vars.at(lval_ident->name);
+    m_ir_gen.emit_assign(lval_var, rval_op);
+  } else if (auto array_idx_node =
+                 std::dynamic_pointer_cast<ArrayIndexNode>(node.lvalue)) {
+    // arr[idx] = rval_op  => STORE target_addr, rval_op
+    array_idx_node->object->accept(*this); // base address
+    IROperand base_addr_op = m_last_expr_operand;
+
+    array_idx_node->index->accept(*this); // index
+    IROperand index_op = m_last_expr_operand;
+
+    assert(node.lvalue->expr_type && "LValue in assignment should have a type");
+    IR_Immediate element_size_op(node.lvalue->expr_type->get_byte_size());
+
+    IR_Register offset_reg = m_ir_gen.new_temp_reg();
+    m_ir_gen.emit_mul(offset_reg, index_op, element_size_op);
+
+    IR_Register target_addr_reg = m_ir_gen.new_temp_reg();
+    m_ir_gen.emit_add(target_addr_reg, base_addr_op, offset_reg);
+
+    m_ir_gen.emit_store(target_addr_reg, rval_op);
+  } else if (auto unary_deref_node =
+                 std::dynamic_pointer_cast<UnaryExprNode>(node.lvalue)) {
+    if (unary_deref_node->op_type == UnaryOperator::Dereference) {
+      // *ptr = rval_op => STORE ptr_val, rval_op
+      unary_deref_node->operand->accept(*this);
+      IROperand ptr_addr_op = m_last_expr_operand;
+      m_ir_gen.emit_store(ptr_addr_op, rval_op);
+    } else {
+      unimpl("AssignmentNode to non-dereference UnaryExpr LValue");
+    }
   } else {
-    // TODO: UnaryExprNode, MemberAccessNode, ArrayIndexNode
+    // TODO: MemberAccessNode
     unimpl("AssignmentNode (complex lvalue)");
   }
+
+  m_last_expr_operand = rval_op;
 }
 
-void IrVisitor::visit(GroupedExprNode& node) {
-  node.expression->accept(*this);
-  // Note: result is essentially discarded
-}
+void IrVisitor::visit(GroupedExprNode& node) { node.expression->accept(*this); }
 
 // Statement Nodes
 void IrVisitor::visit(VariableDeclNode& node) {
-  assert(!m_var_registers.count(node.var_name->name) &&
+  assert(!m_vars.count(node.var_name->name) &&
          "Type checker should identify variable re-declaration");
 
-  IR_Register var_reg = m_ir_gen.new_register();
-  m_var_registers[node.var_name->name] = var_reg;
+  const std::string& var_name = node.var_name->name;
+  IR_Variable var_operand(var_name);
+  m_vars.insert({var_name, var_operand});
 
   if (node.initializer) {
     node.initializer->accept(*this);
-    m_ir_gen.emit_mov(var_reg, m_last_expr_reg);
+    m_ir_gen.emit_assign(var_operand, m_last_expr_operand);
   } else {
-    // default initialization value (0)
-    m_ir_gen.emit_mov(var_reg, IR_Immediate(0));
+    // default values
+    // TODO: update this within Type system
+    m_ir_gen.emit_assign(var_operand, IR_Immediate(0));
   }
 }
 
 void IrVisitor::visit(ExpressionStatementNode& node) {
   node.expression->accept(*this);
-  // Note: result is essentially discarded
 }
 
 void IrVisitor::visit(IfStmtNode& node) {
   node.condition->accept(*this);
-  IR_Register cond_reg = m_last_expr_reg;
+  IROperand cond_op = m_last_expr_operand;
 
   IR_Label else_label = m_ir_gen.new_label();
   IR_Label end_label = m_ir_gen.new_label();
 
-  m_ir_gen.emit_goto_false(cond_reg, else_label);
+  m_ir_gen.emit_if_z(cond_op, else_label);
 
   node.then_branch->accept(*this);
 
@@ -195,8 +259,8 @@ void IrVisitor::visit(WhileStmtNode& node) {
   m_ir_gen.emit_label(start_loop_label);
 
   node.condition->accept(*this);
-  IR_Register cond_reg = m_last_expr_reg;
-  m_ir_gen.emit_goto_false(cond_reg, end_loop_label);
+  IROperand cond_op = m_last_expr_operand;
+  m_ir_gen.emit_if_z(cond_op, end_loop_label);
 
   node.body->accept(*this);
 
@@ -223,26 +287,33 @@ void IrVisitor::visit(ContinueStmtNode&) {
 
 void IrVisitor::visit(BlockNode& node) {
   // save current variable mappings to implement block scope
-  std::unordered_map<std::string, IR_Register> prev_var_registers =
-      m_var_registers;
+  std::unordered_map<std::string, IR_Variable> prev_var_operands = m_vars;
   for (const StmtPtr& stmt : node.statements) {
     stmt->accept(*this);
   }
   // restore mappings from before the block
-  m_var_registers = prev_var_registers;
+  m_vars = prev_var_operands;
 }
 
 void IrVisitor::visit(FunctionDeclNode& node) {
-  std::string func_name = node.name->name;
-  IR_Label func_label = m_ir_gen.new_label();
-  m_func_labels[func_name] = func_label;
+  std::string original_func_name = node.name->name;
+  std::string func_ir_name = original_func_name;
 
-  m_ir_gen.emit_func(func_label);
+  if (original_func_name == "main") {
+    m_main_function_defined = true;
+  } else {
+    func_ir_name = "_" + original_func_name;
+  }
+
+  IR_Label func_label = m_ir_gen.new_func_label(func_ir_name);
+  m_func_labels[original_func_name] = func_label;
+
+  uint64_t stack_size = node.type->get_byte_size();
+  m_ir_gen.emit_begin_func(func_label, IR_Immediate(stack_size));
 
   // save for scoping
-  std::unordered_map<std::string, IR_Register> prev_var_registers =
-      m_var_registers;
-  m_var_registers.clear();
+  std::unordered_map<std::string, IR_Variable> prev_var_operands = m_vars;
+  m_vars.clear();
 
   // allocate registers for arguments
   for (const ParamPtr& param_node : node.params) {
@@ -250,8 +321,9 @@ void IrVisitor::visit(FunctionDeclNode& node) {
   }
 
   if (node.return_type_name.has_value()) {
-    IR_Register return_reg = m_ir_gen.new_register();
-    m_var_registers[node.return_type_name.value()] = return_reg;
+    const std::string& ret_name = node.return_type_name.value();
+    IR_Variable ret_var_op(ret_name);
+    m_vars.insert({ret_name, ret_var_op});
   }
 
   m_emitted_return = false; // reset
@@ -263,8 +335,14 @@ void IrVisitor::visit(FunctionDeclNode& node) {
     m_ir_gen.emit_ret();
   }
 
+  m_ir_gen.emit_end_func();
+
+  if (original_func_name == "main") {
+    m_ir_gen.emit_exit();
+  }
+
   // restore var context
-  m_var_registers = prev_var_registers;
+  m_vars = prev_var_operands;
 }
 
 void IrVisitor::visit(ArgumentNode& node) {
@@ -273,20 +351,22 @@ void IrVisitor::visit(ArgumentNode& node) {
   node.expression->accept(*this);
 }
 void IrVisitor::visit(ParamNode& node) {
-  IR_Register param_reg = m_ir_gen.new_register();
-  m_var_registers[node.name->name] = param_reg;
+  const std::string& param_name = node.name->name;
+  IR_Variable param_var(param_name);
+  m_vars.insert({param_name, param_var});
+  node.name->expr_type = node.type;
 }
 
 void IrVisitor::visit(FunctionCallNode& node) {
-  std::vector<IR_Register> arg_regs;
+  uint64_t total_param_size = 0;
+
   for (const ArgPtr& arg_node : node.arguments) {
     arg_node->accept(*this);
-    arg_regs.push_back(m_last_expr_reg);
-  }
 
-  // Emit PARAM instructions (not in reverse order yet)
-  for (const IR_Register& arg : arg_regs) {
-    m_ir_gen.emit_param(arg);
+    m_ir_gen.emit_push_param(m_last_expr_operand);
+    assert(arg_node->expression->expr_type &&
+           "Argument expression must have a type");
+    total_param_size += arg_node->expression->expr_type->get_byte_size();
   }
 
   IdentPtr callee_ident =
@@ -296,25 +376,33 @@ void IrVisitor::visit(FunctionCallNode& node) {
     return;
   }
   std::string func_name = callee_ident->name;
-  if (!m_func_labels.count(func_name)) {
-    throw std::runtime_error("IR Gen: Call to undefined function: " +
-                             func_name);
-  }
+
+  assert(m_func_labels.count(func_name));
   IR_Label func_label = m_func_labels.at(func_name);
 
-  std::optional<IR_Register> result_reg_opt;
+  std::optional<IR_Register> result_reg_opt = std::nullopt;
   assert(node.expr_type && "Type checker should resolve function call");
-  // maybe check and forbid it from being a result if it is u0 (void)
-  m_last_expr_reg = m_ir_gen.new_register();
-  m_ir_gen.emit_call(result_reg_opt, func_label,
-                     IR_Immediate(node.arguments.size()));
+
+  // if it is not void, prepare a temp register for return value
+  if (!(node.expr_type->is<Type::Named>() &&
+        node.expr_type->as<Type::Named>().identifier == "u0")) {
+    IR_Register call_result_reg = m_ir_gen.new_temp_reg();
+    result_reg_opt = call_result_reg;
+    m_last_expr_operand = call_result_reg;
+  } else {
+    // void placeholder
+    m_last_expr_operand = IR_Immediate(0);
+  }
+
+  m_ir_gen.emit_lcall(result_reg_opt, func_label);
+  m_ir_gen.emit_pop_params(IR_Immediate(total_param_size));
 }
 
 void IrVisitor::visit(ReturnStmtNode& node) {
   m_emitted_return = true;
   if (node.value) {
     node.value->accept(*this);
-    m_ir_gen.emit_ret(m_last_expr_reg);
+    m_ir_gen.emit_ret(m_last_expr_operand);
   } else {
     // void
     m_ir_gen.emit_ret();
@@ -323,13 +411,13 @@ void IrVisitor::visit(ReturnStmtNode& node) {
 
 void IrVisitor::visit(ForStmtNode& node) {
   // (initializer; condition; iteration) body
-  std::unordered_map<std::string, IR_Register> prev_var_registers;
+  std::unordered_map<std::string, IR_Variable> prev_var_operands;
   bool new_scope_created = false;
 
   if (node.initializer.has_value() &&
       std::holds_alternative<StmtPtr>(*node.initializer)) {
     // If initializer is a declaration, it creates a new scope for the loop
-    prev_var_registers = m_var_registers;
+    prev_var_operands = m_vars;
     new_scope_created = true;
   }
 
@@ -353,7 +441,7 @@ void IrVisitor::visit(ForStmtNode& node) {
   m_ir_gen.emit_label(condition_label);
   if (node.condition) {
     node.condition->accept(*this);
-    m_ir_gen.emit_goto_false(m_last_expr_reg, end_loop_label);
+    m_ir_gen.emit_if_z(m_last_expr_operand, end_loop_label);
   }
 
   m_ir_gen.emit_label(body_label);
@@ -362,7 +450,6 @@ void IrVisitor::visit(ForStmtNode& node) {
   m_ir_gen.emit_label(iteration_label);
   if (node.iteration) {
     node.iteration->accept(*this);
-    // the result of this iteration is discarded, it is just an expression
   }
   m_ir_gen.emit_goto(condition_label);
 
@@ -370,29 +457,74 @@ void IrVisitor::visit(ForStmtNode& node) {
   m_loop_contexts.pop();
 
   if (new_scope_created) {
-    m_var_registers = prev_var_registers;
+    m_vars = prev_var_operands;
   }
 }
 
 void IrVisitor::visit(ReadStmtNode& node) {
-  IdentPtr dest_ident =
-      std::dynamic_pointer_cast<IdentifierNode>(node.expression);
-  assert(dest_ident &&
-         "Type checker should assert that we can only read from mutable "
-         "integer/string variables");
-  assert(m_var_registers.count(dest_ident->name) &&
-         "Type checker should catch use of undeclared variables");
-  IR_Register dest_reg = m_var_registers.at(dest_ident->name);
-  m_ir_gen.emit_read(dest_reg);
+  assert(node.expression->expr_type &&
+         "Read expression must have a type from typechecker");
+  std::shared_ptr<Type> expr_type = node.expression->expr_type;
+  IR_Label read_func_label;
+
+  if (expr_type->is<Type::Named>() &&
+      expr_type->as<Type::Named>().identifier == "string") {
+    read_func_label = IR_Label("_ReadString");
+  } else {
+    read_func_label = IR_Label("_ReadInt");
+  }
+
+  IR_Register temp_val_reg = m_ir_gen.new_temp_reg();
+  m_ir_gen.emit_lcall(temp_val_reg, read_func_label);
+
+  if (auto ident_node =
+          std::dynamic_pointer_cast<IdentifierNode>(node.expression)) {
+    IR_Variable lval_var = m_vars.at(ident_node->name);
+    m_ir_gen.emit_assign(lval_var, temp_val_reg);
+  } else {
+    unimpl("ReadStmtNode with complex l-value");
+  }
 }
 
 void IrVisitor::visit(PrintStmtNode& node) {
   node.expression->accept(*this);
-  m_ir_gen.emit_print(m_last_expr_reg);
+  IROperand val_op = m_last_expr_operand;
+
+  assert(node.expression->expr_type &&
+         "Print expression must have a type from typechecker");
+  std::shared_ptr<Type> expr_type = node.expression->expr_type;
+
+  IR_Label print_func_lbl = get_runtime_print_call(expr_type);
+
+  m_ir_gen.emit_push_param(val_op);
+  m_ir_gen.emit_lcall(std::nullopt, print_func_lbl);
+  m_ir_gen.emit_pop_params(IR_Immediate(expr_type->get_byte_size()));
 }
 
 void IrVisitor::visit(AsmBlockNode& node) {
   m_ir_gen.emit_asm_block(node.body);
+}
+
+void IrVisitor::visit(ArrayIndexNode& node) { // R-value access: x = arr[i]
+  node.object->accept(*this);                 // base addr
+  IROperand base_addr_op = m_last_expr_operand;
+
+  node.index->accept(*this);
+  IROperand index_op = m_last_expr_operand;
+
+  assert(node.expr_type &&
+         "ArrayIndexNode must have its element type resolved");
+  IR_Immediate element_size_op(node.expr_type->get_byte_size());
+
+  IR_Register offset_reg = m_ir_gen.new_temp_reg();
+  m_ir_gen.emit_mul(offset_reg, index_op, element_size_op);
+
+  IR_Register target_addr_reg = m_ir_gen.new_temp_reg();
+  m_ir_gen.emit_add(target_addr_reg, base_addr_op, offset_reg);
+
+  IR_Register result_val_reg = m_ir_gen.new_temp_reg();
+  m_ir_gen.emit_load(result_val_reg, target_addr_reg);
+  m_last_expr_operand = result_val_reg;
 }
 
 void IrVisitor::visit(FloatLiteralNode&) { unimpl("FloatLiteralNode"); }
@@ -412,4 +544,16 @@ void IrVisitor::visit(StructFieldInitializerNode&) { unimpl("FieldInitNode"); }
 void IrVisitor::visit(SwitchStmtNode&) { unimpl("SwitchStmtNode"); }
 void IrVisitor::visit(CaseNode&) { unimpl("CaseNode"); }
 
-void IrVisitor::visit(ArrayIndexNode&) { unimpl("ArrayIndexNode"); }
+IR_Label IrVisitor::get_runtime_print_call(const std::shared_ptr<Type>& type) {
+  assert(type && "Type must be known for print function selection");
+  if (type->is<Type::Named>()) {
+    const std::string& name = type->as<Type::Named>().identifier;
+    if (name == "string") return IR_Label("_PrintString");
+    if (name == "bool") return IR_Label("_PrintInt");
+    if (name == "i64" || name == "u64" || name == "i32" || name == "u32" ||
+        name == "i16" || name == "u16" || name == "i8" || name == "u8") {
+      return IR_Label("_PrintInt");
+    }
+  }
+  return IR_Label("_PrintInt");
+}

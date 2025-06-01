@@ -9,51 +9,52 @@
 #include <vector>
 
 enum class IROpCode {
-  // dest = src1 op src2
+  BEGIN_FUNC, // Operands: label_func_name (result), imm_stack_size (operand)
+  END_FUNC,   // No operands
+  EXIT,       // No operands
+
+  // Assignment and Data
+  ASSIGN, // Result: dest_var_or_temp, Operands: src_operand
+  LOAD,   // Result: dest_temp, Operands: address_operand (*addr)
+  STORE,  // Operands: address_operand, src_operand (*addr = val)
+
+  // Arithmetic / Logical (dest = src1 op src2)
+
   ADD,
   SUB,
   MUL,
   DIV,
+  MOD, // Result: dest_temp, Operands: src1, src2
+  NEG, // Result: dest_temp, Operands: src
+  AND,
+  OR,
+  NOT, // NOT is unary (dest, src), AND/OR are binary (dest, src1, src2)
+
+  // Comparison (dest = src1 op src2) -> result is bool (0 or 1)
   CMP_EQ,
   CMP_NE,
   CMP_LT,
   CMP_LE,
   CMP_GT,
-  CMP_GE,
-  AND,
-  OR,
-  MOD,
-
-  // Data movement: dest = src1
-  MOV, // src1 can be immediate or register
-
-  // Unary: dest = op src1
-  NEG,
-  NOT,
+  CMP_GE, // Result: dest_temp, Operands: src1, src2
 
   // Control Flow
-  LABEL,  // LABEL L1 (defines L1)
-  FUNC,   // FUNC L1 (defines function entry L1)
-  GOTO,   // GOTO L1
-  GOTO_T, // GOTO_T cond_reg, L1 (Jump if true)
-  GOTO_F, // GOTO_F cond_reg, L1 (Jump if false)
+  LABEL, // Result: label_operand (defines the label)
+  GOTO,  // Operands: target_label_operand
+  IF_Z,  // Operands: cond_operand, target_label_operand (IfZero/IfFalse)
 
   // Procedure calls
-  PARAM, // PARAM src1
-  CALL,  // CALL dest_opt, func_target, num_args
-  RET,   // Return from function
-
-  // I/O
-  READ,  // READ dest_reg
-  PRINT, // PRINT src_reg_or_imm
+  PUSH_PARAM, // Operands: src_operand
+  POP_PARAMS, // Operands: imm_num_bytes
+  LCALL,      // Result: opt_dest_temp, Operands: func_label_operand
+  RETURN,     // Operands: opt_val_operand
 
   ASM_BLOCK,
-
-  // Subscript operator: x = y[i] and x[i] = y
-  // Addressof (mut)? operator
-  // Star operator: x = *y and *x = y
 };
 
+// == Operand Types ==
+
+// Temporary registers: _t0, _t1
 struct IR_Register {
   int id;
 
@@ -62,78 +63,54 @@ struct IR_Register {
   bool operator<(const IR_Register& other) const { return id < other.id; }
 };
 
-struct IR_Immediate {
-  uint64_t val; // imms are all positive, though can be negated using 0 - imm
+// Source-level variable from code
+struct IR_Variable {
+  std::string name;
+  IR_Variable(const std::string& n) : name(n) {}
 
-  IR_Immediate(int val) : val(val) {}
+  bool operator==(const IR_Variable& other) const { return name == other.name; }
+  bool operator<(const IR_Variable& other) const { return name < other.name; }
+};
+
+// Immediate integer values
+struct IR_Immediate {
+  uint64_t val; // imms are all positive, though can be negated
+
+  IR_Immediate(uint64_t val = 0) : val(val) {}
   bool operator==(const IR_Immediate& other) const { return val == other.val; }
   bool operator<(const IR_Immediate& other) const { return val < other.val; }
 };
 
+// Label: _L0, _foo
 struct IR_Label {
   int id;
-  IR_Label(int id = 0) : id(id) {}
+  std::string name;
+
+  IR_Label(int id = 0) : id(id), name("_L" + std::to_string(id)) {}
+  IR_Label(const std::string& n) : id(-1), name(n) {}
+
   bool operator==(const IR_Label& other) const { return id == other.id; }
-  bool operator<(const IR_Label& other) const { return id < other.id; }
+  bool operator<(const IR_Label& other) const {
+    if (id != other.id) return id < other.id;
+    return name < other.name;
+  }
 };
 
 // string for ASM_BLOCK, string literals, etc.
 using IROperand =
-    std::variant<IR_Register, IR_Immediate, IR_Label, std::string>;
+    std::variant<IR_Register, IR_Variable, IR_Immediate, IR_Label, std::string>;
 
 struct IRInstruction {
   IROpCode opcode;
-  std::optional<IROperand> result; // For instructions that produce a result or
-                                   // define something (e.g. LABEL)
-  std::vector<IROperand> operands; // Source operands, jump targets, etc.
+  // `result` is typically the destination operand (ASSIGN, ADD, LOAD, LCALL).
+  // For LABEL or BEGIN_FUNC, it's the label being defined/named.
+  std::optional<IROperand> result;
+  //`operands` are the source operands or other parameters for the instruction.
+  std::vector<IROperand> operands;
 
-  // LABEL Lbl; FUNC Lbl; GOTO Lbl; PARAM val; RET val; PRINT val; READ dest
-  IRInstruction(IROpCode op, IROperand val_for_result_or_operand) : opcode(op) {
-    if (op == IROpCode::LABEL || op == IROpCode::FUNC) {
-      result = val_for_result_or_operand;
-    } else if (op == IROpCode::GOTO || op == IROpCode::PARAM ||
-               op == IROpCode::RET || op == IROpCode::PRINT ||
-               op == IROpCode::READ) {
-      operands.push_back(val_for_result_or_operand);
-    } else {
-      assert(false && "Invalid construction of instruction");
-    }
-  }
-
-  IRInstruction(IROpCode op, const std::string& code_str) : opcode(op) {
-    assert(op == IROpCode::ASM_BLOCK && "This constructor is for ASM_BLOCK");
-    operands.push_back(code_str);
-  }
-
-  // MOV dest, src; NEG dest, src; NOT dest, src
-  IRInstruction(IROpCode op, IR_Register res, IROperand op1)
-      : opcode(op), result(res) {
-    operands.push_back(op1);
-  }
-
-  // ADD dest, src1, src2 (binary ops)
-  IRInstruction(IROpCode op, IR_Register res, IROperand op1, IROperand op2)
-      : opcode(op), result(res) {
-    operands.push_back(op1);
-    operands.push_back(op2);
-  }
-
-  // GOTO_T/F cond, Lbl_target
-  IRInstruction(IROpCode op, IROperand cond, IR_Label lbl_target) : opcode(op) {
-    operands.push_back(cond);
-    operands.push_back(lbl_target);
-  }
-
-  // CALL dest_opt, func_target, num_args_imm
-  IRInstruction(IROpCode op, std::optional<IR_Register> dest_opt,
-                IROperand func_target, IR_Immediate num_args)
-      : opcode(op), result(std::move(dest_opt)) {
-    operands.push_back(func_target);
-    operands.push_back(num_args);
-  }
-
-  // RET (void)
-  IRInstruction(IROpCode op) : opcode(op) {}
+  IRInstruction(IROpCode op, std::optional<IROperand> res = std::nullopt,
+                std::vector<IROperand> ops = {})
+      : opcode(op), result(std::move(res)), operands(std::move(ops)) {}
 };
 
 #endif // CODEGEN_IR_IR_INSTRUCTION_H
