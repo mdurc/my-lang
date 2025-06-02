@@ -173,6 +173,10 @@ void X86_64CodeGenerator::generate(
   // output the gathered string labels
   for (const std::string& str : m_string_literals_data) {
     *m_out << m_string_literal_to_label.at(str) << ":" << std::endl;
+    if (str.size() == 1 && str[0] == '\n') {
+      *m_out << "\tdb 10, 0" << std::endl;
+      continue;
+    }
     *m_out << "\tdb \"";
     for (char c : str) {
       if (c == '"')
@@ -198,13 +202,16 @@ void X86_64CodeGenerator::generate(
 
   *m_out << "section .text" << std::endl;
 
-  *m_out << "_start:" << std::endl;
   if (is_main_defined) {
+    *m_out << "_start:" << std::endl;
     emit("call main");
 
     // use main's return value as exit code
     emit("mov rdi, rax");
     emit("call exit");
+  } else {
+    handle_begin_func(IRInstruction(IROpCode::BEGIN_FUNC, IR_Label("_start"),
+                                    {IR_Immediate(0)}));
   }
 
   for (const IRInstruction& instr : instructions) {
@@ -212,6 +219,9 @@ void X86_64CodeGenerator::generate(
   }
 
   if (!is_main_defined) {
+    emit("mov rsp, rbp");
+    emit("pop rbp");
+
     // exit 0
     emit("mov rdi, 0");
     emit("call exit");
