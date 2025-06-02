@@ -19,6 +19,7 @@ X86_64CodeGenerator::X86_64CodeGenerator()
   m_callee_saved_regs = {"rsp", "rbp", "rbx", "r12", "r13", "r14", "r15"};
   m_caller_saved_regs = {"rax", "rcx", "rdx", "rsi", "r8", "r9", "r10", "r11"};
   m_arg_regs = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+  m_allocated_arg_bytes.push(0);
 }
 
 std::string X86_64CodeGenerator::get_temp_x86_reg() {
@@ -58,8 +59,15 @@ std::string X86_64CodeGenerator::operand_to_string(const IROperand& operand) {
     return get_x86_reg(std::get<IR_Register>(operand));
   } else if (std::holds_alternative<IR_Variable>(operand)) { // Variable
     const std::string& var_name = std::get<IR_Variable>(operand).name;
-    assert(m_var_locations.count(var_name));
-    return m_var_locations.at(var_name);
+    auto itr = m_var_locations.find(var_name);
+    if (itr == m_var_locations.end()) {
+      // not found, so we should designate new space for this variable
+      m_current_stack_offset += 8;
+      std::string relative_addr =
+          "[rbp - " + std::to_string(m_current_stack_offset) + "]";
+      itr = m_var_locations.insert({var_name, relative_addr}).first;
+    }
+    return itr->second;
   } else if (std::holds_alternative<IR_Immediate>(operand)) { // Immediate
     return std::to_string(std::get<IR_Immediate>(operand).val);
   } else if (std::holds_alternative<IR_Label>(operand)) { // Label
@@ -70,6 +78,44 @@ std::string X86_64CodeGenerator::operand_to_string(const IROperand& operand) {
     return m_string_literal_to_label.at(str_val);
   }
   throw std::runtime_error("Unknown IROperand type");
+}
+
+void X86_64CodeGenerator::emit_move(IROperand dst, IROperand src, bool is_load,
+                                    bool is_store) {
+  assert((std::holds_alternative<IR_Register>(dst) ||
+          std::holds_alternative<IR_Variable>(dst)) &&
+         "IR ASSIGN must be reg or var");
+
+  std::string dst_str = operand_to_string(dst);
+  std::string src_str = operand_to_string(src);
+
+  bool dst_is_mem = dst_str.front() == '[' && dst_str.back() == ']';
+  bool src_is_mem = src_str.front() == '[' && src_str.back() == ']';
+
+  if (is_load && !src_is_mem) {
+    // make sure that the source is coming from memory
+    // this means that it could be possible that we are treating an immediate
+    // as a memory address, wrapping it in brackets
+    std::string temp = get_temp_x86_reg();
+    emit("mov " + temp + ", [" + src_str + "]");
+    src_str = temp;
+  } else if ((dst_is_mem || is_store) &&
+             (std::holds_alternative<IR_Immediate>(src) || src_is_mem)) {
+    if (is_store && !dst_is_mem) {
+      // force dst to be from memory
+      std::string temp = get_temp_x86_reg();
+      emit("mov " + temp + ", [" + dst_str + "]");
+      dst_str = temp;
+    }
+    // alter the source, because we may be attempting to load into mem at dst,
+    // which would be performing a store operation.
+    std::string temp = get_temp_x86_reg();
+    emit("mov " + temp + ", " + src_str);
+    src_str = temp;
+  }
+
+  // should work alone for Labels (string literals) and regs
+  emit("mov " + dst_str + ", " + src_str);
 }
 
 void X86_64CodeGenerator::emit(const std::string& instruction) {
@@ -255,101 +301,31 @@ void X86_64CodeGenerator::handle_exit(const IRInstruction&) {
 
 void X86_64CodeGenerator::handle_assign(const IRInstruction& instr) {
   // IRInstruction: result: dest_var_or_temp, operands: src_operand
-  std::string dest_op_str;
-  bool dest_is_mem = false;
-
-  IROperand result = instr.result.value();
-  if (std::holds_alternative<IR_Register>(result)) {
-    // we can simply get the associated register
-    dest_op_str = get_x86_reg(std::get<IR_Register>(result));
-  } else {
-    assert(std::holds_alternative<IR_Variable>(result) &&
-           "IR ASSIGN must be reg or var");
-    // lookup the variable register with respect to the current base ptr
-    const IR_Variable& var = std::get<IR_Variable>(result);
-    auto itr = m_var_locations.find(var.name);
-    if (itr == m_var_locations.end()) {
-      // not found, so we should assume it is on the top
-      m_current_stack_offset += 8;
-      std::string relative_addr =
-          "[rbp - " + std::to_string(m_current_stack_offset) + "]";
-      itr = m_var_locations.insert({var.name, relative_addr}).first;
-    }
-    dest_op_str = itr->second; // store the relative address
-    dest_is_mem = true;
-  }
-
-  IROperand src_op = instr.operands[0];
-  std::string src_str = operand_to_string(src_op);
-  if (dest_is_mem && !std::holds_alternative<std::string>(src_op)) {
-    // check if it is memory, where we will have to put it into a temp reg
-    // so that the assembler will know the size of the mov operands.
-    // This is also the case if it is an immediate.
-    if (std::holds_alternative<IR_Immediate>(src_op) ||
-        (src_str.front() == '[' && src_str.back() == ']')) {
-      std::string temp = get_temp_x86_reg();
-      emit("mov " + temp + ", " + src_str);
-      src_str = temp;
-    }
-
-    // now we can move it to the register
-    emit("mov " + dest_op_str + ", " + src_str);
-  } else if (std::holds_alternative<std::string>(src_op)) {
-    // string literal assignment, where the dest_op_str can be reg or [mem]
-    emit("lea " + dest_op_str + ", [" + src_str + "]");
-  } else {
-    // the src must be a var_register, normal register, so we can just move it
-    emit("mov " + dest_op_str + ", " + src_str);
-  }
+  emit_move(instr.result.value(), instr.operands[0], false, false);
 }
 
 void X86_64CodeGenerator::handle_load(const IRInstruction& instr) {
   // IRInstruction: result: dest_temp(reg), operands[0]: address_operand(*addr)
-  std::string dest = get_x86_reg(std::get<IR_Register>(instr.result.value()));
-  IROperand op = instr.operands[0];
-  std::string addr_str = operand_to_string(op);
-
-  // it can be: Label/String (m), Var (m), Reg, Imm
-
-  if (std::holds_alternative<IR_Variable>(op)) {
-    // must have been accessed from the stack, it already is the content
-    emit("mov " + dest + ", " + addr_str);
-  } else {
-    // Label/String, reg, imm will all work as expected here.
-    // Note that imm will treat the imm as an address and load that value.
-    emit("mov " + dest + ", [" + addr_str + "]");
-  }
+  // reg = [mem]
+  IROperand dst = instr.result.value();
+  assert(std::holds_alternative<IR_Register>(dst) &&
+         "Load instructions must have a register as the destination");
+  emit_move(dst, instr.operands[0], true, false);
 }
 
 void X86_64CodeGenerator::handle_store(const IRInstruction& instr) {
-  // operands[0]: address_dest_operand, operands[1]: src_val_operand
-  std::string addr_dest_str = operand_to_string(instr.operands[0]);
-  std::string src_str = operand_to_string(instr.operands[1]);
-  std::string final_addr_str;
-
-  if (addr_dest_str.front() == '[') {
-    // if the dest is from a variable, where it is on the stack, we will have
-    // to use a temp here.
-    std::string temp = get_temp_x86_reg();
-    emit("mov " + temp + ", " + addr_dest_str);
-    final_addr_str = "[" + temp + "]";
-  } else {
-    // destination is an address that we should de-ref
-    final_addr_str = "[" + addr_dest_str + "]";
-  }
-
-  // If src_str is memory, load to temp reg first
-  if (src_str.front() == '[' && src_str.back() == ']') {
-    std::string temp = get_temp_x86_reg();
-    emit("mov " + temp + ", " + src_str);
-    src_str = temp;
-  }
-  emit("mov " + final_addr_str + ", " + src_str);
+  // IRInstruction: result: address_dest(*addr), operands[0]: src(reg)
+  // [mem] = reg
+  IROperand src = instr.operands[1];
+  assert(std::holds_alternative<IR_Register>(src) &&
+         "Store instructions must have a register as the source");
+  emit_move(instr.result.value(), src, false, true);
 }
 
 void X86_64CodeGenerator::handle_add(const IRInstruction& instr) {
-  std::string dest_reg_str =
-      get_x86_reg(std::get<IR_Register>(instr.result.value()));
+  assert(std::holds_alternative<IR_Register>(instr.result.value()) &&
+         "Add instructions must have a register as the destination");
+  std::string dest_reg_str = operand_to_string(instr.result.value());
   std::string src1_str = operand_to_string(instr.operands[0]);
   std::string src2_str = operand_to_string(instr.operands[1]);
 
@@ -362,8 +338,9 @@ void X86_64CodeGenerator::handle_add(const IRInstruction& instr) {
 }
 
 void X86_64CodeGenerator::handle_sub(const IRInstruction& instr) {
-  std::string dest_reg_str =
-      get_x86_reg(std::get<IR_Register>(instr.result.value()));
+  assert(std::holds_alternative<IR_Register>(instr.result.value()) &&
+         "Sub instructions must have a register as the destination");
+  std::string dest_reg_str = operand_to_string(instr.result.value());
   std::string src1_str = operand_to_string(instr.operands[0]);
   std::string src2_str = operand_to_string(instr.operands[1]);
 
@@ -374,8 +351,9 @@ void X86_64CodeGenerator::handle_sub(const IRInstruction& instr) {
 }
 
 void X86_64CodeGenerator::handle_mul(const IRInstruction& instr) {
-  std::string dest_reg_str =
-      get_x86_reg(std::get<IR_Register>(instr.result.value()));
+  assert(std::holds_alternative<IR_Register>(instr.result.value()) &&
+         "Mul instructions must have a register as the destination");
+  std::string dest_reg_str = operand_to_string(instr.result.value());
   std::string src1_str = operand_to_string(instr.operands[0]);
   std::string src2_str = operand_to_string(instr.operands[1]);
 
@@ -387,8 +365,9 @@ void X86_64CodeGenerator::handle_mul(const IRInstruction& instr) {
 
 void X86_64CodeGenerator::handle_div(const IRInstruction& instr) {
   // idiv r/m64: RDX:RAX / r/m64. Quotient in RAX, Remainder in RDX.
-  std::string dest_reg_str =
-      get_x86_reg(std::get<IR_Register>(instr.result.value()));
+  assert(std::holds_alternative<IR_Register>(instr.result.value()) &&
+         "Div instructions must have a register as the destination");
+  std::string dest_reg_str = operand_to_string(instr.result.value());
   std::string src1_str = operand_to_string(instr.operands[0]); // Dividend
   std::string src2_str = operand_to_string(instr.operands[1]); // Divisor
 
@@ -411,8 +390,9 @@ void X86_64CodeGenerator::handle_div(const IRInstruction& instr) {
 
 void X86_64CodeGenerator::handle_mod(const IRInstruction& instr) {
   // idiv r/m64: RDX:RAX / r/m64. Quotient in RAX, Remainder in RDX.
-  std::string dest_reg_str =
-      get_x86_reg(std::get<IR_Register>(instr.result.value()));
+  assert(std::holds_alternative<IR_Register>(instr.result.value()) &&
+         "Mod instructions must have a register as the destination");
+  std::string dest_reg_str = operand_to_string(instr.result.value());
   std::string src1_str = operand_to_string(instr.operands[0]);
   std::string src2_str = operand_to_string(instr.operands[1]);
 
@@ -430,8 +410,9 @@ void X86_64CodeGenerator::handle_mod(const IRInstruction& instr) {
 }
 
 void X86_64CodeGenerator::handle_neg(const IRInstruction& instr) {
-  std::string dest_reg_str =
-      get_x86_reg(std::get<IR_Register>(instr.result.value()));
+  assert(std::holds_alternative<IR_Register>(instr.result.value()) &&
+         "Neg instructions must have a register as the destination");
+  std::string dest_reg_str = operand_to_string(instr.result.value());
   std::string src_str = operand_to_string(instr.operands[0]);
 
   if (dest_reg_str != src_str || src_str.front() == '[') {
@@ -441,8 +422,9 @@ void X86_64CodeGenerator::handle_neg(const IRInstruction& instr) {
 }
 
 void X86_64CodeGenerator::handle_logical_not(const IRInstruction& instr) {
-  std::string dest_reg_str =
-      get_x86_reg(std::get<IR_Register>(instr.result.value()));
+  assert(std::holds_alternative<IR_Register>(instr.result.value()) &&
+         "Not instructions must have a register as the destination");
+  std::string dest_reg_str = operand_to_string(instr.result.value());
   std::string src_str = operand_to_string(instr.operands[0]);
 
   if (dest_reg_str != src_str || src_str.front() == '[') {
@@ -453,8 +435,9 @@ void X86_64CodeGenerator::handle_logical_not(const IRInstruction& instr) {
 
 void X86_64CodeGenerator::handle_logical_and_or(
     const IRInstruction& instr, const std::string& op_mnemonic) {
-  std::string dest_reg_str =
-      get_x86_reg(std::get<IR_Register>(instr.result.value()));
+  assert(std::holds_alternative<IR_Register>(instr.result.value()) &&
+         "Or instructions must have a register as the destination");
+  std::string dest_reg_str = operand_to_string(instr.result.value());
 
   std::string src1_str = operand_to_string(instr.operands[0]);
   std::string src2_str = operand_to_string(instr.operands[1]);
@@ -467,8 +450,9 @@ void X86_64CodeGenerator::handle_logical_and_or(
 void X86_64CodeGenerator::handle_cmp(const IRInstruction& instr) {
   // Result of CMP is boolean, stored in dest_reg
   // Operands are src1, src2
-  std::string dest_reg_str =
-      get_x86_reg(std::get<IR_Register>(instr.result.value()));
+  assert(std::holds_alternative<IR_Register>(instr.result.value()) &&
+         "Cmp instructions must have a register as the destination");
+  std::string dest_reg_str = operand_to_string(instr.result.value());
   std::string src1_str = operand_to_string(instr.operands[0]);
   std::string src2_str = operand_to_string(instr.operands[1]);
 
@@ -480,6 +464,8 @@ void X86_64CodeGenerator::handle_cmp(const IRInstruction& instr) {
     src1_str = temp_reg;
   }
 
+  // If the destination is rax, then we don't have to save its context,
+  // otherwise, we have to push it, as we will be using the lower byte `al`
   bool rax_pushed = false;
   if (dest_reg_str != "rax") {
     emit("push rax");
@@ -531,14 +517,19 @@ void X86_64CodeGenerator::handle_push_arg(const IRInstruction& instr) {
       src_str = temp;
     }
     emit("push " + src_str);
+    m_allocated_arg_bytes.top() += 8; // add 8 bytes, size of reg
   }
 }
 
 void X86_64CodeGenerator::handle_pop_args(const IRInstruction& instr) {
   // we simply have to add back the total number of bytes
-  uint64_t num_bytes = std::get<IR_Immediate>(instr.operands[0]).val;
-  if (num_bytes > 0) {
-    emit("add rsp, " + std::to_string(num_bytes));
+  int amt = m_allocated_arg_bytes.top();
+  if (amt > 0) {
+    emit("add rsp, " + std::to_string(amt));
+  }
+  m_allocated_arg_bytes.pop();
+  if (m_allocated_arg_bytes.empty()) {
+    m_allocated_arg_bytes.push(0);
   }
 }
 
@@ -549,13 +540,12 @@ void X86_64CodeGenerator::handle_lcall(const IRInstruction& instr) {
   // If the call has a result, it's in RAX. Move it to the IR result register.
   if (instr.result.has_value() &&
       std::holds_alternative<IR_Register>(instr.result.value())) {
-    std::string dest_ir_reg_str =
-        get_x86_reg(std::get<IR_Register>(instr.result.value()));
-    emit("mov " + dest_ir_reg_str + ", rax");
+    emit("mov " + operand_to_string(instr.result.value()) + ", rax");
   }
 
   // reset the arg count for the next push_args
   m_current_arg_count = 0;
+  m_allocated_arg_bytes.push(0);
 }
 
 void X86_64CodeGenerator::handle_ret(const IRInstruction& instr) {

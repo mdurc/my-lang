@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <set>
+#include <stack>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -22,7 +23,9 @@ private:
   std::unordered_map<int, std::string> m_ir_reg_to_x86_reg;
   size_t m_next_available_reg_idx;
   int m_current_stack_offset;
+
   int m_current_arg_count;
+  std::stack<int> m_allocated_arg_bytes;
 
   std::unordered_map<std::string, std::string> m_var_locations; // in stack
   std::vector<std::string> m_string_literals_data;
@@ -37,6 +40,12 @@ private:
   std::string get_temp_x86_reg();
   std::string get_x86_reg(const IR_Register& ir_reg);
   std::string operand_to_string(const IROperand& operand);
+
+  // this is a helper that ensures that the mov between these two operands
+  // will be valid in that they won't both be memory content accesses, or
+  // both immediates, or anything that doesn't indicate size of ops to assembler
+  void emit_move(IROperand dst, IROperand src, bool is_load, bool is_store);
+
   void emit(const std::string& instruction);
   void emit_label(const std::string& label_name);
 

@@ -16,7 +16,7 @@ enum class IROpCode {
   // Assignment and Data
   ASSIGN, // Result: dest_var_or_temp, Operands: src_operand
   LOAD,   // Result: dest_temp, Operands: address_operand (*addr)
-  STORE,  // Operands: address_operand, src_operand (*addr = val)
+  STORE,  // Result: address_dest, Operands: src_temp
 
   // Arithmetic / Logical (dest = src1 op src2)
 
