@@ -2,6 +2,7 @@
 #define CODEGEN_X86_64_ASM_H
 
 #include <iostream>
+#include <list>
 #include <set>
 #include <stack>
 #include <stdexcept>
@@ -21,7 +22,6 @@ public:
 private:
   std::ostream* m_out;
   std::unordered_map<int, std::string> m_ir_reg_to_x86_reg;
-  size_t m_next_available_reg_idx;
   int m_current_stack_offset;
 
   int m_current_arg_count;
@@ -30,6 +30,11 @@ private:
   std::unordered_map<std::string, std::string> m_var_locations; // in stack
   std::vector<std::string> m_string_literals_data;
   std::unordered_map<std::string, std::string> m_string_literal_to_label;
+
+  // Register allocation and spilling
+  std::unordered_map<std::string, int> m_x86_reg_to_ir_reg;
+  std::unordered_map<int, int> m_spilled_reg_locations; // ir reg id, rbp offset
+  std::list<std::string> m_physical_reg_lru;
 
   std::vector<std::string> m_temp_regs;
   std::vector<std::string> m_callee_saved_regs;
@@ -40,6 +45,8 @@ private:
   std::string get_temp_x86_reg();
   std::string get_x86_reg(const IR_Register& ir_reg);
   std::string operand_to_string(const IROperand& operand);
+  std::string internal_acquire_phys_reg();
+  void update_lru(const std::string& phys_reg_name);
 
   // this is a helper that ensures that the mov between these two operands
   // will be valid in that they won't both be memory content accesses, or

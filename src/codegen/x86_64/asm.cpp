@@ -4,10 +4,7 @@
 #include <functional>
 
 X86_64CodeGenerator::X86_64CodeGenerator()
-    : m_out(nullptr),
-      m_next_available_reg_idx(0),
-      m_current_stack_offset(0),
-      m_current_arg_count(0) {
+    : m_out(nullptr), m_current_stack_offset(0), m_current_arg_count(0) {
   // Conventions:
   // - callee-saved: rsp, rbp, rbx, r12, r13, r14, r15
   // - caller-saved: rax, rcx, rdx, rsi, rdi, r8-11
@@ -22,36 +19,100 @@ X86_64CodeGenerator::X86_64CodeGenerator()
   m_allocated_arg_bytes.push(0);
 }
 
-std::string X86_64CodeGenerator::get_temp_x86_reg() {
-  // This function doesn't associate the IR reg to an x86 reg
-  if (m_next_available_reg_idx >= m_temp_regs.size()) {
+void X86_64CodeGenerator::update_lru(const std::string& phys_reg_name) {
+  m_physical_reg_lru.remove(phys_reg_name);
+  m_physical_reg_lru.push_back(phys_reg_name);
+}
+
+std::string X86_64CodeGenerator::internal_acquire_phys_reg() {
+  assert(!m_temp_regs.empty() && "temp regs must be defined");
+
+  // try to find reg in m_temp_regs not yet in m_x86_reg_to_ir_reg
+  if (m_x86_reg_to_ir_reg.size() < m_temp_regs.size()) {
+    for (const std::string& r_candidate : m_temp_regs) {
+      if (m_x86_reg_to_ir_reg.find(r_candidate) == m_x86_reg_to_ir_reg.end()) {
+        // found this free one, caller will map this to LRU
+        return r_candidate;
+      }
+    }
+  }
+
+  // if all regs are in use, then we spill the least recently used one.
+  if (m_physical_reg_lru.empty()) {
+    // the caller should be filling LRU
     throw std::runtime_error(
-        "Ran out of physical registers. Spilling not implemented.");
+        "LRU list is empty but registers are supposedly full.");
   }
-  std::string assigned_reg = m_temp_regs[m_next_available_reg_idx++];
+
+  std::string phys_reg = m_physical_reg_lru.front();
+  m_physical_reg_lru.pop_front(); // Remove from LRU
+
+  int ir_reg_id = m_x86_reg_to_ir_reg.at(phys_reg);
+
+  if (ir_reg_id != -1) {
+    // it is a real associated IR value
+    m_current_stack_offset += 8;
+    emit("mov [rbp - " + std::to_string(m_current_stack_offset) + "], " +
+         phys_reg);
+    m_spilled_reg_locations[ir_reg_id] = m_current_stack_offset;
+    m_ir_reg_to_x86_reg.erase(ir_reg_id);
+  }
+  // otherwise it was a scratch register, no need to save its contents
+
+  m_x86_reg_to_ir_reg.erase(phys_reg); // unmap
+  return phys_reg;                     // this register is now free
+}
+
+std::string X86_64CodeGenerator::get_temp_x86_reg() {
+  std::string phys_reg = internal_acquire_phys_reg();
+
+  // mark as a scratch register (-1), recognized in internal_acquire_phys_reg()
+  m_x86_reg_to_ir_reg[phys_reg] = -1;
+
+  // it is now the most recently used
+  update_lru(phys_reg);
+
+  // add to used callee saved regs if it is one
   if (std::find(m_callee_saved_regs.begin(), m_callee_saved_regs.end(),
-                assigned_reg) != m_callee_saved_regs.end()) {
-    m_used_callee_saved_regs_in_current_func.insert(assigned_reg);
+                phys_reg) != m_callee_saved_regs.end()) {
+    m_used_callee_saved_regs_in_current_func.insert(phys_reg);
   }
-  return assigned_reg;
+  return phys_reg;
 }
 
 std::string X86_64CodeGenerator::get_x86_reg(const IR_Register& ir_reg) {
-  auto itr = m_ir_reg_to_x86_reg.find(ir_reg.id);
-  if (itr == m_ir_reg_to_x86_reg.end()) {
-    if (m_next_available_reg_idx >= m_temp_regs.size()) {
-      throw std::runtime_error(
-          "Ran out of physical registers. Spilling not implemented.");
-    }
-    std::string assigned_reg = m_temp_regs[m_next_available_reg_idx++];
-    itr = m_ir_reg_to_x86_reg.insert({ir_reg.id, assigned_reg}).first;
+  int ir_id = ir_reg.id;
 
-    if (std::find(m_callee_saved_regs.begin(), m_callee_saved_regs.end(),
-                  assigned_reg) != m_callee_saved_regs.end()) {
-      m_used_callee_saved_regs_in_current_func.insert(assigned_reg);
-    }
+  // check if it is already existing
+  auto it_phys = m_ir_reg_to_x86_reg.find(ir_id);
+  if (it_phys != m_ir_reg_to_x86_reg.end()) {
+    update_lru(it_phys->second);
+    return it_phys->second;
   }
-  return itr->second;
+
+  std::string reg = internal_acquire_phys_reg();
+
+  // check if it was spilled
+  auto it_spilled = m_spilled_reg_locations.find(ir_id);
+  if (it_spilled != m_spilled_reg_locations.end()) {
+    int stack_offset = it_spilled->second;
+
+    // move it into the reg first, then continue below
+    emit("mov " + reg + ", [rbp - " + std::to_string(stack_offset) + "]");
+    m_spilled_reg_locations.erase(it_spilled); // unmap it from spill
+    // below will re-associate it to reg
+  }
+
+  // it is a new IR register, needs a physical register
+  m_ir_reg_to_x86_reg[ir_id] = reg;
+  m_x86_reg_to_ir_reg[reg] = ir_id;
+  update_lru(reg);
+
+  if (std::find(m_callee_saved_regs.begin(), m_callee_saved_regs.end(), reg) !=
+      m_callee_saved_regs.end()) {
+    m_used_callee_saved_regs_in_current_func.insert(reg);
+  }
+  return reg;
 }
 
 std::string X86_64CodeGenerator::operand_to_string(const IROperand& operand) {
@@ -131,9 +192,12 @@ void X86_64CodeGenerator::generate(
     std::ostream& out) {
   m_out = &out;
   m_ir_reg_to_x86_reg.clear();
-  m_next_available_reg_idx = 0;
+  m_x86_reg_to_ir_reg.clear();
+  m_spilled_reg_locations.clear();
+  m_physical_reg_lru.clear();
   m_current_stack_offset = 0;
   m_var_locations.clear();
+  m_used_callee_saved_regs_in_current_func.clear();
   m_string_literals_data.clear();
   m_string_literal_to_label.clear();
 
@@ -272,8 +336,10 @@ void X86_64CodeGenerator::handle_begin_func(const IRInstruction& instr) {
   // clear context for the function
   m_used_callee_saved_regs_in_current_func.clear();
   m_ir_reg_to_x86_reg.clear();
-  m_next_available_reg_idx = 0;
+  m_x86_reg_to_ir_reg.clear();
+  m_spilled_reg_locations.clear();
   m_var_locations.clear();
+  m_physical_reg_lru.clear();
   m_current_stack_offset = 0;
 
   emit_label(operand_to_string(instr.result.value()));
