@@ -48,8 +48,8 @@ public:
   void emit_if_z(IROperand cond, IR_Label target); // IfZero (false)
 
   // Procedure Calls
-  void emit_push_param(IROperand src);
-  void emit_pop_params(IR_Immediate num_bytes);
+  void emit_push_arg(IROperand src);
+  void emit_pop_args(IR_Immediate num_bytes);
   void emit_lcall(std::optional<IR_Register> dest, IR_Label func_target);
   void emit_ret();
   void emit_ret(IROperand retval);

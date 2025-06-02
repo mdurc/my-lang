@@ -521,8 +521,10 @@ void X86_64CodeGenerator::handle_push_arg(const IRInstruction& instr) {
   }
 }
 
-void X86_64CodeGenerator::handle_pop_args(const IRInstruction& instr) {
-  // we simply have to add back the total number of bytes
+void X86_64CodeGenerator::handle_pop_args(const IRInstruction&) {
+  // The instruction for popping args has the total number of bytes
+  // of all of the parameters, though not all of them will be pushed onto the
+  // stack, so we have to track that here.
   int amt = m_allocated_arg_bytes.top();
   if (amt > 0) {
     emit("add rsp, " + std::to_string(amt));

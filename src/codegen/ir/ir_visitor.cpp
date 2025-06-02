@@ -335,7 +335,7 @@ void IrVisitor::visit(FunctionCallNode& node) {
   for (const ArgPtr& arg_node : node.arguments) {
     arg_node->accept(*this);
 
-    m_ir_gen.emit_push_param(m_last_expr_operand);
+    m_ir_gen.emit_push_arg(m_last_expr_operand);
     assert(arg_node->expression->expr_type &&
            "Argument expression must have a type");
     total_param_size += arg_node->expression->expr_type->get_byte_size();
@@ -367,7 +367,7 @@ void IrVisitor::visit(FunctionCallNode& node) {
   }
 
   m_ir_gen.emit_lcall(result_reg_opt, func_label);
-  m_ir_gen.emit_pop_params(IR_Immediate(total_param_size));
+  m_ir_gen.emit_pop_args(IR_Immediate(total_param_size));
 }
 
 void IrVisitor::visit(ReturnStmtNode& node) {
@@ -480,9 +480,9 @@ void IrVisitor::visit(PrintStmtNode& node) {
 
   IR_Label print_func_lbl = get_runtime_print_call(expr_type);
 
-  m_ir_gen.emit_push_param(val_op);
+  m_ir_gen.emit_push_arg(val_op);
   m_ir_gen.emit_lcall(std::nullopt, print_func_lbl);
-  m_ir_gen.emit_pop_params(IR_Immediate(expr_type->get_byte_size()));
+  m_ir_gen.emit_pop_args(IR_Immediate(expr_type->get_byte_size()));
 }
 
 void IrVisitor::visit(AsmBlockNode& node) {
