@@ -210,7 +210,7 @@ void X86_64CodeGenerator::generate(
             const std::string& str_val = std::get<std::string>(op);
             auto itr = m_string_literal_to_label.find(str_val);
             if (itr == m_string_literal_to_label.end()) {
-              std::string label = ".LC" + std::to_string(string_lit_idx++);
+              std::string label = "LC" + std::to_string(string_lit_idx++);
               m_string_literal_to_label.insert({str_val, label});
               m_string_literals_data.push_back(str_val);
             }
