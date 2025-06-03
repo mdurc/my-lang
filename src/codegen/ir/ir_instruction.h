@@ -9,7 +9,7 @@
 #include <vector>
 
 enum class IROpCode {
-  BEGIN_FUNC, // Result: label_func_name, Operands: imm_stack_size
+  BEGIN_FUNC, // Result: label_func_name, no operands
   END_FUNC,   // No operands
   EXIT,       // No operands
 
@@ -66,7 +66,8 @@ struct IR_Register {
 // Source-level variable from code
 struct IR_Variable {
   std::string name;
-  IR_Variable(const std::string& n) : name(n) {}
+  uint64_t size; // size in bytes
+  IR_Variable(const std::string& n, uint64_t s) : name(n), size(s) {}
 
   bool operator==(const IR_Variable& other) const { return name == other.name; }
   bool operator<(const IR_Variable& other) const { return name < other.name; }

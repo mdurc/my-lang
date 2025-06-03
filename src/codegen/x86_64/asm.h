@@ -21,6 +21,11 @@ public:
 
 private:
   std::ostream* m_out;
+
+  std::vector<std::string> m_current_function_asm_buffer;
+  size_t m_stack_alloc_placeholder_idx;
+  bool m_is_buffering_function;
+
   std::unordered_map<int, std::string> m_ir_reg_to_x86_reg;
   int m_current_stack_offset;
 

@@ -8,10 +8,9 @@ IR_Label IrGenerator::new_func_label(const std::string& func_name) {
   return IR_Label(func_name);
 }
 
-void IrGenerator::emit_begin_func(IR_Label func_label,
-                                  IR_Immediate stack_size) {
+void IrGenerator::emit_begin_func(IR_Label func_label) {
   m_instructions.emplace_back(IROpCode::BEGIN_FUNC, func_label,
-                              std::vector<IROperand>{stack_size});
+                              std::vector<IROperand>{});
 }
 
 void IrGenerator::emit_end_func() {

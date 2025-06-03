@@ -1,13 +1,13 @@
 #ifndef PARSER_TYPES_H
 #define PARSER_TYPES_H
 
+#include <cstdint>
 #include <iostream>
 #include <memory>
 #include <ostream>
 #include <string>
 #include <variant>
 #include <vector>
-#include <cstdint>
 
 // == Type System ==
 
@@ -65,18 +65,21 @@ public:
     return std::get<T>(m_storage);
   }
 
+  static const uint64_t PTR_SIZE = 8;
+
   // returns the string format that should be used within the language
   std::string to_string() const;
   size_t get_scope_id() const { return m_scope_id; }
   uint64_t get_byte_size() const { return m_bytes; }
+  void set_byte_size(uint64_t size) { m_bytes = size; }
 
   // Constructors
-  Type(Named n, size_t sc, uint64_t bytes)
+  Type(Named n, size_t sc, uint64_t bytes = PTR_SIZE)
       : m_storage(std::move(n)), m_scope_id(sc), m_bytes(bytes) {}
-  Type(Function f, size_t sc, uint64_t bytes)
-      : m_storage(std::move(f)), m_scope_id(sc), m_bytes(bytes) {}
-  Type(Pointer p, size_t sc, uint64_t bytes)
-      : m_storage(std::move(p)), m_scope_id(sc), m_bytes(bytes) {}
+  Type(Function f, size_t sc)
+      : m_storage(std::move(f)), m_scope_id(sc), m_bytes(PTR_SIZE) {}
+  Type(Pointer p, size_t sc)
+      : m_storage(std::move(p)), m_scope_id(sc), m_bytes(PTR_SIZE) {}
 
   friend bool operator==(const Type& a, const Type& b) {
     return a.m_storage == b.m_storage;

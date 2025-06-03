@@ -4,9 +4,9 @@ extern read_char, read_word, parse_uint
 extern parse_int, string_equals, string_copy
 
 section .data
-.LC0:
+LC0:
 	db 10, 0
-.LC1:
+LC1:
 	db "hi", 0
 
 global _start
@@ -18,37 +18,28 @@ _start:
 main:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 64 ; function preamble
-
-	mov r10, 0 ; default initialization
-	mov [rbp - 8], r10 ; store the value of 'a' within -8
-	mov r11, 2 ; tmp for immediate 2
-
+	sub rsp, 16
+	mov r10, 0
+	mov [rbp - 4], r10
+	mov r11, 2
 	mov rbx, r11
-	add rbx, [rbp - 8] ; add '2 + a'
-
-	mov [rbp - 8], rbx ; store result in 'a'
-
+	add rbx, [rbp - 4]
+	mov [rbp - 4], rbx
 	mov r12, 3
-	mov [rbp - 8], r12 ; 'a = 3'
-
-	mov rdi, [rbp - 8]
-	call print_int ; setup 'a' as print arg and print
-
-	mov r13, .LC0 ; assignment to string
-	mov rdi, r13 ; pushed as argument
-	call print_string ; syscall
-
-	mov r14, .LC1
-	mov [rbp - 16], r14 ; store string in 'b'
-	mov rdi, [rbp - 16] ; push as arg
-	call print_string ; syscall
-
-	mov r15, .LC0
+	mov [rbp - 4], r12
+	mov rdi, [rbp - 4]
+	call print_int
+	mov r13, LC0
+	mov rdi, r13
+	call print_string
+	mov r14, LC1
+	mov [rbp - 16], r14
+	mov rdi, [rbp - 16]
+	call print_string
+	mov r15, LC0
 	mov rdi, r15
 	call print_string
-
-	xor rax, rax ; return zero
-	mov rsp, rbp
+	xor rax, rax
+	mov rsp, rbp ; restore stack
 	pop rbp
 	ret

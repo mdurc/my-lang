@@ -3,8 +3,11 @@
 #include <algorithm>
 #include <functional>
 
+#include "../../parser/types.h"
+
 X86_64CodeGenerator::X86_64CodeGenerator()
     : m_out(nullptr), m_current_stack_offset(0), m_current_arg_count(0) {
+  assert(Type::PTR_SIZE == 8);
   // Conventions:
   // - callee-saved: rsp, rbp, rbx, r12, r13, r14, r15
   // - caller-saved: rax, rcx, rdx, rsi, rdi, r8-11
@@ -17,6 +20,7 @@ X86_64CodeGenerator::X86_64CodeGenerator()
   m_caller_saved_regs = {"rax", "rcx", "rdx", "rsi", "r8", "r9", "r10", "r11"};
   m_arg_regs = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
   m_allocated_arg_bytes.push(0);
+  m_is_buffering_function = false;
 }
 
 void X86_64CodeGenerator::update_lru(const std::string& phys_reg_name) {
@@ -119,14 +123,22 @@ std::string X86_64CodeGenerator::operand_to_string(const IROperand& operand) {
   if (std::holds_alternative<IR_Register>(operand)) { // Register
     return get_x86_reg(std::get<IR_Register>(operand));
   } else if (std::holds_alternative<IR_Variable>(operand)) { // Variable
-    const std::string& var_name = std::get<IR_Variable>(operand).name;
+    const IR_Variable& ir_var = std::get<IR_Variable>(operand);
+    const std::string& var_name = ir_var.name;
+    uint64_t var_size = ir_var.size;
     auto itr = m_var_locations.find(var_name);
     if (itr == m_var_locations.end()) {
       // not found, so we should designate new space for this variable
-      m_current_stack_offset += 8;
+      m_current_stack_offset += var_size;
       std::string relative_addr =
           "[rbp - " + std::to_string(m_current_stack_offset) + "]";
       itr = m_var_locations.insert({var_name, relative_addr}).first;
+
+      // make sure memory is aligned for next
+      uint64_t p = Type::PTR_SIZE;
+      if (m_current_stack_offset % p != 0) {
+        m_current_stack_offset = (m_current_stack_offset / p + 1) * p;
+      }
     }
     return itr->second;
   } else if (std::holds_alternative<IR_Immediate>(operand)) { // Immediate
@@ -180,17 +192,26 @@ void X86_64CodeGenerator::emit_move(IROperand dst, IROperand src, bool is_load,
 }
 
 void X86_64CodeGenerator::emit(const std::string& instruction) {
-  *m_out << "\t" << instruction << std::endl;
+  if (m_is_buffering_function) {
+    m_current_function_asm_buffer.push_back("\t" + instruction);
+  } else {
+    *m_out << "\t" << instruction << std::endl;
+  }
 }
 
 void X86_64CodeGenerator::emit_label(const std::string& label_name) {
-  *m_out << label_name << ":" << std::endl;
+  if (m_is_buffering_function) {
+    m_current_function_asm_buffer.push_back(label_name + ":");
+  } else {
+    *m_out << label_name << ":" << std::endl;
+  }
 }
 
 void X86_64CodeGenerator::generate(
     const std::vector<IRInstruction>& instructions, bool is_main_defined,
     std::ostream& out) {
   m_out = &out;
+  m_is_buffering_function = false;
   m_ir_reg_to_x86_reg.clear();
   m_x86_reg_to_ir_reg.clear();
   m_spilled_reg_locations.clear();
@@ -274,10 +295,8 @@ void X86_64CodeGenerator::generate(
     emit("mov rdi, rax");
     emit("call exit");
   } else {
-    // create 256 bytes for this function, will have to do the same logic that
-    // functions do to determine register size, here.
-    handle_begin_func(IRInstruction(IROpCode::BEGIN_FUNC, IR_Label("_start"),
-                                    {IR_Immediate(256)}));
+    handle_begin_func(
+        IRInstruction(IROpCode::BEGIN_FUNC, IR_Label("_start"), {}));
   }
 
   for (const IRInstruction& instr : instructions) {
@@ -333,7 +352,11 @@ void X86_64CodeGenerator::handle_instruction(const IRInstruction& instr) {
 
 void X86_64CodeGenerator::handle_begin_func(const IRInstruction& instr) {
   // instr.result has IR_Label func_label
-  // instr.operands[0] has IR_Immediate stack_size
+  // instr.operands[0] has IR_Immediate has the size of the function type
+  // though this is not quite useful as it is just the size of the address space
+
+  m_is_buffering_function = true;
+  m_current_function_asm_buffer.clear();
 
   // clear context for the function
   m_used_callee_saved_regs_in_current_func.clear();
@@ -351,10 +374,11 @@ void X86_64CodeGenerator::handle_begin_func(const IRInstruction& instr) {
   emit("push rbp");
   emit("mov rbp, rsp");
 
-  uint64_t stack_size = std::get<IR_Immediate>(instr.operands[0]).val;
-  if (stack_size > 0) {
-    emit("sub rsp, " + std::to_string(stack_size));
-  }
+  // mark the location for where we have to add the total required stack size
+  // for this function. This idx should be overwritten in handle_end_func.
+  m_stack_alloc_placeholder_idx = m_current_function_asm_buffer.size();
+  m_current_function_asm_buffer.push_back("; placeholder");
+
   // TODO: Handle saving callee-saved registers that will be used by this
   // function. This requires knowing which callee-saved regs are used by
   // IR_Registers.
@@ -366,8 +390,33 @@ void X86_64CodeGenerator::handle_begin_func(const IRInstruction& instr) {
 void X86_64CodeGenerator::handle_end_func(const IRInstruction&) {
   // TODO: Restore callee-saved registers (in reverse order of push)
 
+  uint64_t stack = m_current_stack_offset;
+  // TODO: Add size of pushed callee-saved registers to stack
+  // for (const auto& reg_name : m_used_callee_saved_regs_in_current_func) {
+  //    stack += 8; // Assuming 8 bytes per register
+  // }
+
+  // make sure it is 16 byte aligned
+  uint64_t p = Type::PTR_SIZE * 2;
+  if (stack % p != 0) {
+    stack = (stack / p + 1) * p;
+  }
+
+  if (m_stack_alloc_placeholder_idx < m_current_function_asm_buffer.size()) {
+    m_current_function_asm_buffer[m_stack_alloc_placeholder_idx] =
+        (stack > 0) ? ("\tsub rsp, " + std::to_string(stack))
+                    : "; no stack allocation needed";
+  }
+
+  // write the buffered asm contents:
+  for (const std::string& line : m_current_function_asm_buffer) {
+    *m_out << line << std::endl;
+  }
+  m_current_function_asm_buffer.clear();
+  m_is_buffering_function = false;
+
   // restore stack pointer and base ptr, return to caller
-  emit("mov rsp, rbp");
+  emit("mov rsp, rbp ; restore stack");
   emit("pop rbp");
   emit("ret");
 }
@@ -383,8 +432,8 @@ void X86_64CodeGenerator::handle_assign(const IRInstruction& instr) {
 }
 
 void X86_64CodeGenerator::handle_load(const IRInstruction& instr) {
-  // IRInstruction: result: dest_temp(reg), operands[0]: address_operand(*addr)
-  // reg = [mem]
+  // IRInstruction: result: dest_temp(reg), operands[0]:
+  // address_operand(*addr) reg = [mem]
   IROperand dst = instr.result.value();
   assert(std::holds_alternative<IR_Register>(dst) &&
          "Load instructions must have a register as the destination");

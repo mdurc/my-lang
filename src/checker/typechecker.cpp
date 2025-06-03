@@ -506,9 +506,8 @@ void TypeChecker::visit(FunctionDeclNode& node) {
   // Type check the function body
   node.body->accept(*this);
 
-  std::shared_ptr<Type> t = m_symtab->lookup_type(
-      Type(Type::Function(std::move(param_types), node.return_type),
-           node.scope_id, -1));
+  std::shared_ptr<Type> t = m_symtab->lookup_type(Type(
+      Type::Function(std::move(param_types), node.return_type), node.scope_id));
   assert(t != nullptr && "Parser should declare the func type");
 
   // The function type is hashed as its string, which is its method family.
@@ -539,9 +538,18 @@ void TypeChecker::visit(StructDeclNode& node) {
   m_struct_definitions[struct_name] = &node;
 
   // resolve members (fields and methods).
+  // set the size of the struct based on its fields.
+  uint64_t current_struct_size = 0;
   for (const auto& member_variant : node.members) {
     std::visit([this](auto&& arg) { arg->accept(*this); }, member_variant);
+
+    if (std::holds_alternative<StructFieldPtr>(member_variant)) {
+      const StructFieldPtr& field = std::get<StructFieldPtr>(member_variant);
+      assert(field->type);
+      current_struct_size += field->type->get_byte_size();
+    }
   }
+  node.type->set_byte_size(current_struct_size);
 }
 
 // Struct Field Node
@@ -694,7 +702,7 @@ void TypeChecker::visit(UnaryExprNode& node) {
       break;
     case UnaryOperator::AddressOf: // '&expr' -> ptr<imm typeof(expr)>
     {
-      Type storage(Type::Pointer(false, operand_type), node.scope_id, -1);
+      Type storage(Type::Pointer(false, operand_type), node.scope_id);
       result_type = m_symtab->lookup_type(storage);
       if (!result_type) {
         // this is not done by the parser
@@ -704,7 +712,7 @@ void TypeChecker::visit(UnaryExprNode& node) {
     } break;
     case UnaryOperator::AddressOfMut: // '&mut expr' -> ptr<mut typeof(expr)>
       if (get_lvalue_type_if_mutable(node.operand)) {
-        Type storage(Type::Pointer(true, operand_type), node.scope_id, -1);
+        Type storage(Type::Pointer(true, operand_type), node.scope_id);
         result_type = m_symtab->lookup_type(storage);
         if (!result_type) {
           result_type = m_symtab->declare_type(storage);
@@ -879,7 +887,7 @@ void TypeChecker::visit(MemberAccessNode& node) {
 
         node.expr_type = m_symtab->lookup_type(
             Type(Type::Function(std::move(param_types), method->return_type),
-                 method->scope_id, -1));
+                 method->scope_id));
 
         if (!node.expr_type) {
           m_logger.report(Error("Member func was not declared as a symbol"));
@@ -1011,7 +1019,7 @@ void TypeChecker::visit(NewExprNode& node) {
   // because the parser doesn't declare types that are used/created by new)
   Type ptr_t =
       Type(Type::Pointer(node.is_memory_mutable, node.type_to_allocate),
-           node.scope_id, -1);
+           node.scope_id);
   std::shared_ptr<Type> ptr_type = m_symtab->lookup_type(ptr_t);
   if (!ptr_type) {
     ptr_type = m_symtab->declare_type(ptr_t);

@@ -185,7 +185,7 @@ void IrVisitor::visit(VariableDeclNode& node) {
          "Type checker should identify variable re-declaration");
 
   const std::string& var_name = node.var_name->name;
-  IR_Variable var_operand(var_name);
+  IR_Variable var_operand(var_name, node.type->get_byte_size());
   m_vars.insert({var_name, var_operand});
 
   if (node.initializer) {
@@ -284,8 +284,7 @@ void IrVisitor::visit(FunctionDeclNode& node) {
   IR_Label func_label = m_ir_gen.new_func_label(func_ir_name);
   m_func_labels.insert({original_func_name, func_label});
 
-  uint64_t stack_size = node.type->get_byte_size();
-  m_ir_gen.emit_begin_func(func_label, IR_Immediate(stack_size));
+  m_ir_gen.emit_begin_func(func_label);
 
   // save for scoping
   std::unordered_map<std::string, IR_Variable> prev_var_operands = m_vars;
@@ -298,7 +297,7 @@ void IrVisitor::visit(FunctionDeclNode& node) {
 
   if (node.return_type_name.has_value()) {
     const std::string& ret_name = node.return_type_name.value();
-    IR_Variable ret_var_op(ret_name);
+    IR_Variable ret_var_op(ret_name, node.return_type->get_byte_size());
     m_vars.insert({ret_name, ret_var_op});
   }
 
@@ -324,7 +323,7 @@ void IrVisitor::visit(ArgumentNode& node) {
 }
 void IrVisitor::visit(ParamNode& node) {
   const std::string& param_name = node.name->name;
-  IR_Variable param_var(param_name);
+  IR_Variable param_var(param_name, node.type->get_byte_size());
   m_vars.insert({param_name, param_var});
   node.name->expr_type = node.type;
 }

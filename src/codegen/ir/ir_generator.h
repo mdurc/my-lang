@@ -14,7 +14,7 @@ public:
   IR_Label new_func_label(const std::string& func_name);
 
   // Function demarcation
-  void emit_begin_func(IR_Label func_label, IR_Immediate stack_size);
+  void emit_begin_func(IR_Label func_label);
   void emit_end_func();
   void emit_exit();
 

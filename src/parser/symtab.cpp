@@ -70,7 +70,7 @@ SymTab::SymTab() {
   m_scopes[0].add_type(Type(Type::Named("i64"), 0, 8));
   m_scopes[0].add_type(Type(Type::Named("f64"), 0, 8));
   m_scopes[0].add_type(Type(Type::Named("bool"), 0, 1));
-  m_scopes[0].add_type(Type(Type::Named("string"), 0, 64));
+  m_scopes[0].add_type(Type(Type::Named("string"), 0)); // bytes is ptr size
 }
 
 void SymTab::enter_new_scope() {

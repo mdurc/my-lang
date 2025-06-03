@@ -42,7 +42,7 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
   }
 
   if (instr.opcode == IROpCode::BEGIN_FUNC) {
-    assert(instr.result.has_value() && instr.operands.size() == 1);
+    assert(instr.result.has_value());
     print_ir_operand(instr.result.value(), out);
     out << " " << std::endl;
   }
@@ -50,10 +50,7 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
   out << "\t";
 
   switch (instr.opcode) {
-    case IROpCode::BEGIN_FUNC:
-      out << "BeginFunc ";
-      print_ir_operand(instr.operands[0], out); // stack_size
-      break;
+    case IROpCode::BEGIN_FUNC: out << "BeginFunc"; break;
     case IROpCode::END_FUNC: out << "EndFunc"; break;
     case IROpCode::EXIT: out << "Exit"; break;
     case IROpCode::ASSIGN:
