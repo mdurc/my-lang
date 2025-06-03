@@ -1,8 +1,8 @@
 # Lexer
-- [ ] Comments
+- [x] Comments
     - `//` for single line
     - `/* ... */` for multi-line
-- [ ] Number types
+- [x] Number types
     - `u0`: null, zero size type, used as void
     - `u8`: unsigned 8-bits
     - `u16`: unsigned 16-bits
@@ -13,54 +13,69 @@
     - `i32`: signed 32-bits
     - `i64`: signed 64-bits
     - `f64`: 64-bit float (no 32-bit, 64 seems to be standard)
-- [ ] Spans for every token
-- [ ] Identifiers (alphanumeric and `_` starting with non-number)
-- [ ] Keyword recognition
-- [ ] Panic recovery upon unknown tokens
+- [x] Spans for every token
+- [x] Identifiers (alphanumeric and `_` starting with non-number)
+- [x] Keyword recognition
+- [x] Panic recovery upon unknown tokens
 
 # Symbol Table
-- [ ] Holds declarations of variable/function names
-- [ ] Holds the scope depth of the variable
-- [ ] Holds whether or not this variable has been assigned/initialized
+- [x] Holds declarations of Named types
+    - Though currently auto-initializes all of the primitive types preemptively
+- [x] Scopes are composed of:
+    - Parent scope id
+    - List of types that were defined in this scope, where if a type exists within its parent scope, it would not exist here, as it was defined within the parent scope.
+    - List of variables defined in this scope.
+- [x] Symbol table is a collection of scopes that are indexed by scope id which is an integer.
+
+# Type System
+- Each type has an associated scope id and data
+- [x] Named Types
+    - Primitives
+    - User defined types: structs
+- [x] Function Types
+    - `func(<param types>)-><return type>`
+    - Where multiple functions can share a function type as the same method family.
+- [x] Pointer Types
+- [x] Variables: name, borrow state modifier, type, scope\_id
 
 # Parser
-- [ ] Recursive descent function structure based on grammar
-- [ ] Add identifiers to a symbol table
-- [ ] Create AST that will be passed to the type checker
-- [ ] Panic mode recovery for multiple error reporting without cascading
+- [x] Recursive descent function structure based on grammar
+- [x] Add identifiers to a symbol table
+- [x] Create AST that will be passed to the type checker
+- [x] Panic mode recovery for multiple error reporting without cascading
 
 # AST
-- [ ] Tree of operation nodes
-- [ ] Each node contains its original token so that the span is maintained for the LSP and error detection
-- [ ] Each node contains its scope depth so that the LSP can retrieve it to locate the correct declaration within the symbol table
-- [ ] Each node has a resolved state that is evaluated by the type checker to enforce type correctness
+- [x] Tree of operation nodes
+- [x] Each node contains its original token so that the span is maintained for the LSP and error detection
+- [x] Each node contains its scope depth so that the LSP can retrieve it to locate the correct declaration within the symbol table
+- [x] Each node has a resolved state that is evaluated by the type checker to enforce type correctness
 - Nodes:
-    - [ ] Literal Data
-    - [ ] Identifier
-    - [ ] Variable Declaration
-    - [ ] Assignment
-    - [ ] Block
-    - [ ] Function Declaration
-        - [ ] Function Parameter
-    - [ ] Function Call
-    - [ ] Binary Operation
-    - [ ] Unary Operation
-    - [ ] If-then-else statement
-        - [ ] Break/Continue statements
-    - [ ] Switch Statement
-        - [ ] Case clause
-    - [ ] For statement
-    - [ ] While statement
-    - [ ] Struct Declaration
-        - [ ] Field Declaration
-        - [ ] Struct Literal Creation
-        - [ ] Struct Member Access
-    - [ ] New Statement (allocation)
-        - [ ] Direct creation of type and value `new T(value)`
-        - [ ] Array allocation of type `new T[size]`
-    - [ ] Free Statement (deallocation)
-        - [ ] Single block deletion `free ptr`
-        - [ ] Array block deletion `free[] ptr`
+    - [x] Literal Data
+    - [x] Identifier
+    - [x] Variable Declaration
+    - [x] Assignment
+    - [x] Block
+    - [x] Function Declaration
+        - [x] Function Parameter
+    - [x] Function Call
+    - [x] Binary Operation
+    - [x] Unary Operation
+    - [x] If-then-else statement
+    - [x] Switch Statement
+        - [x] Case clause
+    - [x] For statement
+        - [x] Break/Continue statements
+    - [x] While statement
+    - [x] Struct Declaration
+        - [x] Field Declaration
+        - [x] Struct Literal Creation
+        - [x] Struct Member Access
+    - [x] New Statement (allocation)
+        - [x] Direct creation of type and value `new<T>(value)`
+        - [x] Array allocation of type `new<T>[size]`
+    - [x] Free Statement (deallocation)
+        - [x] Single block deletion `free ptr`
+        - [x] Array block deletion `free[] ptr`
     - [ ] Array Declaration (fixed size)
     - [ ] List Declaration (dynamic list)
     - [ ] Clock Declaration
@@ -69,7 +84,6 @@
 # Post
 - [ ] Tree sitter highlighting
 - [ ] LSP: Diagnostic, Goto-Definition, Hovering over identifiers and literals
-
 
 
 # Syntax

@@ -1,0 +1,24 @@
+Design plans for type design and generating x86_64
+
+1. Frontend (Parser, TypeChecker, SymTab)
+- determine the logical size of the core types (i32 is 4 btyes, bool is 1 byte), etc
+- Type system will still hold the `m_bytes` field to represent the size in bytes that an instance of this type occupies in memory.
+  - Pointers will be -1 bytes which will default to the architecture memory size, 8 bytes for 64-bit architectures like x86_64
+  - Strings will be treated as `ptr<imm u8>`, which will just be a pointer to a series of bytes. The actual string data in the generation will be in `.data`
+  - Struct's `m_bytes` will be the total size of the struct instance in memory, including padding for alignment. The typechecker will resolve this size and the byte offset of each member.
+  - Functions will have a byte size of -1, equivalent to a pointer in the memory, 8 bytes in x86 64 bit architecture
+
+2. Middle-end (IR)
+- The IR instructions must carry type/size information for the backend
+- Instructions that operate on typed operands will need this.
+
+3. Backend (x86_64 Code Generation)
+- Uses type/size information from IR operands to select the correct instructions and register parts (`al`, `ax`, `eax`, `rax`, `xmm0`, etc.) and memory operands (`BYTE PTR`, `QWORD PTR`, etc).
+- Distinguish between integer/pointer registers (general-purpose) and floating-point registers (XMM).
+- Spilling allocates stack space based on the spilled register's type size.
+- Calculate the total stack frame size for each function before emitting the function body.
+  - This includes space for local `IR_Variable`s (summing their sizes + alignment padding) and spilled registers.
+- Manage `m_current_stack_offset` for local variables, ensuring alignment.
+- Handle stack alignment requirements (16-byte alignment before `call`)
+- `emit_move`: Implement logic for different sizes, including zero/sign extension (`movzx`, `movsx`) and floating-point moves (`movsd`). Handle memory-to-memory moves via a temporary register.
+- Arithmetic/Logical/Comparison handlers: Use size-appropriate instructions (`add`, `addsd`, `cmp`, `ucomisd`, `and`, etc.). Handle comparison results (set flags, `setcc`, `movzx`).
