@@ -9,6 +9,7 @@ print y;
 asm { call print_newline };
 */
 
+/*
 func main() {
   mut a : i32;
   a = 2 + a;
@@ -24,4 +25,35 @@ func main() {
   // c : bool = true;
   // print c;
   // print "\n";
+}
+*/
+
+func main() {
+    n : i32 = 15;
+    mut i : i32 = 1;
+    mut t : i32 = 0;
+    mut k : i32 = 0;
+
+    while (i <= n) {
+        t = i % 3;
+        k = i % 5;
+        if (t == 0) {
+            print "Fizz";
+            if(k == 0){
+                print "Buzz";
+            }
+            print "\n";
+        }
+
+        if (t != 0 and k == 0) {
+            print "Buzz\n";
+        }
+
+        if (t != 0 and k != 0) {
+            print i;
+            print "\n";
+        }
+
+        i = i + 1;
+    }
 }

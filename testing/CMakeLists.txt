@@ -18,6 +18,7 @@ set(CODEGEN_SOURCES
     ../src/codegen/ir/ir_printer.cpp
     ../src/codegen/ir/ir_generator.cpp
     ../src/codegen/ir/ir_visitor.cpp
+    ../src/codegen/x86_64/asm.cpp
 )
 
 set(CHECKER_SOURCES
@@ -47,6 +48,7 @@ add_executable(${PROJECT_NAME}
     test_parser.cpp
     test_symtab.cpp
     test_ir.cpp
+    test_x86_64_gen.cpp
     ${LEXER_SOURCES}
     ${PARSER_SOURCES}
     ${LOGGING_SOURCES}
