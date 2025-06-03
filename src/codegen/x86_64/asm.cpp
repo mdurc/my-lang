@@ -274,8 +274,10 @@ void X86_64CodeGenerator::generate(
     emit("mov rdi, rax");
     emit("call exit");
   } else {
+    // create 256 bytes for this function, will have to do the same logic that
+    // functions do to determine register size, here.
     handle_begin_func(IRInstruction(IROpCode::BEGIN_FUNC, IR_Label("_start"),
-                                    {IR_Immediate(0)}));
+                                    {IR_Immediate(256)}));
   }
 
   for (const IRInstruction& instr : instructions) {

@@ -243,7 +243,7 @@ FuncDeclPtr Parser::parse_function_decl() {
   // make the function type
   // TODO: actually calculate the size of the func
   Type ft = Type(Type::Function(std::move(ft_params), return_t.second),
-                 m_symtab->current_scope(), 64);
+                 m_symtab->current_scope(), 256);
 
   // see if it already exists in the table, if so we will use that symbol
   // Function types are unique in that they can be "re-defined" without an
