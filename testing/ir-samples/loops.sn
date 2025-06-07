@@ -1,5 +1,6 @@
 mut i := 0;
 while (i < 10) {
+  print i;
   i = i + 1;
   if (i == 5) {
     break;
@@ -7,14 +8,14 @@ while (i < 10) {
 
   if (i == 3) {
     continue;
-    18;
+    print 18;
   } else {
-    i = i;
+    print "ok";
   }
 }
 
 for (mut x : i32 = 5; x < 10; x = x + 1) {
-  print 2;
+  print x;
   continue;
-  print 3;
+  print x;
 }

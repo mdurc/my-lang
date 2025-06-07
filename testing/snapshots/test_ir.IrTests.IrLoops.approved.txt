@@ -1,45 +1,56 @@
 --- IR Instructions ---
-MOV    r1, 0
-MOV    r0, r1
-LABEL  L0
-MOV    r2, 10
-CMP_LT r3, r0, r2
-GOTO_F r3, L1
-MOV    r4, 1
-ADD    r5, r0, r4
-MOV    r0, r5
-MOV    r6, 5
-CMP_EQ r7, r0, r6
-GOTO_F r7, L2
-GOTO   L1
-LABEL  L2
-MOV    r8, 3
-CMP_EQ r9, r0, r8
-GOTO_F r9, L4
-GOTO   L0
-MOV    r10, 18
-GOTO   L5
-LABEL  L4
-MOV    r0, r0
-LABEL  L5
-GOTO   L0
-LABEL  L1
-MOV    r12, 5
-MOV    r11, r12
-LABEL  L6
-MOV    r13, 10
-CMP_LT r14, r11, r13
-GOTO_F r14, L9
-LABEL  L8
-MOV    r15, 2
-PRINT  r15
-GOTO   L7
-MOV    r16, 3
-PRINT  r16
-LABEL  L7
-MOV    r17, 1
-ADD    r18, r11, r17
-MOV    r11, r18
-GOTO   L6
-LABEL  L9
+	_t0 = 0
+	i = _t0
+_L0:
+	_t1 = 10
+	_t2 = i < _t1
+	IfZ _t2 Goto _L1
+	PushArg i
+	LCall print_int
+	PopArgs
+	_t3 = 1
+	_t4 = i + _t3
+	i = _t4
+	_t5 = 5
+	_t6 = i == _t5
+	IfZ _t6 Goto _L2
+	Goto _L1
+_L2:
+	_t7 = 3
+	_t8 = i == _t7
+	IfZ _t8 Goto _L4
+	Goto _L0
+	_t9 = 18
+	PushArg _t9
+	LCall print_int
+	PopArgs
+	Goto _L5
+_L4:
+	_t10 = "ok"
+	PushArg _t10
+	LCall print_string
+	PopArgs
+_L5:
+	Goto _L0
+_L1:
+	_t11 = 5
+	x = _t11
+_L6:
+	_t12 = 10
+	_t13 = x < _t12
+	IfZ _t13 Goto _L9
+_L8:
+	PushArg x
+	LCall print_int
+	PopArgs
+	Goto _L7
+	PushArg x
+	LCall print_int
+	PopArgs
+_L7:
+	_t14 = 1
+	_t15 = x + _t14
+	x = _t15
+	Goto _L6
+_L9:
 -----------------------

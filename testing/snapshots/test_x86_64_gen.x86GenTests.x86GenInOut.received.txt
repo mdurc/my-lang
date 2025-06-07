@@ -10,6 +10,4 @@ section .text
 _start:
 	push rbp
 	mov rbp, rsp
-_foo:
-	push rbp
-	mov rbp, rsp
+CODEGEN_EXCEPTION: Cannot get sized name for register: r11 with size 0

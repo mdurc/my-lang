@@ -1,13 +1,15 @@
 --- IR Instructions ---
-FUNC   L0
-MOV    r4, 18
-MOV    r3, r4
-MOV    r5, 15
-MOV    r2, r5
-RET    r3
-MOV    r6, 3
-MOV    r7, 1
-PARAM  r6
-PARAM  r7
-CALL   L0, 2
+_foo 
+	BeginFunc
+	_t0 = 18
+	i = _t0
+	_t1 = 15
+	z = _t1
+	Return i
+	_t2 = 3
+	PushArg _t2
+	_t3 = 1
+	PushArg _t3
+	_t4 = LCall _foo
+	PopArgs
 -----------------------

@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
 #include "../src/checker/typechecker.h"
-#include "../src/codegen/ir/ir_printer.h"
 #include "../src/codegen/ir/ir_visitor.h"
 #include "../src/codegen/x86_64/asm.h"
 #include "../src/lexer/lexer.h"
@@ -48,6 +47,11 @@ std::string generate_x86gen_output(const std::string& input_filepath) {
   }
 
   return rtrim(ss.str());
+}
+
+TEST(x86GenTests, x86GenFizzBuzz) {
+  ApprovalTests::Approvals::verify(
+      generate_x86gen_output("./ir-samples/fizzbuzz.sn"));
 }
 
 TEST(x86GenTests, x86GenArithmetic) {

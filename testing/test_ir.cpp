@@ -42,6 +42,11 @@ std::string generate_ir_output(const std::string& input_filepath) {
   return rtrim(ss.str());
 }
 
+TEST(IrTests, IrFizzBuzz) {
+  ApprovalTests::Approvals::verify(
+      generate_ir_output("./ir-samples/fizzbuzz.sn"));
+}
+
 TEST(IrTests, IrArithmetic) {
   ApprovalTests::Approvals::verify(
       generate_ir_output("./ir-samples/arithmetic.sn"));

@@ -13,3 +13,4 @@ _start:
 _foo:
 	push rbp
 	mov rbp, rsp
+CODEGEN_EXCEPTION: Unsupported size for prefix: 0

@@ -1,9 +1,16 @@
 --- IR Instructions ---
-MOV    r1, 8
-MOV    r0, r1
-READ   r0
-PRINT  r0
-MOV    r2, 0
-READ   r2
-PRINT  r2
+	_t0 = 8
+	x = _t0
+	_t1 = LCall read_word
+	_t1 = LCall parse_int
+	x = _t1
+	PushArg x
+	LCall print_int
+	PopArgs
+	y = 0
+	_t2 = LCall read_word
+	y = _t2
+	PushArg y
+	LCall print_string
+	PopArgs
 -----------------------
