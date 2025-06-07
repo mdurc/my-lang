@@ -36,8 +36,11 @@ private:
   std::unordered_map<std::string, std::string> m_string_literal_to_label;
 
   // register allocation
-  std::unordered_map<std::string, int> m_x86_reg_to_ir_reg;
+  // {x86_reg_str, <IR_reg_id, reg_size>}
+  std::unordered_map<std::string, std::pair<int, uint64_t>> m_x86_reg_to_ir_reg;
   std::unordered_map<int, std::string> m_ir_reg_to_x86_reg;
+  std::unordered_map<int, std::pair<std::string, uint64_t>>
+      m_spilled_ir_reg_locations;
   size_t m_reg_count;
   std::vector<std::string> m_temp_regs;
   std::vector<std::string> m_callee_saved_regs;
@@ -52,7 +55,9 @@ private:
                                       uint64_t size);
   std::string operand_to_string(const IROperand& operand);
   std::string get_sized_component(const IROperand& operand, uint64_t size);
-  std::string get_temp_x86_reg();
+
+  void spill_register(const std::string& reg, uint64_t size, int new_id);
+  std::string get_temp_x86_reg(uint64_t size);
   std::string get_x86_reg(const IR_Register& ir_reg);
 
   void emit(const std::string& instruction);

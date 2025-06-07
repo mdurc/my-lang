@@ -136,9 +136,11 @@ void IrGenerator::emit_goto(IR_Label target) {
                               std::vector<IROperand>{target});
 }
 
-void IrGenerator::emit_if_z(IROperand cond, IR_Label target) {
+void IrGenerator::emit_if_z(IROperand cond, IR_Label target,
+                            uint64_t cond_operands_size) {
   m_instructions.emplace_back(IROpCode::IF_Z, std::nullopt,
-                              std::vector<IROperand>{cond, target});
+                              std::vector<IROperand>{cond, target},
+                              cond_operands_size);
 }
 
 void IrGenerator::emit_push_arg(IROperand src, uint64_t size) {

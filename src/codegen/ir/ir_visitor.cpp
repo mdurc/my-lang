@@ -61,7 +61,10 @@ void IrVisitor::visit(BinaryOpExprNode& node) {
 
   IR_Register dest_reg = m_ir_gen.new_temp_reg();
 
-  uint64_t size = node.right->expr_type->get_byte_size();
+  // the only case that these should/can be different sizes is if they are nums
+  uint64_t l_size = node.left->expr_type->get_byte_size();
+  uint64_t r_size = node.right->expr_type->get_byte_size();
+  uint64_t size = std::min(l_size, r_size);
 
   switch (node.op_type) {
     case BinOperator::Plus:
@@ -219,7 +222,8 @@ void IrVisitor::visit(IfStmtNode& node) {
   IR_Label else_label = m_ir_gen.new_label();
   IR_Label end_label = m_ir_gen.new_label();
 
-  m_ir_gen.emit_if_z(cond_op, else_label);
+  m_ir_gen.emit_if_z(cond_op, else_label,
+                     node.condition->expr_type->get_byte_size());
 
   node.then_branch->accept(*this);
 
@@ -246,7 +250,8 @@ void IrVisitor::visit(WhileStmtNode& node) {
 
   node.condition->accept(*this);
   IROperand cond_op = m_last_expr_operand;
-  m_ir_gen.emit_if_z(cond_op, end_loop_label);
+  m_ir_gen.emit_if_z(cond_op, end_loop_label,
+                     node.condition->expr_type->get_byte_size());
 
   node.body->accept(*this);
 
@@ -418,7 +423,8 @@ void IrVisitor::visit(ForStmtNode& node) {
   m_ir_gen.emit_label(condition_label);
   if (node.condition) {
     node.condition->accept(*this);
-    m_ir_gen.emit_if_z(m_last_expr_operand, end_loop_label);
+    m_ir_gen.emit_if_z(m_last_expr_operand, end_loop_label,
+                       node.condition->expr_type->get_byte_size());
   }
 
   m_ir_gen.emit_label(body_label);

@@ -47,7 +47,8 @@ public:
   // Control Flow
   void emit_label(IR_Label label);
   void emit_goto(IR_Label target);
-  void emit_if_z(IROperand cond, IR_Label target); // IfZero (false)
+  void emit_if_z(IROperand cond, IR_Label target,
+                 uint64_t cond_operands_size); // IfZero (false)
 
   // Procedure Calls
   void emit_push_arg(IROperand src, uint64_t arg_size);
