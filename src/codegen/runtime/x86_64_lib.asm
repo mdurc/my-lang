@@ -7,7 +7,8 @@
 ; rdi <- exit code
 ; exits program with provided `rdi` value
 exit:
-	mov rax, 60
+	; mov rax, 60
+  mov rax, 0x2000001
 	syscall
 
 ; rdi <- address of string
@@ -31,7 +32,8 @@ print_string:
 	mov rsi, rdi
 	mov rdi, 1
 
-	mov rax, 1
+	; mov rax, 1
+  mov rax, 0x2000004
 	syscall
 	ret
 
@@ -43,8 +45,9 @@ print_char:
 	mov rdi, 1
 	mov rdx, 1
 
-	mov rax, 1	; sys_write the char that is now a string
-	syscall
+	; mov rax, 1	; sys_write the char that is now a string
+  mov rax, 0x2000004
+  syscall
 	add rsp, 8	; restore the address
 	ret
 
@@ -56,7 +59,8 @@ print_newline:
 	mov rsi, rsp	; alternative to having a newline buffer in .data.
 
 	mov rdx, 1
-	mov rax, 1
+	; mov rax, 1
+  mov rax, 0x2000004
 	syscall
 	add rsp, 8	; undo the 0x0A push
 	ret
@@ -134,7 +138,8 @@ print_int:
 
 ; al -> character read from stdin, else 0 if the end of input stream occurs
 read_char:
-	mov rax, 0	; sys_read
+	; mov rax, 0	; sys_read
+  mov rax, 0x2000003
 	mov rdi, 0	; stdin
 	sub rsp, 8	; make room for 8 bytes on stack
 	mov rsi, rsp	; ptr to new space on the stack

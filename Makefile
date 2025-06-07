@@ -1,7 +1,5 @@
-OS := $(shell uname)
-
 CC = g++
-CFLAGS = -std=c++17 -Wall -Wextra -g
+CFLAGS = -std=c++17 -Wall -Wextra
 PROGRAM = sunnyc
 BUILD_DIR = build
 
@@ -35,18 +33,24 @@ $(BUILD_DIR)/%.o: src/%.cpp
 
 clean:
 	rm -rf $(BUILD_DIR)
-	rm -f $(PROGRAM) x86_64_lib.o asm-output.asm asm-output.o asm-output.exe
+	rm -f $(PROGRAM) *.o *.exe
 
+update_asm: $(PROGRAM)
+	./$(PROGRAM) asm-test.sn --gen > asm-output.asm
 
 compile: $(PROGRAM)
-ifeq ($(OS),Darwin)
-	@echo "Compilation not supported on macOS"
-else
-	./$(PROGRAM) asm-test.sn --gen > asm-output.asm
-	nasm -f elf64 src/codegen/runtime/x86_64_lib.asm -o x86_64_lib.o
-	nasm -f elf64 asm-output.asm -o asm-output.o
-	ld x86_64_lib.o asm-output.o -o asm-output.exe
-	./asm-output.exe
-endif
+	nasm -f macho64 src/codegen/runtime/x86_64_lib.asm -o lib.o
+	nasm -f macho64 asm-output.asm -o asm-output.asm.o
+	ld lib.o asm-output.asm.o -o asm-output.asm.exe \
+	-macos_version_min 10.13 \
+	-e _start \
+	-lSystem \
+	-syslibroot $(shell xcrun --sdk macosx --show-sdk-path) \
+	-no_pie
 
-.PHONY: all clean compile
+run:
+	./asm-output.asm.exe
+
+go: compile run
+
+.PHONY: all clean update_asm compile run go
