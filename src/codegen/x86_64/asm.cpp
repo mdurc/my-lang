@@ -10,6 +10,7 @@ X86_64CodeGenerator::X86_64CodeGenerator()
       m_is_buffering_function(false),
       m_current_stack_offset(0),
       m_current_arg_count(0),
+      m_string_count(0),
       m_reg_count(0) {
   assert(Type::PTR_SIZE == 8);
   // Conventions:
@@ -407,27 +408,29 @@ void X86_64CodeGenerator::handle_end_func(const IRInstruction* instr,
     emit("pop " + *it);
   }
 
+  if (!exit) {
+    // set up the return value here
+    if (instr != nullptr && !instr->operands.empty()) {
+      // Non-void return
+      std::string return_str =
+          get_sized_component(instr->operands[0], instr->size);
+      std::string sized_rax = get_sized_register_name("rax", instr->size);
+      emit("mov " + sized_rax + ", " + return_str + " ; return value");
+    } else {
+      emit("xor rax, rax ; void return"); // store zero in rax
+    }
+  }
+
   // restore stack pointer and base ptr
   emit("mov rsp, rbp ; restore stack");
   emit("pop rbp");
 
   if (exit) {
     handle_exit();
-    return;
-  }
-
-  // emit the return statement
-  if (instr != nullptr && !instr->operands.empty()) {
-    // Non-void return
-    std::string return_str =
-        get_sized_component(instr->operands[0], instr->size);
-    std::string sized_rax = get_sized_register_name("rax", instr->size);
-    emit("mov " + sized_rax + ", " + return_str + " ; return value");
   } else {
-    emit("xor rax, rax ; void return"); // store zero in rax
+    // return from procedure here
+    emit("ret");
   }
-  // return from procedure here
-  emit("ret");
 }
 
 void X86_64CodeGenerator::handle_exit() {
@@ -654,13 +657,20 @@ void X86_64CodeGenerator::handle_goto(const IRInstruction& instr) {
 void X86_64CodeGenerator::handle_if_z(const IRInstruction& instr) {
   // instr.operands[0] is the condition operand
   // instr.operands[1] is the target label
-  std::string cond_op_str = get_sized_component(instr.operands[0], instr.size);
+  std::string cond_str = get_sized_component(instr.operands[0], instr.size);
 
   const IROperand& label = instr.operands[1];
   assert(std::holds_alternative<IR_Label>(label));
 
-  emit("test " + cond_op_str + ", " + cond_op_str); // Test if zero
-  emit("jz " + std::get<IR_Label>(label).name);     // Jump if Zero (ZF=1)
+  // operands cannot both be from memory
+  if (std::holds_alternative<IR_Variable>(instr.operands[0])) {
+    std::string temp =
+        get_sized_register_name(get_temp_x86_reg(instr.size), instr.size);
+    emit("mov " + temp + ", " + cond_str);
+    cond_str = temp;
+  }
+  emit("test " + cond_str + ", " + cond_str);
+  emit("jz " + std::get<IR_Label>(label).name); // Jump if Zero (ZF=1)
 }
 
 void X86_64CodeGenerator::handle_push_arg(const IRInstruction& instr) {
@@ -702,15 +712,10 @@ void X86_64CodeGenerator::handle_lcall(const IRInstruction& instr) {
            "LCALL result must be a register");
 
     IROperand dest_reg_ir = instr.result.value();
-    uint64_t return_size = std::get<IR_Immediate>(instr.operands[1]).val;
     std::string dest_phys_reg64 = get_sized_component(dest_reg_ir, instr.size);
+    std::string sized_rax = get_sized_register_name("rax", instr.size);
 
-    if (return_size == Type::PTR_SIZE) {
-      emit("mov " + dest_phys_reg64 + ", rax");
-    } else if (return_size > 0 && return_size < Type::PTR_SIZE) {
-      std::string sized_rax = get_sized_register_name("rax", return_size);
-      emit("movzx " + dest_phys_reg64 + ", " + sized_rax);
-    }
+    emit("mov " + dest_phys_reg64 + ", " + sized_rax);
   }
 
   // reset the arg count for the next push_args

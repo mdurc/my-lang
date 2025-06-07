@@ -383,7 +383,8 @@ void IrVisitor::visit(ReturnStmtNode& node) {
   m_emitted_return = true;
   if (node.value) {
     node.value->accept(*this);
-    m_ir_gen.emit_end_func(m_last_expr_operand);
+    m_ir_gen.emit_end_func(m_last_expr_operand,
+                           node.value->expr_type->get_byte_size());
   } else {
     // void
     m_ir_gen.emit_end_func();

@@ -44,7 +44,7 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
   if (instr.opcode == IROpCode::BEGIN_FUNC) {
     assert(instr.result.has_value());
     print_ir_operand(instr.result.value(), out);
-    out << " " << std::endl;
+    out << std::endl;
   }
 
   out << "\t";
@@ -145,7 +145,7 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
       out << "PopArgs";
       break;
     case IROpCode::LCALL: // opt_dest = LCall func_label
-      assert(instr.operands.size() == 2);
+      assert(instr.operands.size() == 1);
       if (instr.result.has_value()) {
         print_ir_operand(instr.result.value(), out);
         out << " = ";

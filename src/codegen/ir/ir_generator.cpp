@@ -13,9 +13,9 @@ void IrGenerator::emit_begin_func(IR_Label func_label) {
                               std::vector<IROperand>{});
 }
 
-void IrGenerator::emit_end_func(IROperand ret_val) {
+void IrGenerator::emit_end_func(IROperand return_val, uint64_t return_size) {
   m_instructions.emplace_back(IROpCode::END_FUNC, std::nullopt,
-                              std::vector<IROperand>{ret_val});
+                              std::vector<IROperand>{return_val}, return_size);
 }
 
 void IrGenerator::emit_end_func() {
@@ -159,17 +159,8 @@ void IrGenerator::emit_pop_args() {
 
 void IrGenerator::emit_lcall(std::optional<IR_Register> dst,
                              IR_Label func_target, uint64_t return_size) {
-  if (dst.has_value()) {
-    m_instructions.emplace_back(
-        IROpCode::LCALL, dst.value(),
-        std::vector<IROperand>{func_target,
-                               IR_Immediate(return_size, return_size)});
-  } else {
-    m_instructions.emplace_back(
-        IROpCode::LCALL, std::nullopt,
-        std::vector<IROperand>{func_target,
-                               IR_Immediate(return_size, return_size)});
-  }
+  m_instructions.emplace_back(IROpCode::LCALL, dst,
+                              std::vector<IROperand>{func_target}, return_size);
 }
 
 void IrGenerator::emit_asm_block(const std::string& asm_code) {
