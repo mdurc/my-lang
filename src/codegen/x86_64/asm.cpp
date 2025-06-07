@@ -298,8 +298,7 @@ void X86_64CodeGenerator::generate(
   }
 
   if (!is_main_defined) {
-    emit("mov rsp, rbp");
-    emit("pop rbp");
+    handle_end_func();
     handle_exit();
   }
 }
@@ -307,7 +306,7 @@ void X86_64CodeGenerator::generate(
 void X86_64CodeGenerator::handle_instruction(const IRInstruction& instr) {
   switch (instr.opcode) {
     case IROpCode::BEGIN_FUNC: handle_begin_func(instr); break;
-    case IROpCode::END_FUNC: handle_end_func(instr); break;
+    case IROpCode::END_FUNC: handle_end_func(); break;
     case IROpCode::EXIT: handle_exit(); break;
     case IROpCode::ASSIGN: handle_assign(instr); break;
     case IROpCode::LOAD: handle_load(instr); break;
@@ -371,11 +370,11 @@ void X86_64CodeGenerator::handle_begin_func(const IRInstruction& instr) {
   m_stack_alloc_placeholder_idx = m_current_function_asm_buffer.size();
   m_is_buffering_function = true; // start buffering
 
-  m_current_function_asm_buffer.push_back("; stack allocation placeholder");
+  m_current_function_asm_buffer.push_back("\t; no stack used in function");
   m_current_function_asm_buffer.push_back(""); // callee saved reg placeholder
 }
 
-void X86_64CodeGenerator::handle_end_func(const IRInstruction&) {
+void X86_64CodeGenerator::handle_end_func() {
   uint64_t stack = m_current_stack_offset;
   // perform function post processing
   uint64_t idx = m_stack_alloc_placeholder_idx;
@@ -412,7 +411,7 @@ void X86_64CodeGenerator::handle_end_func(const IRInstruction&) {
 }
 
 void X86_64CodeGenerator::handle_exit() {
-  emit("xor rax, rax"); // zero return code
+  emit("xor rdi, rdi"); // zero return code
   emit("call exit");
 }
 
@@ -546,6 +545,7 @@ void X86_64CodeGenerator::handle_neg(const IRInstruction& instr) {
       get_sized_component(instr.result.value(), instr.size);
   std::string src_str = get_sized_component(instr.operands[0], instr.size);
 
+  emit("mov " + dest_reg_str + ", " + src_str);
   emit("neg " + dest_reg_str);
 }
 
@@ -556,6 +556,7 @@ void X86_64CodeGenerator::handle_logical_not(const IRInstruction& instr) {
       get_sized_component(instr.result.value(), instr.size);
   std::string src_str = get_sized_component(instr.operands[0], instr.size);
 
+  emit("mov " + dest_reg_str + ", " + src_str);
   emit("xor " + dest_reg_str + ", 1");
 }
 

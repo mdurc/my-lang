@@ -467,8 +467,7 @@ void IrVisitor::visit(ReadStmtNode& node) {
   // Convert the word to an int
   if (is_unsigned_int(expr_type)) {
     m_ir_gen.emit_lcall(temp_val_reg, IR_Label("parse_uint"), 8);
-  } else {
-    assert(is_signed_int(expr_type));
+  } else if (is_signed_int(expr_type)) {
     m_ir_gen.emit_lcall(temp_val_reg, IR_Label("parse_int"), 8);
   }
 

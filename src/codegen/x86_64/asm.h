@@ -66,7 +66,7 @@ private:
   void handle_instruction(const IRInstruction& instr);
 
   void handle_begin_func(const IRInstruction& instr);
-  void handle_end_func(const IRInstruction& instr);
+  void handle_end_func();
   void handle_exit();
 
   void handle_assign(const IRInstruction& instr);
