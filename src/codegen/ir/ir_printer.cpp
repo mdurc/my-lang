@@ -67,7 +67,7 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
       out << ")";
       break;
     case IROpCode::STORE: // *addr = val
-      assert(!instr.result.has_value() && instr.operands.size() == 2);
+      assert(!instr.result.has_value() && instr.operands.size() == 1);
       out << "*(";
       print_ir_operand(instr.operands[0], out);
       out << ") = ";
@@ -135,12 +135,11 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
       print_ir_operand(instr.operands[0], out);
       break;
     case IROpCode::POP_ARGS:
-      assert(!instr.result.has_value() && instr.operands.size() == 1);
-      out << "PopArgs ";
-      print_ir_operand(instr.operands[0], out);
+      assert(!instr.result.has_value());
+      out << "PopArgs";
       break;
     case IROpCode::LCALL: // opt_dest = LCall func_label
-      assert(instr.operands.size() == 1);
+      assert(instr.operands.size() == 2);
       if (instr.result.has_value()) {
         print_ir_operand(instr.result.value(), out);
         out << " = ";

@@ -1,5 +1,7 @@
 #include "ir_visitor.h"
 
+#include <cstdint>
+
 #include "../../parser/visitor.h"
 
 IrVisitor::IrVisitor()
@@ -24,20 +26,23 @@ void IrVisitor::unimpl(const std::string& note) {
 // Expression Nodes
 void IrVisitor::visit(IntegerLiteralNode& node) {
   IR_Register temp_reg = m_ir_gen.new_temp_reg();
-  m_ir_gen.emit_assign(temp_reg, IR_Immediate(node.value));
+  // 8 bytes for integer literal as of now
+  m_ir_gen.emit_assign(temp_reg, IR_Immediate(node.value, 8), 8);
   m_last_expr_operand = temp_reg;
 }
 
 void IrVisitor::visit(BoolLiteralNode& node) {
   IR_Register temp_reg = m_ir_gen.new_temp_reg();
-  m_ir_gen.emit_assign(temp_reg, IR_Immediate(node.value ? 1 : 0));
+  // 1 byte for boolean literal as of now
+  m_ir_gen.emit_assign(temp_reg, IR_Immediate(node.value ? 1 : 0, 1), 1);
   m_last_expr_operand = temp_reg;
 }
 
 void IrVisitor::visit(StringLiteralNode& node) {
   // backend handles putting string in memory
   IR_Register temp_reg = m_ir_gen.new_temp_reg();
-  m_ir_gen.emit_assign(temp_reg, node.value);
+  // Ptr size for string literal
+  m_ir_gen.emit_assign(temp_reg, node.value, Type::PTR_SIZE);
   m_last_expr_operand = temp_reg;
 }
 
@@ -56,45 +61,47 @@ void IrVisitor::visit(BinaryOpExprNode& node) {
 
   IR_Register dest_reg = m_ir_gen.new_temp_reg();
 
+  uint64_t size = node.right->expr_type->get_byte_size();
+
   switch (node.op_type) {
     case BinOperator::Plus:
-      m_ir_gen.emit_add(dest_reg, left_op, right_op);
+      m_ir_gen.emit_add(dest_reg, left_op, right_op, size);
       break;
     case BinOperator::Minus:
-      m_ir_gen.emit_sub(dest_reg, left_op, right_op);
+      m_ir_gen.emit_sub(dest_reg, left_op, right_op, size);
       break;
     case BinOperator::Multiply:
-      m_ir_gen.emit_mul(dest_reg, left_op, right_op);
+      m_ir_gen.emit_mul(dest_reg, left_op, right_op, size);
       break;
     case BinOperator::Divide:
-      m_ir_gen.emit_div(dest_reg, left_op, right_op);
+      m_ir_gen.emit_div(dest_reg, left_op, right_op, size);
       break;
     case BinOperator::Equal:
-      m_ir_gen.emit_cmp_eq(dest_reg, left_op, right_op);
+      m_ir_gen.emit_cmp_eq(dest_reg, left_op, right_op, size);
       break;
     case BinOperator::NotEqual:
-      m_ir_gen.emit_cmp_ne(dest_reg, left_op, right_op);
+      m_ir_gen.emit_cmp_ne(dest_reg, left_op, right_op, size);
       break;
     case BinOperator::LessThan:
-      m_ir_gen.emit_cmp_lt(dest_reg, left_op, right_op);
+      m_ir_gen.emit_cmp_lt(dest_reg, left_op, right_op, size);
       break;
     case BinOperator::LessEqual:
-      m_ir_gen.emit_cmp_le(dest_reg, left_op, right_op);
+      m_ir_gen.emit_cmp_le(dest_reg, left_op, right_op, size);
       break;
     case BinOperator::GreaterThan:
-      m_ir_gen.emit_cmp_gt(dest_reg, left_op, right_op);
+      m_ir_gen.emit_cmp_gt(dest_reg, left_op, right_op, size);
       break;
     case BinOperator::GreaterEqual:
-      m_ir_gen.emit_cmp_ge(dest_reg, left_op, right_op);
+      m_ir_gen.emit_cmp_ge(dest_reg, left_op, right_op, size);
       break;
     case BinOperator::LogicalAnd:
-      m_ir_gen.emit_logical_and(dest_reg, left_op, right_op);
+      m_ir_gen.emit_log_and(dest_reg, left_op, right_op, size);
       break;
     case BinOperator::LogicalOr:
-      m_ir_gen.emit_logical_or(dest_reg, left_op, right_op);
+      m_ir_gen.emit_log_or(dest_reg, left_op, right_op, size);
       break;
     case BinOperator::Modulo:
-      m_ir_gen.emit_mod(dest_reg, left_op, right_op);
+      m_ir_gen.emit_mod(dest_reg, left_op, right_op, size);
       break;
   }
 
@@ -107,16 +114,17 @@ void IrVisitor::visit(UnaryExprNode& node) {
 
   IR_Register dest_reg = m_ir_gen.new_temp_reg();
 
+  uint64_t size = node.operand->expr_type->get_byte_size();
   switch (node.op_type) {
     case UnaryOperator::Negate:
       // dest = -operand
-      m_ir_gen.emit_neg(dest_reg, operand_op);
+      m_ir_gen.emit_neg(dest_reg, operand_op, size);
       break;
     case UnaryOperator::LogicalNot:
-      m_ir_gen.emit_logical_not(dest_reg, operand_op);
+      m_ir_gen.emit_log_not(dest_reg, operand_op, size);
       break;
     case UnaryOperator::Dereference:
-      m_ir_gen.emit_load(dest_reg, operand_op);
+      m_ir_gen.emit_load(dest_reg, operand_op, size);
       break;
     case UnaryOperator::AddressOf:
     case UnaryOperator::AddressOfMut:
@@ -132,6 +140,7 @@ void IrVisitor::visit(UnaryExprNode& node) {
 void IrVisitor::visit(AssignmentNode& node) {
   node.rvalue->accept(*this);
   IROperand rval_op = m_last_expr_operand;
+  uint64_t size = node.lvalue->expr_type->get_byte_size();
 
   // Handle all possible L-values
   if (auto lval_ident =
@@ -139,7 +148,7 @@ void IrVisitor::visit(AssignmentNode& node) {
     assert(m_vars.count(lval_ident->name) &&
            "Type checker should identify use of undeclared variable");
     IR_Variable lval_var = m_vars.at(lval_ident->name);
-    m_ir_gen.emit_assign(lval_var, rval_op);
+    m_ir_gen.emit_assign(lval_var, rval_op, size);
   } else if (auto array_idx_node =
                  std::dynamic_pointer_cast<ArrayIndexNode>(node.lvalue)) {
     // arr[idx] = rval_op  => STORE target_addr, rval_op
@@ -150,22 +159,22 @@ void IrVisitor::visit(AssignmentNode& node) {
     IROperand index_op = m_last_expr_operand;
 
     assert(node.lvalue->expr_type && "LValue in assignment should have a type");
-    IR_Immediate element_size_op(node.lvalue->expr_type->get_byte_size());
+    IR_Immediate idx_offset(node.lvalue->expr_type->get_byte_size(), 8);
 
     IR_Register offset_reg = m_ir_gen.new_temp_reg();
-    m_ir_gen.emit_mul(offset_reg, index_op, element_size_op);
+    m_ir_gen.emit_mul(offset_reg, index_op, idx_offset, size);
 
     IR_Register target_addr_reg = m_ir_gen.new_temp_reg();
-    m_ir_gen.emit_add(target_addr_reg, base_addr_op, offset_reg);
+    m_ir_gen.emit_add(target_addr_reg, base_addr_op, offset_reg, size);
 
-    m_ir_gen.emit_store(target_addr_reg, rval_op);
+    m_ir_gen.emit_store(target_addr_reg, rval_op, size);
   } else if (auto unary_deref_node =
                  std::dynamic_pointer_cast<UnaryExprNode>(node.lvalue)) {
     if (unary_deref_node->op_type == UnaryOperator::Dereference) {
       // *ptr = rval_op => STORE ptr_val, rval_op
       unary_deref_node->operand->accept(*this);
       IROperand ptr_addr_op = m_last_expr_operand;
-      m_ir_gen.emit_store(ptr_addr_op, rval_op);
+      m_ir_gen.emit_store(ptr_addr_op, rval_op, size);
     } else {
       unimpl("AssignmentNode to non-dereference UnaryExpr LValue");
     }
@@ -185,16 +194,17 @@ void IrVisitor::visit(VariableDeclNode& node) {
          "Type checker should identify variable re-declaration");
 
   const std::string& var_name = node.var_name->name;
-  IR_Variable var_operand(var_name, node.type->get_byte_size());
+  uint64_t size = node.type->get_byte_size();
+  IR_Variable var_operand(var_name, size);
   m_vars.insert({var_name, var_operand});
 
   if (node.initializer) {
     node.initializer->accept(*this);
-    m_ir_gen.emit_assign(var_operand, m_last_expr_operand);
+    m_ir_gen.emit_assign(var_operand, m_last_expr_operand, size);
   } else {
     // default values
     // TODO: update this within Type system
-    m_ir_gen.emit_assign(var_operand, IR_Immediate(0));
+    m_ir_gen.emit_assign(var_operand, IR_Immediate(0, 8), size);
   }
 }
 
@@ -307,10 +317,9 @@ void IrVisitor::visit(FunctionDeclNode& node) {
   }
 
   if (!m_emitted_return) {
+    m_ir_gen.emit_end_func();
     m_ir_gen.emit_ret();
   }
-
-  m_ir_gen.emit_end_func();
 
   // restore var context
   m_vars = prev_var_operands;
@@ -329,15 +338,11 @@ void IrVisitor::visit(ParamNode& node) {
 }
 
 void IrVisitor::visit(FunctionCallNode& node) {
-  uint64_t total_param_size = 0;
-
   for (const ArgPtr& arg_node : node.arguments) {
     arg_node->accept(*this);
 
-    m_ir_gen.emit_push_arg(m_last_expr_operand);
-    assert(arg_node->expression->expr_type &&
-           "Argument expression must have a type");
-    total_param_size += arg_node->expression->expr_type->get_byte_size();
+    m_ir_gen.emit_push_arg(m_last_expr_operand,
+                           arg_node->expression->expr_type->get_byte_size());
   }
 
   IdentPtr callee_ident =
@@ -362,11 +367,12 @@ void IrVisitor::visit(FunctionCallNode& node) {
     m_last_expr_operand = call_result_reg;
   } else {
     // void placeholder
-    m_last_expr_operand = IR_Immediate(0);
+    m_last_expr_operand = IR_Immediate(0, 8);
   }
 
-  m_ir_gen.emit_lcall(result_reg_opt, func_label);
-  m_ir_gen.emit_pop_args(IR_Immediate(total_param_size));
+  m_ir_gen.emit_lcall(result_reg_opt, func_label,
+                      node.expr_type->get_byte_size());
+  m_ir_gen.emit_pop_args();
 }
 
 void IrVisitor::visit(ReturnStmtNode& node) {
@@ -450,20 +456,20 @@ void IrVisitor::visit(ReadStmtNode& node) {
   std::shared_ptr<Type> expr_type = node.expression->expr_type;
 
   IR_Register temp_val_reg = m_ir_gen.new_temp_reg();
-  m_ir_gen.emit_lcall(temp_val_reg, IR_Label("read_word"));
+  m_ir_gen.emit_lcall(temp_val_reg, IR_Label("read_word"), Type::PTR_SIZE);
 
   // Convert the word to an int
   if (is_unsigned_int(expr_type)) {
-    m_ir_gen.emit_lcall(temp_val_reg, IR_Label("parse_uint"));
+    m_ir_gen.emit_lcall(temp_val_reg, IR_Label("parse_uint"), 8);
   } else {
     assert(is_signed_int(expr_type));
-    m_ir_gen.emit_lcall(temp_val_reg, IR_Label("parse_int"));
+    m_ir_gen.emit_lcall(temp_val_reg, IR_Label("parse_int"), 8);
   }
 
   if (auto ident_node =
           std::dynamic_pointer_cast<IdentifierNode>(node.expression)) {
     IR_Variable lval_var = m_vars.at(ident_node->name);
-    m_ir_gen.emit_assign(lval_var, temp_val_reg);
+    m_ir_gen.emit_assign(lval_var, temp_val_reg, expr_type->get_byte_size());
   } else {
     unimpl("ReadStmtNode with complex l-value");
   }
@@ -479,9 +485,9 @@ void IrVisitor::visit(PrintStmtNode& node) {
 
   IR_Label print_func_lbl = get_runtime_print_call(expr_type);
 
-  m_ir_gen.emit_push_arg(val_op);
-  m_ir_gen.emit_lcall(std::nullopt, print_func_lbl);
-  m_ir_gen.emit_pop_args(IR_Immediate(expr_type->get_byte_size()));
+  m_ir_gen.emit_push_arg(val_op, expr_type->get_byte_size());
+  m_ir_gen.emit_lcall(std::nullopt, print_func_lbl, 0);
+  m_ir_gen.emit_pop_args();
 }
 
 void IrVisitor::visit(AsmBlockNode& node) {
@@ -497,16 +503,17 @@ void IrVisitor::visit(ArrayIndexNode& node) { // R-value access: x = arr[i]
 
   assert(node.expr_type &&
          "ArrayIndexNode must have its element type resolved");
-  IR_Immediate element_size_op(node.expr_type->get_byte_size());
+  uint64_t size = node.expr_type->get_byte_size();
+  IR_Immediate size_op(size, size);
 
   IR_Register offset_reg = m_ir_gen.new_temp_reg();
-  m_ir_gen.emit_mul(offset_reg, index_op, element_size_op);
+  m_ir_gen.emit_mul(offset_reg, index_op, size_op, size);
 
   IR_Register target_addr_reg = m_ir_gen.new_temp_reg();
-  m_ir_gen.emit_add(target_addr_reg, base_addr_op, offset_reg);
+  m_ir_gen.emit_add(target_addr_reg, base_addr_op, offset_reg, size);
 
   IR_Register result_val_reg = m_ir_gen.new_temp_reg();
-  m_ir_gen.emit_load(result_val_reg, target_addr_reg);
+  m_ir_gen.emit_load(result_val_reg, target_addr_reg, size);
   m_last_expr_operand = result_val_reg;
 }
 

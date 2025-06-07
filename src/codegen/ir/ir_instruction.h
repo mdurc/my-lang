@@ -8,6 +8,8 @@
 #include <variant>
 #include <vector>
 
+#include "../../parser/types.h"
+
 enum class IROpCode {
   BEGIN_FUNC, // Result: label_func_name, no operands
   END_FUNC,   // No operands
@@ -67,17 +69,18 @@ struct IR_Register {
 struct IR_Variable {
   std::string name;
   uint64_t size; // size in bytes
-  IR_Variable(const std::string& n, uint64_t s) : name(n), size(s) {}
 
+  IR_Variable(const std::string& n, uint64_t s) : name(n), size(s) {}
   bool operator==(const IR_Variable& other) const { return name == other.name; }
   bool operator<(const IR_Variable& other) const { return name < other.name; }
 };
 
 // Immediate integer values
 struct IR_Immediate {
-  uint64_t val; // imms are all positive, though can be negated
+  uint64_t val;  // imms are all positive, though can be negated
+  uint64_t size; // size in bytes
 
-  IR_Immediate(uint64_t val = 0) : val(val) {}
+  IR_Immediate(uint64_t val, uint64_t s) : val(val), size(s) {}
   bool operator==(const IR_Immediate& other) const { return val == other.val; }
   bool operator<(const IR_Immediate& other) const { return val < other.val; }
 };
@@ -89,7 +92,6 @@ struct IR_Label {
 
   IR_Label(int id = 0) : id(id), name("_L" + std::to_string(id)) {}
   IR_Label(const std::string& n) : id(-1), name(n) {}
-
   bool operator==(const IR_Label& other) const { return id == other.id; }
   bool operator<(const IR_Label& other) const {
     if (id != other.id) return id < other.id;
@@ -108,10 +110,11 @@ struct IRInstruction {
   std::optional<IROperand> result;
   //`operands` are the source operands or other parameters for the instruction.
   std::vector<IROperand> operands;
+  uint64_t size; // size in bytes
 
   IRInstruction(IROpCode op, std::optional<IROperand> res = std::nullopt,
-                std::vector<IROperand> ops = {})
-      : opcode(op), result(std::move(res)), operands(std::move(ops)) {}
+                std::vector<IROperand> ops = {}, uint64_t s = 0)
+      : opcode(op), result(std::move(res)), operands(std::move(ops)), size(s) {}
 };
 
 #endif // CODEGEN_IR_IR_INSTRUCTION_H

@@ -19,28 +19,30 @@ public:
   void emit_exit();
 
   // Assignment and Data
-  void emit_assign(IROperand dest, IROperand src);
-  void emit_load(IR_Register dest, IROperand addr_src);   // dest = *address_src
-  void emit_store(IROperand address_dest, IROperand src); // *address_dest = src
+  void emit_assign(IROperand dst, IROperand src, uint64_t size);
+  void emit_load(IR_Register dst, IROperand addr_src,
+                 uint64_t size); // dst = *addr
+  void emit_store(IROperand address_dest, IROperand src,
+                  uint64_t size); // *addr = src
 
   // Arithmetic / Logical
-  void emit_add(IR_Register dest, IROperand src1, IROperand src2);
-  void emit_sub(IR_Register dest, IROperand src1, IROperand src2);
-  void emit_mul(IR_Register dest, IROperand src1, IROperand src2);
-  void emit_div(IR_Register dest, IROperand src1, IROperand src2);
-  void emit_mod(IR_Register dest, IROperand src1, IROperand src2);
-  void emit_neg(IR_Register dest, IROperand src);
-  void emit_logical_not(IR_Register dest, IROperand src);
-  void emit_logical_and(IR_Register dest, IROperand src1, IROperand src2);
-  void emit_logical_or(IR_Register dest, IROperand src1, IROperand src2);
+  void emit_add(IR_Register dst, IROperand s1, IROperand s2, uint64_t size);
+  void emit_sub(IR_Register dst, IROperand s1, IROperand s2, uint64_t size);
+  void emit_mul(IR_Register dst, IROperand s1, IROperand s2, uint64_t size);
+  void emit_div(IR_Register dst, IROperand s1, IROperand s2, uint64_t size);
+  void emit_mod(IR_Register dst, IROperand s1, IROperand s2, uint64_t size);
+  void emit_neg(IR_Register dst, IROperand src, uint64_t size);
+  void emit_log_not(IR_Register dst, IROperand s, uint64_t size);
+  void emit_log_and(IR_Register dst, IROperand s1, IROperand s2, uint64_t size);
+  void emit_log_or(IR_Register dst, IROperand s1, IROperand s2, uint64_t size);
 
   // Comparison
-  void emit_cmp_eq(IR_Register dest, IROperand src1, IROperand src2);
-  void emit_cmp_ne(IR_Register dest, IROperand src1, IROperand src2);
-  void emit_cmp_lt(IR_Register dest, IROperand src1, IROperand src2);
-  void emit_cmp_le(IR_Register dest, IROperand src1, IROperand src2);
-  void emit_cmp_gt(IR_Register dest, IROperand src1, IROperand src2);
-  void emit_cmp_ge(IR_Register dest, IROperand src1, IROperand src2);
+  void emit_cmp_eq(IR_Register dst, IROperand s1, IROperand s2, uint64_t size);
+  void emit_cmp_ne(IR_Register dst, IROperand s1, IROperand s2, uint64_t size);
+  void emit_cmp_lt(IR_Register dst, IROperand s1, IROperand s2, uint64_t size);
+  void emit_cmp_le(IR_Register dst, IROperand s1, IROperand s2, uint64_t size);
+  void emit_cmp_gt(IR_Register dst, IROperand s1, IROperand s2, uint64_t size);
+  void emit_cmp_ge(IR_Register dst, IROperand s1, IROperand s2, uint64_t size);
 
   // Control Flow
   void emit_label(IR_Label label);
@@ -48,9 +50,10 @@ public:
   void emit_if_z(IROperand cond, IR_Label target); // IfZero (false)
 
   // Procedure Calls
-  void emit_push_arg(IROperand src);
-  void emit_pop_args(IR_Immediate num_bytes);
-  void emit_lcall(std::optional<IR_Register> dest, IR_Label func_target);
+  void emit_push_arg(IROperand src, uint64_t arg_size);
+  void emit_pop_args(); // backend should track size required to pop
+  void emit_lcall(std::optional<IR_Register> dst, IR_Label func_target,
+                  uint64_t return_size);
   void emit_ret();
   void emit_ret(IROperand retval);
 

@@ -26,37 +26,34 @@ private:
   size_t m_stack_alloc_placeholder_idx;
   bool m_is_buffering_function;
 
-  std::unordered_map<int, std::string> m_ir_reg_to_x86_reg;
-  int m_current_stack_offset;
+  size_t m_current_stack_offset;
 
-  int m_current_arg_count;
+  size_t m_current_arg_count;
   std::stack<int> m_allocated_arg_bytes;
 
   std::unordered_map<std::string, std::string> m_var_locations; // in stack
   std::vector<std::string> m_string_literals_data;
   std::unordered_map<std::string, std::string> m_string_literal_to_label;
 
-  // Register allocation and spilling
+  // register allocation
   std::unordered_map<std::string, int> m_x86_reg_to_ir_reg;
-  std::unordered_map<int, int> m_spilled_reg_locations; // ir reg id, rbp offset
-  std::list<std::string> m_physical_reg_lru;
-
+  std::unordered_map<int, std::string> m_ir_reg_to_x86_reg;
+  size_t m_reg_count;
   std::vector<std::string> m_temp_regs;
   std::vector<std::string> m_callee_saved_regs;
   std::vector<std::string> m_caller_saved_regs;
   std::vector<std::string> m_arg_regs;
-  std::set<std::string> m_used_callee_saved_regs_in_current_func;
+  std::set<std::string> m_used_callee_saved;
 
+  void clear_func_data();
+
+  std::string get_size_prefix(uint64_t size);
+  std::string get_sized_register_name(const std::string& reg64_name,
+                                      uint64_t size);
+  std::string operand_to_string(const IROperand& operand);
+  std::string get_sized_component(const IROperand& operand, uint64_t size);
   std::string get_temp_x86_reg();
   std::string get_x86_reg(const IR_Register& ir_reg);
-  std::string operand_to_string(const IROperand& operand);
-  std::string internal_acquire_phys_reg();
-  void update_lru(const std::string& phys_reg_name);
-
-  // this is a helper that ensures that the mov between these two operands
-  // will be valid in that they won't both be memory content accesses, or
-  // both immediates, or anything that doesn't indicate size of ops to assembler
-  void emit_move(IROperand dst, IROperand src, bool is_load, bool is_store);
 
   void emit(const std::string& instruction);
   void emit_label(const std::string& label_name);
@@ -65,7 +62,7 @@ private:
 
   void handle_begin_func(const IRInstruction& instr);
   void handle_end_func(const IRInstruction& instr);
-  void handle_exit(const IRInstruction& instr);
+  void handle_exit();
 
   void handle_assign(const IRInstruction& instr);
   void handle_load(const IRInstruction& instr);

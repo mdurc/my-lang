@@ -1,7 +1,7 @@
 OS := $(shell uname)
 
 CC = g++
-CFLAGS = -std=c++17 -Wall -Wextra
+CFLAGS = -std=c++17 -Wall -Wextra -g
 PROGRAM = sunnyc
 BUILD_DIR = build
 
