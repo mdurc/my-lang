@@ -67,11 +67,11 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
       out << ")";
       break;
     case IROpCode::STORE: // *addr = val
-      assert(!instr.result.has_value() && instr.operands.size() == 1);
+      assert(instr.result.has_value() && instr.operands.size() == 1);
       out << "*(";
-      print_ir_operand(instr.operands[0], out);
+      print_ir_operand(instr.result.value(), out);
       out << ") = ";
-      print_ir_operand(instr.operands[1], out);
+      print_ir_operand(instr.operands[0], out);
       break;
     case IROpCode::ADD:
     case IROpCode::SUB:

@@ -20,10 +20,10 @@ public:
 
   // Assignment and Data
   void emit_assign(IROperand dst, IROperand src, uint64_t size);
-  void emit_load(IR_Register dst, IROperand addr_src,
-                 uint64_t size); // dst = *addr
-  void emit_store(IROperand address_dest, IROperand src,
-                  uint64_t size); // *addr = src
+  // dst = *addr
+  void emit_load(IR_Register dst, IROperand addr_src, uint64_t size);
+  // *addr = src
+  void emit_store(IROperand address_dest, IROperand src, uint64_t size);
 
   // Arithmetic / Logical
   void emit_add(IR_Register dst, IROperand s1, IROperand s2, uint64_t size);

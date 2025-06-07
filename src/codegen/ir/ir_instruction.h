@@ -47,8 +47,8 @@ enum class IROpCode {
 
   // Procedure calls
   PUSH_ARG, // Operands: src_operand
-  POP_ARGS, // Operands: imm_num_bytes
-  LCALL,    // Result: opt_dest_temp, Operands: func_label_operand
+  POP_ARGS, // No operands
+  LCALL,    // Result: opt_dest_temp, Operands: func_label_operand, return size
   RETURN,   // Operands: opt_val_operand
 
   ASM_BLOCK,
@@ -110,6 +110,9 @@ struct IRInstruction {
   std::optional<IROperand> result;
   //`operands` are the source operands or other parameters for the instruction.
   std::vector<IROperand> operands;
+
+  // size is tracked in instructions as instructions often require a matching
+  // size on both operands, and we enforce that this way.
   uint64_t size; // size in bytes
 
   IRInstruction(IROpCode op, std::optional<IROperand> res = std::nullopt,
