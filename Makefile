@@ -38,7 +38,7 @@ clean:
 update_asm: $(PROGRAM)
 	./$(PROGRAM) asm-test.sn --gen > asm-output.asm
 
-compile: $(PROGRAM)
+compile: $(PROGRAM) update_asm
 	nasm -f macho64 src/codegen/runtime/x86_64_lib.asm -o lib.o
 	nasm -f macho64 asm-output.asm -o asm-output.asm.o
 	ld lib.o asm-output.asm.o -o asm-output.asm.exe \
