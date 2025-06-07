@@ -12,7 +12,7 @@
 
 enum class IROpCode {
   BEGIN_FUNC, // Result: label_func_name, no operands
-  END_FUNC,   // No operands
+  END_FUNC,   // Operands: optional return value
   EXIT,       // No operands
 
   // Assignment and Data
@@ -49,7 +49,6 @@ enum class IROpCode {
   PUSH_ARG, // Operands: src_operand
   POP_ARGS, // No operands
   LCALL,    // Result: opt_dest_temp, Operands: func_label_operand, return size
-  RETURN,   // Operands: opt_val_operand
 
   ASM_BLOCK,
 };

@@ -1,7 +1,6 @@
 #include "asm.h"
 
 #include <algorithm>
-#include <functional>
 
 #include "../../parser/types.h"
 
@@ -92,8 +91,15 @@ std::string X86_64CodeGenerator::operand_to_string(const IROperand& operand) {
     return std::get<IR_Label>(operand).name;
   } else if (std::holds_alternative<std::string>(operand)) { // String literal
     const std::string& str_val = std::get<std::string>(operand);
-    assert(m_string_literal_to_label.count(str_val));
-    return m_string_literal_to_label.at(str_val);
+    // check if string has already been added, otherwise add it to string labels
+    auto itr = m_string_literal_to_label.find(str_val);
+    if (itr == m_string_literal_to_label.end()) {
+      std::string label = "LC" + std::to_string(m_string_count++);
+      m_string_literal_to_label.insert({str_val, label});
+      m_string_literals_data.push_back(str_val);
+      return label;
+    }
+    return itr->second;
   }
   throw std::runtime_error("Unknown IROperand type");
 }
@@ -214,31 +220,6 @@ void X86_64CodeGenerator::generate(
   m_string_literals_data.clear();
   m_string_literal_to_label.clear();
 
-  // gather all string literals as preprocessing for the data segment
-  // TODO: just store these and put the data section at the bottom of the
-  // program
-  int string_lit_idx = 0;
-  for (const IRInstruction& instr : instructions) {
-    std::function<void(const IROperand&)> process_operand_for_string =
-        [&](const IROperand& op) {
-          if (std::holds_alternative<std::string>(op)) {
-            const std::string& str_val = std::get<std::string>(op);
-            auto itr = m_string_literal_to_label.find(str_val);
-            if (itr == m_string_literal_to_label.end()) {
-              std::string label = "LC" + std::to_string(string_lit_idx++);
-              m_string_literal_to_label.insert({str_val, label});
-              m_string_literals_data.push_back(str_val);
-            }
-          }
-        };
-    if (instr.result.has_value()) {
-      process_operand_for_string(instr.result.value());
-    }
-    for (const IROperand& op : instr.operands) {
-      process_operand_for_string(op);
-    }
-  }
-
   // preamble
   *m_out << "extern exit, string_length, print_string, print_char" << std::endl;
   *m_out << "extern print_newline, print_uint, print_int" << std::endl;
@@ -246,10 +227,53 @@ void X86_64CodeGenerator::generate(
   *m_out << "extern parse_int, string_equals, string_copy" << std::endl;
 
   *m_out << std::endl;
+  *m_out << "global _start" << std::endl;
+  *m_out << "section .text" << std::endl;
 
+  if (is_main_defined) {
+    *m_out << "_start:" << std::endl;
+    emit("call main");
+    emit("mov rdi, rax"); // main's return value as exit code
+    emit("call exit");
+    for (const IRInstruction& instr : instructions) {
+      handle_instruction(instr);
+    }
+  } else {
+    std::vector<IRInstruction> top_level;
+    std::vector<IRInstruction> functions;
+    bool in_func = false;
+    for (const auto& instr : instructions) {
+      if (instr.opcode == IROpCode::BEGIN_FUNC) {
+        in_func = true;
+        functions.push_back(instr);
+      } else if (instr.opcode == IROpCode::END_FUNC) {
+        functions.push_back(instr);
+        in_func = false;
+      } else if (in_func) {
+        functions.push_back(instr);
+      } else {
+        top_level.push_back(instr);
+      }
+    }
+
+    handle_begin_func(
+        IRInstruction(IROpCode::BEGIN_FUNC, IR_Label("_start"), {}));
+    // emit the top level instructions only
+    for (const IRInstruction& instr : top_level) {
+      handle_instruction(instr);
+    }
+    // exit from _start
+    handle_end_func(nullptr, true);
+
+    // process all functions underneath the top level functions
+    for (const auto& instr : functions) {
+      handle_instruction(instr);
+    }
+  }
+
+  // output the gathered string labels in the data section
+  *m_out << std::endl;
   *m_out << "section .data" << std::endl;
-
-  // output the gathered string labels
   for (const std::string& str : m_string_literals_data) {
     *m_out << m_string_literal_to_label.at(str) << ":" << std::endl;
     if (str.size() == 1 && str[0] == '\n') {
@@ -275,38 +299,12 @@ void X86_64CodeGenerator::generate(
     // always end with a null byte just in case
     *m_out << "\", 0" << std::endl;
   }
-
-  *m_out << std::endl;
-  *m_out << "global _start" << std::endl;
-
-  *m_out << "section .text" << std::endl;
-
-  if (is_main_defined) {
-    *m_out << "_start:" << std::endl;
-    emit("call main");
-
-    // use main's return value as exit code
-    emit("mov rdi, rax");
-    emit("call exit");
-  } else {
-    handle_begin_func(
-        IRInstruction(IROpCode::BEGIN_FUNC, IR_Label("_start"), {}));
-  }
-
-  for (const IRInstruction& instr : instructions) {
-    handle_instruction(instr);
-  }
-
-  if (!is_main_defined) {
-    handle_end_func();
-    handle_exit();
-  }
 }
 
 void X86_64CodeGenerator::handle_instruction(const IRInstruction& instr) {
   switch (instr.opcode) {
     case IROpCode::BEGIN_FUNC: handle_begin_func(instr); break;
-    case IROpCode::END_FUNC: handle_end_func(); break;
+    case IROpCode::END_FUNC: handle_end_func(&instr, false); break;
     case IROpCode::EXIT: handle_exit(); break;
     case IROpCode::ASSIGN: handle_assign(instr); break;
     case IROpCode::LOAD: handle_load(instr); break;
@@ -332,7 +330,6 @@ void X86_64CodeGenerator::handle_instruction(const IRInstruction& instr) {
     case IROpCode::PUSH_ARG: handle_push_arg(instr); break;
     case IROpCode::POP_ARGS: handle_pop_args(instr); break;
     case IROpCode::LCALL: handle_lcall(instr); break;
-    case IROpCode::RETURN: handle_ret(instr); break;
     case IROpCode::ASM_BLOCK: handle_asm_block(instr); break;
     default:
       throw std::runtime_error("Unsupported IR opcode for x86_64: " +
@@ -370,11 +367,12 @@ void X86_64CodeGenerator::handle_begin_func(const IRInstruction& instr) {
   m_stack_alloc_placeholder_idx = m_current_function_asm_buffer.size();
   m_is_buffering_function = true; // start buffering
 
-  m_current_function_asm_buffer.push_back("\t; no stack used in function");
+  m_current_function_asm_buffer.push_back(""); // stack offset placeholder
   m_current_function_asm_buffer.push_back(""); // callee saved reg placeholder
 }
 
-void X86_64CodeGenerator::handle_end_func() {
+void X86_64CodeGenerator::handle_end_func(const IRInstruction* instr,
+                                          bool exit) {
   uint64_t stack = m_current_stack_offset;
   // perform function post processing
   uint64_t idx = m_stack_alloc_placeholder_idx;
@@ -393,8 +391,12 @@ void X86_64CodeGenerator::handle_end_func() {
   }
 
   // write the buffered asm contents:
-  for (const std::string& line : m_current_function_asm_buffer) {
-    *m_out << line << std::endl;
+  for (size_t i = 0; i < m_current_function_asm_buffer.size(); ++i) {
+    if (i < 2 && m_current_function_asm_buffer[i].empty()) {
+      // skip the placeholders if they are empty
+      continue;
+    }
+    *m_out << m_current_function_asm_buffer[i] << std::endl;
   }
   m_current_function_asm_buffer.clear();
   m_is_buffering_function = false;
@@ -405,9 +407,27 @@ void X86_64CodeGenerator::handle_end_func() {
     emit("pop " + *it);
   }
 
-  // restore stack pointer and base ptr, return to caller
+  // restore stack pointer and base ptr
   emit("mov rsp, rbp ; restore stack");
   emit("pop rbp");
+
+  if (exit) {
+    handle_exit();
+    return;
+  }
+
+  // emit the return statement
+  if (instr != nullptr && !instr->operands.empty()) {
+    // Non-void return
+    std::string return_str =
+        get_sized_component(instr->operands[0], instr->size);
+    std::string sized_rax = get_sized_register_name("rax", instr->size);
+    emit("mov " + sized_rax + ", " + return_str + " ; return value");
+  } else {
+    emit("xor rax, rax ; void return"); // store zero in rax
+  }
+  // return from procedure here
+  emit("ret");
 }
 
 void X86_64CodeGenerator::handle_exit() {
@@ -696,19 +716,6 @@ void X86_64CodeGenerator::handle_lcall(const IRInstruction& instr) {
   // reset the arg count for the next push_args
   m_current_arg_count = 0;
   m_allocated_arg_bytes.push(0);
-}
-
-void X86_64CodeGenerator::handle_ret(const IRInstruction& instr) {
-  if (!instr.operands.empty()) {
-    // Non-void return
-    std::string retval_str = get_sized_component(instr.operands[0], instr.size);
-    std::string sized_rax = get_sized_register_name("rax", instr.size);
-    emit("mov " + sized_rax + ", " + retval_str + " ; return value");
-  } else {
-    emit("xor rax, rax ; void return"); // store zero in rax
-  }
-  // return from procedure here
-  emit("ret");
 }
 
 void X86_64CodeGenerator::handle_asm_block(const IRInstruction& instr) {

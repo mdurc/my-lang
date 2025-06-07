@@ -51,7 +51,13 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
 
   switch (instr.opcode) {
     case IROpCode::BEGIN_FUNC: out << "BeginFunc"; break;
-    case IROpCode::END_FUNC: out << "EndFunc"; break;
+    case IROpCode::END_FUNC:
+      out << "EndFunc";
+      if (!instr.operands.empty()) {
+        out << " ";
+        print_ir_operand(instr.operands[0], out);
+      }
+      break;
     case IROpCode::EXIT: out << "Exit"; break;
     case IROpCode::ASSIGN:
       assert(instr.result.has_value() && instr.operands.size() == 1);
@@ -146,13 +152,6 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
       }
       out << "LCall ";
       print_ir_operand(instr.operands[0], out);
-      break;
-    case IROpCode::RETURN:
-      out << "Return";
-      if (!instr.operands.empty()) {
-        out << " ";
-        print_ir_operand(instr.operands[0], out);
-      }
       break;
     case IROpCode::ASM_BLOCK:
       assert(!instr.result.has_value() && instr.operands.size() == 1 &&

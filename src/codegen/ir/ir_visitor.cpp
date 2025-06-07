@@ -323,7 +323,6 @@ void IrVisitor::visit(FunctionDeclNode& node) {
 
   if (!m_emitted_return) {
     m_ir_gen.emit_end_func();
-    m_ir_gen.emit_ret();
   }
 
   // restore var context
@@ -384,10 +383,10 @@ void IrVisitor::visit(ReturnStmtNode& node) {
   m_emitted_return = true;
   if (node.value) {
     node.value->accept(*this);
-    m_ir_gen.emit_ret(m_last_expr_operand);
+    m_ir_gen.emit_end_func(m_last_expr_operand);
   } else {
     // void
-    m_ir_gen.emit_ret();
+    m_ir_gen.emit_end_func();
   }
 }
 

@@ -32,8 +32,10 @@ private:
   std::stack<int> m_allocated_arg_bytes;
 
   std::unordered_map<std::string, std::string> m_var_locations; // in stack
+
   std::vector<std::string> m_string_literals_data;
   std::unordered_map<std::string, std::string> m_string_literal_to_label;
+  size_t m_string_count;
 
   // register allocation
   // {x86_reg_str, <IR_reg_id, reg_size>}
@@ -66,7 +68,7 @@ private:
   void handle_instruction(const IRInstruction& instr);
 
   void handle_begin_func(const IRInstruction& instr);
-  void handle_end_func();
+  void handle_end_func(const IRInstruction* instr, bool exit);
   void handle_exit();
 
   void handle_assign(const IRInstruction& instr);
@@ -92,7 +94,6 @@ private:
   void handle_push_arg(const IRInstruction& instr);
   void handle_pop_args(const IRInstruction& instr);
   void handle_lcall(const IRInstruction& instr);
-  void handle_ret(const IRInstruction& instr);
   void handle_asm_block(const IRInstruction& instr);
 };
 

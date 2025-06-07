@@ -15,6 +15,7 @@ public:
 
   // Function demarcation
   void emit_begin_func(IR_Label func_label);
+  void emit_end_func(IROperand ret_val);
   void emit_end_func();
   void emit_exit();
 
@@ -55,8 +56,6 @@ public:
   void emit_pop_args(); // backend should track size required to pop
   void emit_lcall(std::optional<IR_Register> dst, IR_Label func_target,
                   uint64_t return_size);
-  void emit_ret();
-  void emit_ret(IROperand retval);
 
   // Raw Assembly
   void emit_asm_block(const std::string& asm_code);
