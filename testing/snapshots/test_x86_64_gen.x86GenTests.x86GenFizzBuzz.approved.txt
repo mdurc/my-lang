@@ -3,16 +3,6 @@ extern print_newline, print_uint, print_int
 extern read_char, read_word, parse_uint
 extern parse_int, string_equals, string_copy
 
-section .data
-LC0:
-	db "FizzBuzz", 10, "", 0
-LC1:
-	db "Fizz", 10, "", 0
-LC2:
-	db "Buzz", 10, "", 0
-LC3:
-	db 10, 0
-
 global _start
 section .text
 _start:
@@ -34,8 +24,8 @@ main:
 	mov DWORD[rbp - 8], r11d
 _L0:
 	push rax
-	mov r13d, DWORD[rbp - 8]
-	cmp r13d, DWORD[rbp - 4]
+	mov r13d, DWORD[rbp - 4]
+	cmp DWORD[rbp - 8], r13d
 	setle al
 	movzx r12d, al
 	pop rax
@@ -132,7 +122,17 @@ _L1:
 	pop r14
 	pop r13
 	pop r12
+	xor rax, rax ; void return
 	mov rsp, rbp ; restore stack
 	pop rbp
-	xor rax, rax ; void return
 	ret
+
+section .data
+LC0:
+	db "FizzBuzz", 10, "", 0
+LC1:
+	db "Fizz", 10, "", 0
+LC2:
+	db "Buzz", 10, "", 0
+LC3:
+	db 10, 0

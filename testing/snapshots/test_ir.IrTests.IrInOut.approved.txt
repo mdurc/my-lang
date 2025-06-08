@@ -7,10 +7,20 @@
 	PushArg x
 	LCall print_int
 	PopArgs
+	_t2 = "
+"
+	PushArg _t2
+	LCall print_string
+	PopArgs
 	y = 0
-	_t2 = LCall read_word
-	y = _t2
+	_t3 = LCall read_word
+	y = _t3
 	PushArg y
+	LCall print_string
+	PopArgs
+	_t4 = "
+"
+	PushArg _t4
 	LCall print_string
 	PopArgs
 -----------------------

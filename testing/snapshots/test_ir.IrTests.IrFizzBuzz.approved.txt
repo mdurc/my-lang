@@ -1,5 +1,5 @@
 --- IR Instructions ---
-main 
+main
 	BeginFunc
 	_t0 = 1000
 	n = _t0
@@ -61,5 +61,4 @@ _L3:
 	Goto _L0
 _L1:
 	EndFunc
-	Return
 -----------------------

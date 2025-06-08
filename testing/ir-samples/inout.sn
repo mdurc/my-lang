@@ -1,7 +1,9 @@
 mut x : i32 = 8;
 read x;
 print x;
+print "\n";
 
 mut y : string;
 read y;
 print y;
+print "\n";

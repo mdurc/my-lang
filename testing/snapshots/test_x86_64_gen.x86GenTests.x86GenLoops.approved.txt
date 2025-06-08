@@ -3,10 +3,6 @@ extern print_newline, print_uint, print_int
 extern read_char, read_word, parse_uint
 extern parse_int, string_equals, string_copy
 
-section .data
-LC0:
-	db "ok", 0
-
 global _start
 section .text
 _start:
@@ -98,3 +94,7 @@ _L9:
 	pop rbp
 	xor rdi, rdi
 	call exit
+
+section .data
+LC0:
+	db "ok", 0
