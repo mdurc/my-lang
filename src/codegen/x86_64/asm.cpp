@@ -757,7 +757,13 @@ void X86_64CodeGenerator::handle_lcall(const IRInstruction& instr) {
   m_allocated_arg_bytes.pop();
   m_allocated_arg_bytes.push(amt + padding_needed);
 
-  emit("call " + std::get<IR_Label>(label).name);
+  const std::string& name = std::get<IR_Label>(label).name;
+  if (name == "read_word") {
+    // just doing 64 byte input buffer for now for the read procedure
+    emit("sub rsp, 64");
+    emit("mov rdi, rsp");
+  }
+  emit("call " + name);
 
   // If the call has a result, it's in RAX. Move it to the IR result register.
   if (instr.result.has_value()) {
