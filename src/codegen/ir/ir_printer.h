@@ -9,6 +9,7 @@
 void print_ir_operand(const IROperand& operand, std::ostream& out);
 void print_ir_register(const IR_Register& reg, std::ostream& out);
 void print_ir_variable(const IR_Variable& var, std::ostream& out);
+void print_ir_parameter_slot(const IR_ParameterSlot& slot, std::ostream& out);
 void print_ir_immediate(const IR_Immediate& imm, std::ostream& out);
 void print_ir_label(const IR_Label& label, std::ostream& out);
 void print_ir_instruction(const IRInstruction& instr, std::ostream& out);

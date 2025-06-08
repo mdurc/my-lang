@@ -62,6 +62,14 @@ private:
   std::string get_temp_x86_reg(uint64_t size);
   std::string get_x86_reg(const IR_Register& ir_reg);
 
+  void emit_one_operand_memory_operation(const IROperand& s1,
+                                         const IROperand& s2,
+                                         const std::string& operation,
+                                         uint64_t size);
+  void emit_one_operand_memory_operation(const std::string& s1_str,
+                                         const std::string& s2_str,
+                                         const std::string& operation,
+                                         uint64_t size);
   void emit(const std::string& instruction);
   void emit_label(const std::string& label_name);
 

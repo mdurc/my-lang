@@ -306,8 +306,20 @@ void IrVisitor::visit(FunctionDeclNode& node) {
   m_vars.clear();
 
   // allocate registers for arguments
+  std::vector<IR_Variable> ordered_param_vars;
   for (const ParamPtr& param_node : node.params) {
-    param_node->accept(*this);
+    param_node->accept(*this); // inserts into m_vars
+    ordered_param_vars.push_back(m_vars.at(param_node->name->name));
+  }
+
+  // emit assignments from argument slots to parameter variables so that the
+  // code generation can load the passed arguments onto the stack as local vars
+  size_t p_amt = ordered_param_vars.size();
+  for (size_t i = 0; i < p_amt; ++i) {
+    const IR_Variable& param_var = ordered_param_vars[i];
+    uint64_t param_size = node.params[i]->type->get_byte_size();
+    m_ir_gen.emit_assign(param_var, IR_ParameterSlot(i, p_amt, param_size),
+                         param_size);
   }
 
   if (node.return_type_name.has_value()) {
@@ -334,6 +346,7 @@ void IrVisitor::visit(ArgumentNode& node) {
   // 'give'ing and 'take'ing. For now, just accept from the expression.
   node.expression->accept(*this);
 }
+
 void IrVisitor::visit(ParamNode& node) {
   const std::string& param_name = node.name->name;
   IR_Variable param_var(param_name, node.type->get_byte_size());

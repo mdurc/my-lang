@@ -64,6 +64,22 @@ struct IR_Register {
   bool operator<(const IR_Register& other) const { return id < other.id; }
 };
 
+struct IR_ParameterSlot {
+  size_t index;     // 0-indexed param number
+  size_t param_amt; // number of parameters in this group
+  uint64_t size;    // size in bytes
+
+  IR_ParameterSlot(size_t idx, size_t p_amt, uint64_t s)
+      : index(idx), param_amt(p_amt), size(s) {}
+  bool operator==(const IR_ParameterSlot& other) const {
+    return index == other.index && size == other.size;
+  }
+  bool operator<(const IR_ParameterSlot& other) const {
+    if (index != other.index) return index < other.index;
+    return size < other.size;
+  }
+};
+
 // Source-level variable from code
 struct IR_Variable {
   std::string name;
@@ -99,8 +115,8 @@ struct IR_Label {
 };
 
 // string for ASM_BLOCK, string literals, etc.
-using IROperand =
-    std::variant<IR_Register, IR_Variable, IR_Immediate, IR_Label, std::string>;
+using IROperand = std::variant<IR_Register, IR_Variable, IR_ParameterSlot,
+                               IR_Immediate, IR_Label, std::string>;
 
 struct IRInstruction {
   IROpCode opcode;

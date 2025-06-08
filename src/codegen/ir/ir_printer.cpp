@@ -10,6 +10,10 @@ void print_ir_variable(const IR_Variable& var, std::ostream& out) {
   out << var.name;
 }
 
+void print_ir_parameter_slot(const IR_ParameterSlot& slot, std::ostream& out) {
+  out << "_param " << slot.index;
+}
+
 void print_ir_immediate(const IR_Immediate& imm, std::ostream& out) {
   out << imm.val;
 }
@@ -29,6 +33,8 @@ void print_ir_operand(const IROperand& operand, std::ostream& out) {
     print_ir_label(std::get<IR_Label>(operand), out);
   } else if (std::holds_alternative<std::string>(operand)) {
     out << "\"" << std::get<std::string>(operand) << "\"";
+  } else if (std::holds_alternative<IR_ParameterSlot>(operand)) {
+    print_ir_parameter_slot(std::get<IR_ParameterSlot>(operand), out);
   }
 }
 
