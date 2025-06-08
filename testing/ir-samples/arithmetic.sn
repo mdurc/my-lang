@@ -3,3 +3,5 @@ mut y: i64 = (x + 5) * 2;
 z := y - (x / 2) + (-x);
 mut result: i64;
 result = z + 100;
+
+print result, "\n";

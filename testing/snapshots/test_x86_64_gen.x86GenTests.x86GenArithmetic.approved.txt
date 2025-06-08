@@ -46,6 +46,11 @@ _start:
 	mov r14, QWORD[rbp - 24]
 	add r14, r13
 	mov QWORD[rbp - 32], r14
+	mov rdi, QWORD[rbp - 32]
+	call print_int
+	mov r15, LC0
+	mov rdi, r15
+	call print_string
 	pop rbx
 	pop r15
 	pop r14
@@ -57,3 +62,5 @@ _start:
 	call exit
 
 section .data
+LC0:
+	db 10, 0

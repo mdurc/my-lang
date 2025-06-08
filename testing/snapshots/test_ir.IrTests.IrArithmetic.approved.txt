@@ -16,4 +16,12 @@
 	_t10 = 100
 	_t11 = z + _t10
 	result = _t11
+	PushArg result
+	LCall print_int
+	PopArgs
+	_t12 = "
+"
+	PushArg _t12
+	LCall print_string
+	PopArgs
 -----------------------

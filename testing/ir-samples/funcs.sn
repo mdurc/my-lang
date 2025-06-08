@@ -8,19 +8,14 @@ func foo(a: i32, b: bool) returns (z: i32) {
   return z;
 }
 
-print foo(3, true);
-print "\n";
+print foo(3, true), "\n";
 
 // Testing arguments pushed onto the stack
 func bar(a: bool, b : bool, c : bool, d: bool, e : bool, f : bool, g : bool, h : bool, i : bool, j : bool) {
-  print g;
-  print "\n";
-  print h;
-  print "\n";
-  print i;
-  print "\n";
-  print j;
-  print "\n";
+  print g, "\n";
+  print h, "\n";
+  print i, "\n";
+  print j, "\n";
 }
 
 bar(true,true,true,true,true,true,true,false, true, false);

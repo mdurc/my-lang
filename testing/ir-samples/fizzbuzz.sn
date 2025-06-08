@@ -9,8 +9,7 @@ func main() {
     } else if (i % 5 == 0) {
       print "Buzz\n";
     } else {
-      print i;
-      print "\n";
+      print i, "\n";
     }
     i = i + 1;
   }
