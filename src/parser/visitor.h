@@ -44,6 +44,7 @@ public:
   virtual void visit(ReturnStmtNode& node) = 0;
   virtual void visit(FreeStmtNode& node) = 0;
   virtual void visit(ErrorStmtNode& node) = 0;
+  virtual void visit(ExitStmtNode& node) = 0;
   virtual void visit(AsmBlockNode& node) = 0;
 
   // Other Nodes
@@ -547,6 +548,11 @@ public:
   void visit(ErrorStmtNode& node) override {
     print_indent();
     out << "ErrorStmt(Message: \"" << node.message_content << "\")";
+  }
+
+  void visit(ExitStmtNode& node) override {
+    print_indent();
+    out << "ExitStmt(exit code: " << node.exit_code << ")";
   }
 
   void visit(AsmBlockNode& node) override {

@@ -47,6 +47,7 @@ public:
   void visit(ReturnStmtNode& node) override;
   void visit(FreeStmtNode& node) override;
   void visit(ErrorStmtNode& node) override;
+  void visit(ExitStmtNode& node) override;
   void visit(AsmBlockNode& node) override;
 
   void visit(CaseNode& node) override;

@@ -101,7 +101,8 @@ std::string token_type_to_string(TokenType type) {
     case TokenType::AND: return "AND";
     case TokenType::OR: return "OR";
     case TokenType::ASM: return "ASM";
-    case TokenType::ERROR_KEYWORD: return "ERROR_KEYWORD";
+    case TokenType::ERROR_KW: return "ERROR_KEYWORD";
+    case TokenType::EXIT_KW: return "EXIT_KEYWORD";
 
     case TokenType::STRUCT: return "STRUCT";
     case TokenType::SWITCH: return "SWITCH";

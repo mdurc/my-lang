@@ -536,6 +536,10 @@ void IrVisitor::visit(ArrayIndexNode& node) { // R-value access: x = arr[i]
   m_last_expr_operand = result_val_reg;
 }
 
+void IrVisitor::visit(ExitStmtNode& node) {
+  m_ir_gen.emit_exit(node.exit_code);
+}
+
 void IrVisitor::visit(FloatLiteralNode&) { unimpl("FloatLiteralNode"); }
 void IrVisitor::visit(NullLiteralNode&) { unimpl("NullLiteralNode"); }
 

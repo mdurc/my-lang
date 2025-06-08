@@ -77,7 +77,7 @@ private:
 
   void handle_begin_func(const IRInstruction& instr);
   void handle_end_func(const IRInstruction* instr, bool exit);
-  void handle_exit();
+  void handle_exit(int code);
 
   void handle_assign(const IRInstruction& instr);
   void handle_load(const IRInstruction& instr);

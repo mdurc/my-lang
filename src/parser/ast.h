@@ -376,6 +376,14 @@ public:
   void accept(Visitor& v) override;
 };
 
+class ExitStmtNode : public StatementNode {
+public:
+  int exit_code;
+  ExitStmtNode(const Token* tok, size_t sc, int code)
+      : StatementNode(tok, sc), exit_code(code) {}
+  void accept(Visitor& v) override;
+};
+
 class AsmBlockNode : public StatementNode {
 public:
   std::string body;

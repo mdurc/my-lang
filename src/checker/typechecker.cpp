@@ -1133,6 +1133,12 @@ void TypeChecker::visit(FreeStmtNode& node) {
   // array vs not array deallocation will be up to the user.
 }
 
+void TypeChecker::visit(ExitStmtNode& node) {
+  if (node.exit_code < 0) {
+    m_logger.report(Error("Expected error code of positive integer literal"));
+  }
+}
+
 // No type checking needed for these two
 void TypeChecker::visit(ErrorStmtNode&) {}
 void TypeChecker::visit(AsmBlockNode&) {}

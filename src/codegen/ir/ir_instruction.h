@@ -13,7 +13,7 @@
 enum class IROpCode {
   BEGIN_FUNC, // Result: label_func_name, no operands
   END_FUNC,   // Operands: optional return value
-  EXIT,       // No operands
+  EXIT,       // Operands: exit code
 
   // Assignment and Data
   ASSIGN, // Result: dest_var_or_temp, Operands: src_operand
@@ -21,7 +21,6 @@ enum class IROpCode {
   STORE,  // Result: address_dest, Operands: src_temp
 
   // Arithmetic / Logical (dest = src1 op src2)
-
   ADD,
   SUB,
   MUL,

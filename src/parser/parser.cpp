@@ -385,7 +385,8 @@ StmtPtr Parser::parse_statement() {
     case TokenType::BREAK: return parse_break_stmt();
     case TokenType::CONTINUE: return parse_continue_stmt();
     case TokenType::FREE: return parse_free_stmt();
-    case TokenType::ERROR_KEYWORD: return parse_error_stmt();
+    case TokenType::ERROR_KW: return parse_error_stmt();
+    case TokenType::EXIT_KW: return parse_exit_stmt();
     case TokenType::ASM: return parse_asm_block();
     default: {
       // <Expr> ';'
@@ -654,11 +655,10 @@ StmtPtr Parser::parse_free_stmt() {
               expr);
 }
 
-// <ErrorStmt> ::= 'Error' '(' String ')'
+// <ErrorStmt> ::= 'Error' String
 StmtPtr Parser::parse_error_stmt() {
   const Token* error_tok = current();
-  _consume(TokenType::ERROR_KEYWORD);
-  _consume(TokenType::LPAREN);
+  _consume(TokenType::ERROR_KW);
 
   const Token* str_tok = current();
   _consume(TokenType::STRING_LITERAL);
@@ -671,10 +671,24 @@ StmtPtr Parser::parse_error_stmt() {
   }
   const std::string& msg = str_tok->get_string_val();
 
-  _consume(TokenType::RPAREN);
   _consume(TokenType::SEMICOLON);
 
   return _AST(ErrorStmtNode, error_tok, m_symtab->current_scope(), msg);
+}
+
+// <ExitStmt> ::= 'exit' (1 | 0)
+StmtPtr Parser::parse_exit_stmt() {
+  const Token* exit_tok = current();
+  _consume(TokenType::EXIT_KW);
+
+  const Token* str_tok = current();
+  _consume(TokenType::INT_LITERAL);
+  _consume(TokenType::SEMICOLON);
+
+  assert(str_tok->is_literal());
+
+  return _AST(ExitStmtNode, exit_tok, m_symtab->current_scope(),
+              str_tok->get_int_val());
 }
 
 // <Block> ::= '{' <Stmt>* '}'

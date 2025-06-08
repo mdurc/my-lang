@@ -336,7 +336,11 @@ void X86_64CodeGenerator::handle_instruction(const IRInstruction& instr) {
   switch (instr.opcode) {
     case IROpCode::BEGIN_FUNC: handle_begin_func(instr); break;
     case IROpCode::END_FUNC: handle_end_func(&instr, false); break;
-    case IROpCode::EXIT: handle_exit(); break;
+    case IROpCode::EXIT:
+      assert(!instr.operands.empty());
+      assert(std::holds_alternative<IR_Immediate>(instr.operands[0]));
+      handle_exit(std::get<IR_Immediate>(instr.operands[0]).val);
+      break;
     case IROpCode::ASSIGN: handle_assign(instr); break;
     case IROpCode::LOAD: handle_load(instr); break;
     case IROpCode::STORE: handle_store(instr); break;
@@ -456,15 +460,19 @@ void X86_64CodeGenerator::handle_end_func(const IRInstruction* instr,
   emit("pop rbp");
 
   if (exit) {
-    handle_exit();
+    handle_exit(0);
   } else {
     // return from procedure here
     emit("ret");
   }
 }
 
-void X86_64CodeGenerator::handle_exit() {
-  emit("xor rdi, rdi"); // zero return code
+void X86_64CodeGenerator::handle_exit(int code) {
+  if (code == 0) {
+    emit("xor rdi, rdi");
+  } else {
+    emit("mov rdi, " + std::to_string(code));
+  }
   emit("call exit");
 }
 

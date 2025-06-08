@@ -18,16 +18,16 @@ const std::map<std::string, TokenType> Lexer::s_keyword_map = {
     {"take", TokenType::TAKE},     {"imm", TokenType::IMM},
     {"ptr", TokenType::PTR},       {"give", TokenType::GIVE},
     {"new", TokenType::NEW},       {"free", TokenType::FREE},
-    {"asm", TokenType::ASM},       {"Error", TokenType::ERROR_KEYWORD},
-    {"true", TokenType::TRUE},     {"false", TokenType::FALSE},
-    {"null", TokenType::NULL_},    {"and", TokenType::AND},
-    {"or", TokenType::OR},         {"u0", TokenType::U0},
-    {"u8", TokenType::U8},         {"u16", TokenType::U16},
-    {"u32", TokenType::U32},       {"u64", TokenType::U64},
-    {"i8", TokenType::I8},         {"i16", TokenType::I16},
-    {"i32", TokenType::I32},       {"i64", TokenType::I64},
-    {"f64", TokenType::F64},       {"bool", TokenType::BOOL},
-    {"String", TokenType::STRING}};
+    {"asm", TokenType::ASM},       {"error", TokenType::ERROR_KW},
+    {"exit", TokenType::EXIT_KW},  {"true", TokenType::TRUE},
+    {"false", TokenType::FALSE},   {"null", TokenType::NULL_},
+    {"and", TokenType::AND},       {"or", TokenType::OR},
+    {"u0", TokenType::U0},         {"u8", TokenType::U8},
+    {"u16", TokenType::U16},       {"u32", TokenType::U32},
+    {"u64", TokenType::U64},       {"i8", TokenType::I8},
+    {"i16", TokenType::I16},       {"i32", TokenType::I32},
+    {"i64", TokenType::I64},       {"f64", TokenType::F64},
+    {"bool", TokenType::BOOL},     {"string", TokenType::STRING}};
 
 void Lexer::setup() {
   m_logger.clear();

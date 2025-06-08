@@ -22,7 +22,11 @@ void IrGenerator::emit_end_func() {
   m_instructions.emplace_back(IROpCode::END_FUNC);
 }
 
-void IrGenerator::emit_exit() { m_instructions.emplace_back(IROpCode::EXIT); }
+void IrGenerator::emit_exit(int exit_code) {
+  m_instructions.emplace_back(
+      IROpCode::EXIT, std::nullopt,
+      std::vector<IROperand>{IR_Immediate(exit_code, 8)});
+}
 
 void IrGenerator::emit_assign(IROperand dst, IROperand src, uint64_t size) {
   // Dest for ASSIGN must be IR_Register or IR_Variable

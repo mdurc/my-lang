@@ -26,6 +26,7 @@
                           | <ContinueStmt> ';'
                           | <FreeStmt> ';'
                           | <ErrorStmt> ';'
+                          | <ExitStmt> ';'
                           | 'asm' <Block> ';'
 
 <VarDecl>               ::= <TypePrefix>? Identifier ( ( ':' <Type> ( '=' <Expr> )? ) | ( ':=' <Expr> ) )
@@ -41,7 +42,8 @@
 <BreakStmt>             ::= 'break'
 <ContinueStmt>          ::= 'continue'
 <FreeStmt>              ::= 'free' '[]'? <Expr>
-<ErrorStmt>             ::= 'Error' '(' String ')'
+<ErrorStmt>             ::= 'Error' String
+<ExitStmt>              ::= 'exit' Integer
 
 <Expr>                  ::= <AssignmentExpr>
 <AssignmentExpr>        ::= <LogicalOrExpr> ( '=' <AssignmentExpr> )?

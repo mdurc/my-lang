@@ -34,6 +34,7 @@ void ExpressionStatementNode::accept(Visitor& v) { v.visit(*this); }
 void ReturnStmtNode::accept(Visitor& v) { v.visit(*this); }
 void FreeStmtNode::accept(Visitor& v) { v.visit(*this); }
 void ErrorStmtNode::accept(Visitor& v) { v.visit(*this); }
+void ExitStmtNode::accept(Visitor& v) { v.visit(*this); }
 void AsmBlockNode::accept(Visitor& v) { v.visit(*this); }
 void StructFieldNode::accept(Visitor& v) { v.visit(*this); }
 void StructDeclNode::accept(Visitor& v) { v.visit(*this); }

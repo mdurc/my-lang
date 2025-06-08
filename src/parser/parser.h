@@ -59,6 +59,7 @@ private:
   StmtPtr parse_continue_stmt();
   StmtPtr parse_free_stmt();
   StmtPtr parse_error_stmt();
+  StmtPtr parse_exit_stmt();
   BlockPtr parse_block(bool create_scope);
   StmtPtr parse_asm_block();
 
