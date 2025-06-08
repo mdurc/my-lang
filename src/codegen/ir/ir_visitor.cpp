@@ -205,8 +205,7 @@ void IrVisitor::visit(VariableDeclNode& node) {
     node.initializer->accept(*this);
     m_ir_gen.emit_assign(var_operand, m_last_expr_operand, size);
   } else {
-    // default values
-    // TODO: update this within Type system
+    // default values, right now just assign 0
     m_ir_gen.emit_assign(var_operand, IR_Immediate(0, 8), size);
   }
 }

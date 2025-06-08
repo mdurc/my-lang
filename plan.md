@@ -81,10 +81,27 @@
     - [ ] Clock Declaration
     - [ ] Throwable Errors
 
+# IR (three address code)
+- [x] Three address code of standard operations (loops, conditionals, declarations, functions decls, function calls, asm blocks)
+- [x] Components:
+    - Register
+    - ParameterSlot (for the codegen to know the current index of the parameters so that if any overflow into the stack, we can identify the proper offsets)
+    - Variable (includes size of the variable in bytes)
+    - Immediate (includes size of the immediate in bytes)
+    - Label
+- [x] Instruction Component:
+    - OpCode, optional result, list of source operands, size of the common size of the operands in this operation.
+
+# x86_64 Code Generation
+- [x] Converts the IR into `x86_64` asm
+- [x] I try to stick to the asm conventions:
+    - Arguments go into arg registers unless the stack is needed for overflow
+    - Functions save callee-saved registers, use the `rbp` base ptr for variable allocations on the stack
+    - Exit from `_start`
+
 # Post
 - [ ] Tree sitter highlighting
 - [ ] LSP: Diagnostic, Goto-Definition, Hovering over identifiers and literals
-
 
 # Syntax
 
