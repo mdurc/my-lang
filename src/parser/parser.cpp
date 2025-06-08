@@ -379,12 +379,7 @@ StmtPtr Parser::parse_statement() {
       _consume(TokenType::SEMICOLON);
       return _AST(ReadStmtNode, read_tok, m_symtab->current_scope(), expr);
     }
-    case TokenType::PRINT: {
-      const Token* print_tok = advance();
-      ExprPtr expr = parse_expression();
-      _consume(TokenType::SEMICOLON);
-      return _AST(PrintStmtNode, print_tok, m_symtab->current_scope(), expr);
-    }
+    case TokenType::PRINT: return parse_print_stmt();
     case TokenType::LBRACE: return parse_block(true);
     case TokenType::RETURN: return parse_return_stmt();
     case TokenType::BREAK: return parse_break_stmt();
@@ -589,6 +584,18 @@ StmtPtr Parser::parse_switch_stmt() {
 
   return _AST(SwitchStmtNode, switch_tok, m_symtab->current_scope(), expression,
               std::move(cases));
+}
+
+// <PrintStmt> ::= 'print'  <Expr> ( ',' <Expr> )*
+StmtPtr Parser::parse_print_stmt() {
+  const Token* print_tok = advance();
+
+  std::vector<ExprPtr> exprs;
+  do {
+    exprs.push_back(parse_expression());
+  } while (match(TokenType::COMMA) && advance());
+  _consume(TokenType::SEMICOLON);
+  return _AST(PrintStmtNode, print_tok, m_symtab->current_scope(), exprs);
 }
 
 // == Expression Parsing ==

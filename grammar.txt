@@ -18,7 +18,7 @@
                           | <WhileStmt>
                           | <SwitchStmt>
                           | 'read' <Expr> ';'
-                          | 'print' <Expr> ';'
+                          | <PrintStmt> ';'
                           | <Block>
                           | <Expr> ';'
                           | <ReturnStmt> ';'
@@ -36,6 +36,7 @@
 <SwitchStmt>            ::= 'switch' '(' <Expr> ')' '{' <Case>* '}'
 <Case>                  ::= 'case' <Expr> ':' <Block> | 'default' ':' <Block>
 
+<PrintStmt>             ::= 'print'  <Expr> ( ',' <Expr> )*
 <ReturnStmt>            ::= 'return' <Expr>?
 <BreakStmt>             ::= 'break'
 <ContinueStmt>          ::= 'continue'

@@ -498,9 +498,11 @@ public:
     print_indent();
     out << "PrintStmt(\n";
     indent++;
-    node.expression->accept(*this);
+    for (size_t i = 0; i < node.expressions.size(); ++i) {
+      node.expressions[i]->accept(*this);
+      out << "\n";
+    }
     indent--;
-    out << "\n";
     print_indent();
     out << ")";
   }

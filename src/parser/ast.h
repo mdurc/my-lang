@@ -335,9 +335,9 @@ public:
 
 class PrintStmtNode : public StatementNode {
 public:
-  ExprPtr expression;
-  PrintStmtNode(const Token* tok, size_t sc, ExprPtr expr)
-      : StatementNode(tok, sc), expression(expr) {}
+  std::vector<ExprPtr> expressions;
+  PrintStmtNode(const Token* tok, size_t sc, std::vector<ExprPtr> expr)
+      : StatementNode(tok, sc), expressions(std::move(expr)) {}
   void accept(Visitor& v) override;
 };
 

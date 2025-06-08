@@ -52,6 +52,7 @@ private:
   StmtPtr parse_for_stmt();
   StmtPtr parse_while_stmt();
   StmtPtr parse_switch_stmt();
+  StmtPtr parse_print_stmt();
   ExprPtr parse_expression();
   StmtPtr parse_return_stmt();
   StmtPtr parse_break_stmt();

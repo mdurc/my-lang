@@ -494,18 +494,20 @@ void IrVisitor::visit(ReadStmtNode& node) {
 }
 
 void IrVisitor::visit(PrintStmtNode& node) {
-  node.expression->accept(*this);
-  IROperand val_op = m_last_expr_operand;
+  for (size_t i = 0; i < node.expressions.size(); ++i) {
+    node.expressions[i]->accept(*this);
+    IROperand val_op = m_last_expr_operand;
 
-  assert(node.expression->expr_type &&
-         "Print expression must have a type from typechecker");
-  std::shared_ptr<Type> expr_type = node.expression->expr_type;
+    assert(node.expressions[i]->expr_type &&
+           "Print expression must have a type from typechecker");
+    std::shared_ptr<Type> expr_type = node.expressions[i]->expr_type;
 
-  IR_Label print_func_lbl = get_runtime_print_call(expr_type);
+    IR_Label print_func_lbl = get_runtime_print_call(expr_type);
 
-  m_ir_gen.emit_push_arg(val_op, expr_type->get_byte_size());
-  m_ir_gen.emit_lcall(std::nullopt, print_func_lbl, 0);
-  m_ir_gen.emit_pop_args();
+    m_ir_gen.emit_push_arg(val_op, expr_type->get_byte_size());
+    m_ir_gen.emit_lcall(std::nullopt, print_func_lbl, 0);
+    m_ir_gen.emit_pop_args();
+  }
 }
 
 void IrVisitor::visit(AsmBlockNode& node) {

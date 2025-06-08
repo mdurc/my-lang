@@ -366,17 +366,19 @@ void TypeChecker::visit(ReadStmtNode& node) {
 
 // Print Statement
 void TypeChecker::visit(PrintStmtNode& node) {
-  std::shared_ptr<Type> expr_type = get_expr_type(node.expression);
-  if (!expr_type) {
-    // err already handled
-    return;
-  }
+  for (size_t i = 0; i < node.expressions.size(); ++i) {
+    std::shared_ptr<Type> expr_type = get_expr_type(node.expressions[i]);
+    if (!expr_type) {
+      // err already handled
+      return;
+    }
 
-  // Anything except u0 can be printed for now
-  if (expr_type->is<Type::Named>() &&
-      expr_type->as<Type::Named>().identifier == "u0") {
-    m_logger.report(Warning(node.expression->token->get_span(),
-                            "Printing a 'u0' (void) value is not allowed."));
+    // Anything except u0 can be printed for now
+    if (expr_type->is<Type::Named>() &&
+        expr_type->as<Type::Named>().identifier == "u0") {
+      m_logger.report(Warning(node.expressions[i]->token->get_span(),
+                              "Printing a 'u0' (void) value is not allowed."));
+    }
   }
 }
 
