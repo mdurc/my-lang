@@ -1,7 +1,14 @@
-func foo(a: i32, b: bool) returns (z: i32) {
-  i : i32 = 18;
-  z = 15;
-  return i;
+switch(1) {
+  case 3: {
+    print "it was three\n";
+  }
+  case 2: {
+    print "it was two\n";
+  }
+  case 1: {
+    print "it was one\n";
+  }
+  default: {
+    print "i don't know what it was\n";
+  }
 }
-
-foo(3, true);

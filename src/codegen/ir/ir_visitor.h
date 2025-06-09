@@ -56,7 +56,7 @@ public:
   // Other Nodes
   void visit(ArgumentNode& node) override;
   void visit(StructFieldInitializerNode& node) override;
-  void visit(CaseNode& node) override;
+  void visit(CaseNode&) override { /* handled within switchstmtnode */ };
   void visit(StructFieldNode& node) override;
   void visit(ParamNode& node) override;
   void visit(FunctionDeclNode& node) override;

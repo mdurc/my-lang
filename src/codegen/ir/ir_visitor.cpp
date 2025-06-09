@@ -19,6 +19,20 @@ void IrVisitor::visit_all(const std::vector<AstPtr>& ast) {
   }
 }
 
+IR_Label IrVisitor::get_runtime_print_call(const std::shared_ptr<Type>& type) {
+  assert(type && "Type must be known for print function selection");
+  if (type->is<Type::Named>()) {
+    const std::string& name = type->as<Type::Named>().identifier;
+    if (name == "string") return IR_Label("print_string");
+    if (name == "bool") return IR_Label("print_int");
+    if (name == "i64" || name == "u64" || name == "i32" || name == "u32" ||
+        name == "i16" || name == "u16" || name == "i8" || name == "u8") {
+      return IR_Label("print_int");
+    }
+  }
+  return IR_Label("print_int");
+}
+
 void IrVisitor::unimpl(const std::string& note) {
   throw std::runtime_error("Unimplemented IR feature: " + note);
 }
@@ -62,6 +76,8 @@ void IrVisitor::visit(BinaryOpExprNode& node) {
   IR_Register dest_reg = m_ir_gen.new_temp_reg();
 
   // the only case that these should/can be different sizes is if they are nums
+  assert(node.left->expr_type && node.right->expr_type &&
+         "Types should be resolved by Typechecker");
   uint64_t l_size = node.left->expr_type->get_byte_size();
   uint64_t r_size = node.right->expr_type->get_byte_size();
   uint64_t size = std::min(l_size, r_size);
@@ -117,6 +133,7 @@ void IrVisitor::visit(UnaryExprNode& node) {
 
   IR_Register dest_reg = m_ir_gen.new_temp_reg();
 
+  assert(node.operand->expr_type && "Types should be resolved by Typechecker");
   uint64_t size = node.operand->expr_type->get_byte_size();
   switch (node.op_type) {
     case UnaryOperator::Negate:
@@ -143,6 +160,7 @@ void IrVisitor::visit(UnaryExprNode& node) {
 void IrVisitor::visit(AssignmentNode& node) {
   node.rvalue->accept(*this);
   IROperand rval_op = m_last_expr_operand;
+  assert(node.lvalue->expr_type && "Types should be resolved by Typechecker");
   uint64_t size = node.lvalue->expr_type->get_byte_size();
 
   // Handle all possible L-values
@@ -161,8 +179,7 @@ void IrVisitor::visit(AssignmentNode& node) {
     array_idx_node->index->accept(*this); // index
     IROperand index_op = m_last_expr_operand;
 
-    assert(node.lvalue->expr_type && "LValue in assignment should have a type");
-    IR_Immediate idx_offset(node.lvalue->expr_type->get_byte_size(), 8);
+    IR_Immediate idx_offset(size, 8);
 
     IR_Register offset_reg = m_ir_gen.new_temp_reg();
     m_ir_gen.emit_mul(offset_reg, index_op, idx_offset, size);
@@ -221,6 +238,8 @@ void IrVisitor::visit(IfStmtNode& node) {
   IR_Label else_label = m_ir_gen.new_label();
   IR_Label end_label = m_ir_gen.new_label();
 
+  assert(node.condition->expr_type &&
+         "Types should be resolved by Typechecker");
   m_ir_gen.emit_if_z(cond_op, else_label,
                      node.condition->expr_type->get_byte_size());
 
@@ -249,6 +268,9 @@ void IrVisitor::visit(WhileStmtNode& node) {
 
   node.condition->accept(*this);
   IROperand cond_op = m_last_expr_operand;
+
+  assert(node.condition->expr_type &&
+         "Types should be resolved by Typechecker");
   m_ir_gen.emit_if_z(cond_op, end_loop_label,
                      node.condition->expr_type->get_byte_size());
 
@@ -350,13 +372,14 @@ void IrVisitor::visit(ParamNode& node) {
   const std::string& param_name = node.name->name;
   IR_Variable param_var(param_name, node.type->get_byte_size());
   m_vars.insert({param_name, param_var});
-  node.name->expr_type = node.type;
 }
 
 void IrVisitor::visit(FunctionCallNode& node) {
   for (const ArgPtr& arg_node : node.arguments) {
     arg_node->accept(*this);
 
+    assert(arg_node->expression->expr_type &&
+           "Types should be resolved by Typechecker");
     m_ir_gen.emit_push_arg(m_last_expr_operand,
                            arg_node->expression->expr_type->get_byte_size());
   }
@@ -373,9 +396,9 @@ void IrVisitor::visit(FunctionCallNode& node) {
   IR_Label func_label = m_func_labels.at(func_name);
 
   std::optional<IR_Register> result_reg_opt = std::nullopt;
-  assert(node.expr_type && "Type checker should resolve function call");
 
   // if it is not void, prepare a temp register for return value
+  assert(node.expr_type && "Type checker should resolve function call");
   if (!(node.expr_type->is<Type::Named>() &&
         node.expr_type->as<Type::Named>().identifier == "u0")) {
     IR_Register call_result_reg = m_ir_gen.new_temp_reg();
@@ -395,6 +418,7 @@ void IrVisitor::visit(ReturnStmtNode& node) {
   m_emitted_return = true;
   if (node.value) {
     node.value->accept(*this);
+    assert(node.value->expr_type && "Types should be resolved by Typechecker");
     m_ir_gen.emit_end_func(m_last_expr_operand,
                            node.value->expr_type->get_byte_size());
   } else {
@@ -435,6 +459,8 @@ void IrVisitor::visit(ForStmtNode& node) {
   m_ir_gen.emit_label(condition_label);
   if (node.condition) {
     node.condition->accept(*this);
+    assert(node.condition->expr_type &&
+           "Types should be resolved by Typechecker");
     m_ir_gen.emit_if_z(m_last_expr_operand, end_loop_label,
                        node.condition->expr_type->get_byte_size());
   }
@@ -469,9 +495,8 @@ static bool is_signed_int(std::shared_ptr<Type> type) {
 }
 
 void IrVisitor::visit(ReadStmtNode& node) {
-  assert(node.expression->expr_type &&
-         "Read expression must have a type from typechecker");
   std::shared_ptr<Type> expr_type = node.expression->expr_type;
+  assert(expr_type && "Read expression must have a type from typechecker");
 
   IR_Register temp_val_reg = m_ir_gen.new_temp_reg();
   m_ir_gen.emit_lcall(temp_val_reg, IR_Label("read_word"), Type::PTR_SIZE);
@@ -497,9 +522,8 @@ void IrVisitor::visit(PrintStmtNode& node) {
     node.expressions[i]->accept(*this);
     IROperand val_op = m_last_expr_operand;
 
-    assert(node.expressions[i]->expr_type &&
-           "Print expression must have a type from typechecker");
     std::shared_ptr<Type> expr_type = node.expressions[i]->expr_type;
+    assert(expr_type && "Print expression must have a type from typechecker");
 
     IR_Label print_func_lbl = get_runtime_print_call(expr_type);
 
@@ -554,19 +578,60 @@ void IrVisitor::visit(MemberAccessNode&) { unimpl("MemberAccessNode"); }
 void IrVisitor::visit(StructLiteralNode&) { unimpl("StructLiteralNode"); }
 void IrVisitor::visit(StructFieldInitializerNode&) { unimpl("FieldInitNode"); }
 
-void IrVisitor::visit(SwitchStmtNode&) { unimpl("SwitchStmtNode"); }
-void IrVisitor::visit(CaseNode&) { unimpl("CaseNode"); }
+void IrVisitor::visit(SwitchStmtNode& node) {
+  node.expression->accept(*this);
+  IROperand switch_op = m_last_expr_operand;
+  assert(node.expression->expr_type && "Switch expression must have a type");
+  uint64_t expr_size = node.expression->expr_type->get_byte_size();
 
-IR_Label IrVisitor::get_runtime_print_call(const std::shared_ptr<Type>& type) {
-  assert(type && "Type must be known for print function selection");
-  if (type->is<Type::Named>()) {
-    const std::string& name = type->as<Type::Named>().identifier;
-    if (name == "string") return IR_Label("print_string");
-    if (name == "bool") return IR_Label("print_int");
-    if (name == "i64" || name == "u64" || name == "i32" || name == "u32" ||
-        name == "i16" || name == "u16" || name == "i8" || name == "u8") {
-      return IR_Label("print_int");
+  CasePtr default_case_node = nullptr;
+  IR_Label default_body_label;
+
+  std::vector<std::pair<CasePtr, IR_Label>> case_blocks;
+
+  for (const CasePtr& case_ptr : node.cases) {
+    if (case_ptr->value) {
+      // it is a non-default case
+      IR_Label body_label = m_ir_gen.new_label();
+      case_blocks.push_back(std::make_pair(case_ptr, body_label));
+    } else {
+      // the default case
+      default_case_node = case_ptr;
+      default_body_label = m_ir_gen.new_label();
     }
   }
-  return IR_Label("print_int");
+
+  IR_Label end_switch_label = m_ir_gen.new_label();
+  IR_Label final_fallthrough_label =
+      default_case_node ? default_body_label : end_switch_label;
+
+  // emit the cases
+  for (const auto& [case_ptr, body_label] : case_blocks) {
+    case_ptr->value->accept(*this);
+    IROperand case_val_op = m_last_expr_operand;
+    IR_Register cmp_reg = m_ir_gen.new_temp_reg();
+
+    // do a not-equal comparison so that we can jump to the case label faster
+    m_ir_gen.emit_cmp_ne(cmp_reg, switch_op, case_val_op, expr_size);
+
+    // jump to case label if it was not (not-equal)
+    m_ir_gen.emit_if_z(cmp_reg, body_label, expr_size);
+  }
+
+  // goto either default case (if one exists) or the exit
+  m_ir_gen.emit_goto(final_fallthrough_label);
+
+  for (const auto& [case_ptr, body_label] : case_blocks) {
+    m_ir_gen.emit_label(body_label);
+    case_ptr->body->accept(*this);
+    m_ir_gen.emit_goto(end_switch_label);
+  }
+
+  if (default_case_node) {
+    m_ir_gen.emit_label(default_body_label);
+    default_case_node->body->accept(*this);
+    // no need to emit_goto(end_switch_label) because we can just fall-through
+  }
+
+  m_ir_gen.emit_label(end_switch_label);
 }

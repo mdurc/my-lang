@@ -525,7 +525,6 @@ void TypeChecker::visit(FunctionDeclNode& node) {
 void TypeChecker::visit(ParamNode& node) {
   assert(node.type != nullptr &&
          "Parser should enforce that params are explicitly typed");
-
   node.name->expr_type = node.type; // just resolve the identifier expr within
 }
 
