@@ -196,7 +196,8 @@ void IrVisitor::visit(AssignmentNode& node) {
       IROperand ptr_addr_op = m_last_expr_operand;
       m_ir_gen.emit_store(ptr_addr_op, rval_op, size);
     } else {
-      unimpl("AssignmentNode to non-dereference UnaryExpr LValue");
+      throw std::runtime_error(
+          "IR Error: AssignmentNode to non-dereference UnaryExpr LValue");
     }
   } else {
     // TODO: MemberAccessNode
@@ -564,20 +565,6 @@ void IrVisitor::visit(ExitStmtNode& node) {
   m_ir_gen.emit_exit(node.exit_code);
 }
 
-void IrVisitor::visit(FloatLiteralNode&) { unimpl("FloatLiteralNode"); }
-void IrVisitor::visit(NullLiteralNode&) { unimpl("NullLiteralNode"); }
-
-void IrVisitor::visit(ErrorStmtNode&) { unimpl("ErrorStmtNode"); }
-
-void IrVisitor::visit(NewExprNode&) { unimpl("NewExprNode"); }
-void IrVisitor::visit(FreeStmtNode&) { unimpl("FreeStmtNode"); }
-
-void IrVisitor::visit(StructDeclNode&) { unimpl("StructDeclNode"); }
-void IrVisitor::visit(StructFieldNode&) { unimpl("StructFieldNode"); }
-void IrVisitor::visit(MemberAccessNode&) { unimpl("MemberAccessNode"); }
-void IrVisitor::visit(StructLiteralNode&) { unimpl("StructLiteralNode"); }
-void IrVisitor::visit(StructFieldInitializerNode&) { unimpl("FieldInitNode"); }
-
 void IrVisitor::visit(SwitchStmtNode& node) {
   node.expression->accept(*this);
   IROperand switch_op = m_last_expr_operand;
@@ -635,3 +622,17 @@ void IrVisitor::visit(SwitchStmtNode& node) {
 
   m_ir_gen.emit_label(end_switch_label);
 }
+
+void IrVisitor::visit(FloatLiteralNode&) { unimpl("FloatLiteralNode"); }
+void IrVisitor::visit(NullLiteralNode&) { unimpl("NullLiteralNode"); }
+
+void IrVisitor::visit(ErrorStmtNode&) { unimpl("ErrorStmtNode"); }
+
+void IrVisitor::visit(NewExprNode&) { unimpl("NewExprNode"); }
+void IrVisitor::visit(FreeStmtNode&) { unimpl("FreeStmtNode"); }
+
+void IrVisitor::visit(StructDeclNode&) { unimpl("StructDeclNode"); }
+void IrVisitor::visit(StructFieldNode&) { unimpl("StructFieldNode"); }
+void IrVisitor::visit(MemberAccessNode&) { unimpl("MemberAccessNode"); }
+void IrVisitor::visit(StructLiteralNode&) { unimpl("StructLiteralNode"); }
+void IrVisitor::visit(StructFieldInitializerNode&) { unimpl("FieldInitNode"); }
