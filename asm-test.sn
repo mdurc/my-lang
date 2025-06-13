@@ -1,14 +1,16 @@
-switch(1) {
-  case 3: {
-    print "it was three\n";
+mut x : i32 = 10;
+
+func foo() {
+  x : i32 = 20;
+  print x, "\n";
+  {
+      mut x : i32 = 30;
+      print x, "\n";
   }
-  case 2: {
-    print "it was two\n";
-  }
-  case 1: {
-    print "it was one\n";
-  }
-  default: {
-    print "i don't know what it was\n";
-  }
+  print x, "\n";
+}
+
+func main() {
+    foo();
+    print x, "\n";
 }

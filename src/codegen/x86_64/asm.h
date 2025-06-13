@@ -22,16 +22,18 @@ public:
 private:
   std::ostream* m_out;
 
-  std::vector<std::string> m_current_function_asm_buffer;
-  size_t m_stack_alloc_placeholder_idx;
-  bool m_is_buffering_function;
-
-  size_t m_current_stack_offset;
-
-  size_t m_current_arg_count;
-  std::stack<int> m_allocated_arg_bytes;
-
+  bool m_handling_top_level;
+  size_t m_global_var_alloc;
   std::unordered_map<std::string, std::string> m_var_locations; // in stack
+  std::unordered_map<std::string, std::string> m_glob_var_locations;
+
+  bool m_is_buffering_function;
+  std::vector<std::string> m_current_func_asm_buffer;
+  size_t m_current_func_alloc_placeholder_idx;
+  size_t m_current_func_stack_offset;
+  std::stack<size_t> m_allocated_arg_bytes;
+
+  size_t m_current_call_arg_count;
 
   std::vector<std::string> m_string_literals_data;
   std::unordered_map<std::string, std::string> m_string_literal_to_label;
@@ -76,6 +78,7 @@ private:
   void handle_instruction(const IRInstruction& instr);
 
   void handle_begin_func(const IRInstruction& instr);
+  void handle_end_preamble();
   void handle_end_func(const IRInstruction* instr, bool exit);
   void handle_exit(int code);
 

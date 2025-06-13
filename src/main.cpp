@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
     TypeChecker type_checker;
     type_checker.check_program(&symtab, ast);
 
-    IrVisitor ir_visitor;
+    IrVisitor ir_visitor(&symtab);
     ir_visitor.visit_all(ast);
     const std::vector<IRInstruction>& instrs = ir_visitor.get_instructions();
     if (print_ir_flag) {

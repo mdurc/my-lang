@@ -4,12 +4,16 @@
 
 #include "../../parser/types.h"
 
+static size_t get_align(size_t s) { return ((s + 15) & ~15); }
+
 X86_64CodeGenerator::X86_64CodeGenerator()
     : m_out(nullptr),
-      m_stack_alloc_placeholder_idx(0),
+      m_handling_top_level(false),
+      m_global_var_alloc(0),
       m_is_buffering_function(false),
-      m_current_stack_offset(0),
-      m_current_arg_count(0),
+      m_current_func_alloc_placeholder_idx(0),
+      m_current_func_stack_offset(0),
+      m_current_call_arg_count(0),
       m_string_count(0),
       m_reg_count(0) {
   assert(Type::PTR_SIZE == 8);
@@ -79,11 +83,24 @@ std::string X86_64CodeGenerator::operand_to_string(const IROperand& operand) {
     uint64_t var_size = ir_var.size;
     auto itr = m_var_locations.find(var_name);
     if (itr == m_var_locations.end()) {
-      // not found, so we should designate new space for this variable
-      m_current_stack_offset += var_size;
-      std::string relative_addr =
-          "[rbp - " + std::to_string(m_current_stack_offset) + "]";
-      itr = m_var_locations.insert({var_name, relative_addr}).first;
+      itr = m_glob_var_locations.find(var_name);
+      if (itr != m_glob_var_locations.end()) {
+        return itr->second;
+      }
+      std::string relative_addr;
+      if (m_handling_top_level) {
+        m_global_var_alloc += var_size;
+        relative_addr =
+            "[global_vars + " + std::to_string(m_global_var_alloc) + "]";
+        itr = m_glob_var_locations.insert({var_name, relative_addr}).first;
+      } else {
+        // not found: we should make new space for this variable in the curr
+        // func
+        m_current_func_stack_offset += var_size;
+        relative_addr =
+            "[rbp - " + std::to_string(m_current_func_stack_offset) + "]";
+        itr = m_var_locations.insert({var_name, relative_addr}).first;
+      }
     }
     return itr->second;
   } else if (std::holds_alternative<IR_Immediate>(operand)) { // Immediate
@@ -124,9 +141,9 @@ void X86_64CodeGenerator::spill_register(const std::string& reg, uint64_t size,
   std::pair<int, uint64_t> p = m_x86_reg_to_ir_reg[reg];
   int occupant_id = p.first;
   if (occupant_id != -1 && (new_id == -1 || occupant_id != new_id)) {
-    m_current_stack_offset += p.second;
+    m_current_func_stack_offset += p.second;
     std::string spill_addr =
-        "[rbp - " + std::to_string(m_current_stack_offset) + "]";
+        "[rbp - " + std::to_string(m_current_func_stack_offset) + "]";
     m_spilled_ir_reg_locations[occupant_id] = std::make_pair(spill_addr, size);
     emit("mov " + get_size_prefix(size) + spill_addr + ", " +
          get_sized_register_name(reg, size));
@@ -229,7 +246,7 @@ void X86_64CodeGenerator::emit_one_operand_memory_operation(
 
 void X86_64CodeGenerator::emit(const std::string& instruction) {
   if (m_is_buffering_function) {
-    m_current_function_asm_buffer.push_back("\t" + instruction);
+    m_current_func_asm_buffer.push_back("\t" + instruction);
   } else {
     *m_out << "\t" << instruction << std::endl;
   }
@@ -237,7 +254,7 @@ void X86_64CodeGenerator::emit(const std::string& instruction) {
 
 void X86_64CodeGenerator::emit_label(const std::string& label_name) {
   if (m_is_buffering_function) {
-    m_current_function_asm_buffer.push_back(label_name + ":");
+    m_current_func_asm_buffer.push_back(label_name + ":");
   } else {
     *m_out << label_name << ":" << std::endl;
   }
@@ -258,48 +275,61 @@ void X86_64CodeGenerator::generate(
   *m_out << "extern parse_int, string_equals, string_copy" << std::endl;
 
   *m_out << std::endl;
+
+  *m_out << "default rel" << std::endl;
   *m_out << "global _start" << std::endl;
   *m_out << "section .text" << std::endl;
 
-  if (is_main_defined) {
-    *m_out << "_start:" << std::endl;
-    emit("call main");
-    emit("mov rdi, rax"); // main's return value as exit code
-    emit("call exit");
-    for (const IRInstruction& instr : instructions) {
-      handle_instruction(instr);
+  std::vector<IRInstruction> top_level;
+  std::vector<IRInstruction> functions;
+  bool in_func = false;
+  for (const auto& instr : instructions) {
+    if (instr.opcode == IROpCode::BEGIN_FUNC) {
+      in_func = true;
+      functions.push_back(instr);
+    } else if (instr.opcode == IROpCode::END_FUNC) {
+      functions.push_back(instr);
+      in_func = false;
+    } else if (in_func) {
+      functions.push_back(instr);
+    } else {
+      top_level.push_back(instr);
     }
-  } else {
-    std::vector<IRInstruction> top_level;
-    std::vector<IRInstruction> functions;
-    bool in_func = false;
-    for (const auto& instr : instructions) {
-      if (instr.opcode == IROpCode::BEGIN_FUNC) {
-        in_func = true;
-        functions.push_back(instr);
-      } else if (instr.opcode == IROpCode::END_FUNC) {
-        functions.push_back(instr);
-        in_func = false;
-      } else if (in_func) {
-        functions.push_back(instr);
-      } else {
-        top_level.push_back(instr);
-      }
-    }
+  }
 
-    handle_begin_func(
-        IRInstruction(IROpCode::BEGIN_FUNC, IR_Label("_start"), {}));
-    // emit the top level instructions only
-    for (const IRInstruction& instr : top_level) {
-      handle_instruction(instr);
-    }
+  handle_begin_func(
+      IRInstruction(IROpCode::BEGIN_FUNC, IR_Label("_start"), {}));
+
+  // emit the top level instructions only, within _start procedure
+  m_handling_top_level = true;
+  for (const IRInstruction& instr : top_level) {
+    handle_instruction(instr);
+  }
+  m_handling_top_level = false;
+
+  if (is_main_defined) {
+    // we will be calling main after processing all top-level functions,
+    // otherwise, how I see it now, it is difficult to determine when the
+    // global variables and operations can be evaluated. As of now, because
+    // of the fact that I want to be able to write programs without main(),
+    // it might be likely that I remove the functionality of the designated
+    // entrypoint that `main()` is right now.
+    emit("call main");
+    emit("mov rdi, rax ; main's return value as exit code");
+
+    handle_end_preamble();
+    // restore stack pointer and base ptr
+    emit("mov rsp, rbp ; restore stack");
+    emit("pop rbp");
+    emit("call exit");
+  } else {
     // exit from _start
     handle_end_func(nullptr, true);
+  }
 
-    // process all functions underneath the top level functions
-    for (const auto& instr : functions) {
-      handle_instruction(instr);
-    }
+  // process all functions underneath the top level instructions
+  for (const auto& instr : functions) {
+    handle_instruction(instr);
   }
 
   // output the gathered string labels in the data section
@@ -329,6 +359,11 @@ void X86_64CodeGenerator::generate(
     }
     // always end with a null byte just in case
     *m_out << "\", 0" << std::endl;
+  }
+
+  if (m_global_var_alloc > 0) {
+    *m_out << "section .bss" << std::endl;
+    emit("global_vars resb " + std::to_string(get_align(m_global_var_alloc)));
   }
 }
 
@@ -375,8 +410,8 @@ void X86_64CodeGenerator::handle_instruction(const IRInstruction& instr) {
 void X86_64CodeGenerator::clear_func_data() {
   // clear all old local data to the previous function
   m_is_buffering_function = false;
-  m_current_function_asm_buffer.clear();
-  m_current_stack_offset = 0;
+  m_current_func_asm_buffer.clear();
+  m_current_func_stack_offset = 0;
   m_used_callee_saved.clear();
   m_ir_reg_to_x86_reg.clear();
   m_x86_reg_to_ir_reg.clear();
@@ -393,32 +428,31 @@ void X86_64CodeGenerator::handle_begin_func(const IRInstruction& instr) {
   emit_label(std::get<IR_Label>(label).name);
 
   // Save base ptr as stack context of this function.
-  // This will be used for relative addressing of variables in the function.
+  // This will be used for relative addressing of variables in the program
   emit("push rbp");
   emit("mov rbp, rsp");
 
   // mark the location for where we have to add the total required stack size
   // for this function. This idx should be overwritten in handle_end_func.
-  m_stack_alloc_placeholder_idx = m_current_function_asm_buffer.size();
+  m_current_func_alloc_placeholder_idx = m_current_func_asm_buffer.size();
   m_is_buffering_function = true; // start buffering
 
-  m_current_function_asm_buffer.push_back(""); // stack offset placeholder
-  m_current_function_asm_buffer.push_back(""); // callee saved reg placeholder
+  m_current_func_asm_buffer.push_back(""); // stack offset placeholder
+  m_current_func_asm_buffer.push_back(""); // callee saved reg placeholder
 }
 
-void X86_64CodeGenerator::handle_end_func(const IRInstruction* instr,
-                                          bool exit) {
-  uint64_t stack = m_current_stack_offset;
+void X86_64CodeGenerator::handle_end_preamble() {
+  size_t stack = m_current_func_stack_offset;
   // perform function post processing
-  uint64_t idx = m_stack_alloc_placeholder_idx;
-  if (idx < m_current_function_asm_buffer.size()) {
-    std::string& place_one = m_current_function_asm_buffer[idx];
+  size_t idx = m_current_func_alloc_placeholder_idx;
+  if (idx < m_current_func_asm_buffer.size()) {
+    std::string& place_one = m_current_func_asm_buffer[idx];
     if (stack > 0) {
       // make it 16-aligned
-      stack = ((stack + 15) & ~15);
+      stack = get_align(stack);
       place_one = "\tsub rsp, " + std::to_string(stack);
     }
-    std::string& placeheld = m_current_function_asm_buffer[idx + 1];
+    std::string& placeheld = m_current_func_asm_buffer[idx + 1];
     for (const std::string& reg : m_used_callee_saved) {
       if (!placeheld.empty()) placeheld += "\n";
       placeheld += "\tpush " + reg;
@@ -426,14 +460,14 @@ void X86_64CodeGenerator::handle_end_func(const IRInstruction* instr,
   }
 
   // write the buffered asm contents:
-  for (size_t i = 0; i < m_current_function_asm_buffer.size(); ++i) {
-    if (i < 2 && m_current_function_asm_buffer[i].empty()) {
+  for (size_t i = 0; i < m_current_func_asm_buffer.size(); ++i) {
+    if (i < 2 && m_current_func_asm_buffer[i].empty()) {
       // skip the placeholders if they are empty
       continue;
     }
-    *m_out << m_current_function_asm_buffer[i] << std::endl;
+    *m_out << m_current_func_asm_buffer[i] << std::endl;
   }
-  m_current_function_asm_buffer.clear();
+  m_current_func_asm_buffer.clear();
   m_is_buffering_function = false;
 
   // pop in reverse order of pushes so that they are assigned properly
@@ -441,6 +475,11 @@ void X86_64CodeGenerator::handle_end_func(const IRInstruction* instr,
        ++it) {
     emit("pop " + *it);
   }
+}
+
+void X86_64CodeGenerator::handle_end_func(const IRInstruction* instr,
+                                          bool exit) {
+  handle_end_preamble();
 
   if (!exit) {
     // set up the return value here
@@ -722,8 +761,8 @@ void X86_64CodeGenerator::handle_if_z(const IRInstruction& instr) {
 void X86_64CodeGenerator::handle_push_arg(const IRInstruction& instr) {
   IROperand src = instr.operands[0];
 
-  if (m_current_arg_count < m_arg_regs.size()) {
-    std::string arg_reg64 = m_arg_regs[m_current_arg_count++];
+  if (m_current_call_arg_count < m_arg_regs.size()) {
+    std::string arg_reg64 = m_arg_regs[m_current_call_arg_count++];
     std::string src_str = get_sized_component(instr.operands[0], instr.size);
     emit("mov " + get_sized_register_name(arg_reg64, instr.size) + ", " +
          src_str);
@@ -755,8 +794,8 @@ void X86_64CodeGenerator::handle_lcall(const IRInstruction& instr) {
   assert(std::holds_alternative<IR_Label>(label));
 
   // make sure that rsp is 16-byte aligned before call
-  int amt = m_allocated_arg_bytes.top();
-  int padding_needed = (16 - (amt % 16)) % 16;
+  size_t amt = m_allocated_arg_bytes.top();
+  size_t padding_needed = get_align(amt);
   if (padding_needed > 0) {
     emit("sub rsp, " + std::to_string(padding_needed) +
          " ; align stack for call");
@@ -786,7 +825,7 @@ void X86_64CodeGenerator::handle_lcall(const IRInstruction& instr) {
   }
 
   // reset the arg count for the next push_args
-  m_current_arg_count = 0;
+  m_current_call_arg_count = 0;
   m_allocated_arg_bytes.push(0);
 }
 

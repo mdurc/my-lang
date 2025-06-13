@@ -4,8 +4,9 @@
 
 #include "../../parser/visitor.h"
 
-IrVisitor::IrVisitor()
-    : m_last_expr_operand(IR_Register(-1)),
+IrVisitor::IrVisitor(const SymTab* tab)
+    : m_symtab(tab),
+      m_last_expr_operand(IR_Register(-1)),
       m_emitted_return(false),
       m_main_function_defined(false) {}
 
@@ -31,6 +32,33 @@ IR_Label IrVisitor::get_runtime_print_call(const std::shared_ptr<Type>& type) {
     }
   }
   return IR_Label("print_int");
+}
+
+bool IrVisitor::var_exists(const std::string& name, size_t scope_id) {
+  std::shared_ptr<Variable> var = m_symtab->lookup_variable(name, scope_id);
+  assert(var != nullptr && "var should exist within symbol table");
+  uint64_t size = var->type->get_byte_size();
+  return m_vars.find(IR_Variable(name + "_" + std::to_string(var->scope_id),
+                                 size)) != m_vars.end();
+}
+
+const IR_Variable& IrVisitor::get_var(const std::string& name,
+                                      size_t scope_id) {
+  std::shared_ptr<Variable> var = m_symtab->lookup_variable(name, scope_id);
+  assert(var != nullptr && "var should exist within symbol table");
+  uint64_t size = var->type->get_byte_size();
+  return *m_vars.find(
+      IR_Variable(name + "_" + std::to_string(var->scope_id), size));
+}
+
+const IR_Variable* IrVisitor::add_var(const std::string& name,
+                                      size_t scope_id) {
+  std::shared_ptr<Variable> var = m_symtab->lookup_variable(name, scope_id);
+  assert(var != nullptr && "var should exist within symbol table");
+  uint64_t size = var->type->get_byte_size();
+  auto itr = m_vars.insert(
+      IR_Variable(name + "_" + std::to_string(var->scope_id), size));
+  return &(*itr.first);
 }
 
 void IrVisitor::unimpl(const std::string& note) {
@@ -61,9 +89,9 @@ void IrVisitor::visit(StringLiteralNode& node) {
 }
 
 void IrVisitor::visit(IdentifierNode& node) {
-  assert(m_vars.count(node.name) &&
+  assert(var_exists(node.name, node.scope_id) &&
          "Type checker should identifier use of undeclared identifiers");
-  m_last_expr_operand = m_vars.at(node.name);
+  m_last_expr_operand = get_var(node.name, node.scope_id);
 }
 
 void IrVisitor::visit(BinaryOpExprNode& node) {
@@ -166,9 +194,9 @@ void IrVisitor::visit(AssignmentNode& node) {
   // Handle all possible L-values
   if (auto lval_ident =
           std::dynamic_pointer_cast<IdentifierNode>(node.lvalue)) {
-    assert(m_vars.count(lval_ident->name) &&
+    assert(var_exists(lval_ident->name, lval_ident->scope_id) &&
            "Type checker should identify use of undeclared variable");
-    IR_Variable lval_var = m_vars.at(lval_ident->name);
+    IR_Variable lval_var = get_var(lval_ident->name, lval_ident->scope_id);
     m_ir_gen.emit_assign(lval_var, rval_op, size);
   } else if (auto array_idx_node =
                  std::dynamic_pointer_cast<ArrayIndexNode>(node.lvalue)) {
@@ -211,20 +239,20 @@ void IrVisitor::visit(GroupedExprNode& node) { node.expression->accept(*this); }
 
 // Statement Nodes
 void IrVisitor::visit(VariableDeclNode& node) {
-  assert(!m_vars.count(node.var_name->name) &&
+  assert(node.scope_id == node.var_name->scope_id);
+  assert(!var_exists(node.var_name->name, node.scope_id) &&
          "Type checker should identify variable re-declaration");
 
   const std::string& var_name = node.var_name->name;
-  uint64_t size = node.type->get_byte_size();
-  IR_Variable var_operand(var_name, size);
-  m_vars.insert({var_name, var_operand});
+  const IR_Variable* var_operand = add_var(var_name, node.scope_id);
 
+  uint64_t size = node.type->get_byte_size();
   if (node.initializer) {
     node.initializer->accept(*this);
-    m_ir_gen.emit_assign(var_operand, m_last_expr_operand, size);
+    m_ir_gen.emit_assign(*var_operand, m_last_expr_operand, size);
   } else {
     // default values, right now just assign 0
-    m_ir_gen.emit_assign(var_operand, IR_Immediate(0, 8), size);
+    m_ir_gen.emit_assign(*var_operand, IR_Immediate(0, 8), size);
   }
 }
 
@@ -300,12 +328,9 @@ void IrVisitor::visit(ContinueStmtNode&) {
 
 void IrVisitor::visit(BlockNode& node) {
   // save current variable mappings to implement block scope
-  std::unordered_map<std::string, IR_Variable> prev_var_operands = m_vars;
   for (const StmtPtr& stmt : node.statements) {
     stmt->accept(*this);
   }
-  // restore mappings from before the block
-  m_vars = prev_var_operands;
 }
 
 void IrVisitor::visit(FunctionDeclNode& node) {
@@ -323,15 +348,12 @@ void IrVisitor::visit(FunctionDeclNode& node) {
 
   m_ir_gen.emit_begin_func(func_label);
 
-  // save for scoping
-  std::unordered_map<std::string, IR_Variable> prev_var_operands = m_vars;
-  m_vars.clear();
-
   // allocate registers for arguments
   std::vector<IR_Variable> ordered_param_vars;
   for (const ParamPtr& param_node : node.params) {
     param_node->accept(*this); // inserts into m_vars
-    ordered_param_vars.push_back(m_vars.at(param_node->name->name));
+    ordered_param_vars.push_back(
+        get_var(param_node->name->name, param_node->scope_id));
   }
 
   // emit assignments from argument slots to parameter variables so that the
@@ -346,8 +368,7 @@ void IrVisitor::visit(FunctionDeclNode& node) {
 
   if (node.return_type_name.has_value()) {
     const std::string& ret_name = node.return_type_name.value();
-    IR_Variable ret_var_op(ret_name, node.return_type->get_byte_size());
-    m_vars.insert({ret_name, ret_var_op});
+    add_var(ret_name, node.return_type->get_scope_id());
   }
 
   m_emitted_return = false; // reset
@@ -358,9 +379,6 @@ void IrVisitor::visit(FunctionDeclNode& node) {
   if (!m_emitted_return) {
     m_ir_gen.emit_end_func();
   }
-
-  // restore var context
-  m_vars = prev_var_operands;
 }
 
 void IrVisitor::visit(ArgumentNode& node) {
@@ -371,8 +389,7 @@ void IrVisitor::visit(ArgumentNode& node) {
 
 void IrVisitor::visit(ParamNode& node) {
   const std::string& param_name = node.name->name;
-  IR_Variable param_var(param_name, node.type->get_byte_size());
-  m_vars.insert({param_name, param_var});
+  add_var(param_name, node.scope_id);
 }
 
 void IrVisitor::visit(FunctionCallNode& node) {
@@ -430,16 +447,6 @@ void IrVisitor::visit(ReturnStmtNode& node) {
 
 void IrVisitor::visit(ForStmtNode& node) {
   // (initializer; condition; iteration) body
-  std::unordered_map<std::string, IR_Variable> prev_var_operands;
-  bool new_scope_created = false;
-
-  if (node.initializer.has_value() &&
-      std::holds_alternative<StmtPtr>(*node.initializer)) {
-    // If initializer is a declaration, it creates a new scope for the loop
-    prev_var_operands = m_vars;
-    new_scope_created = true;
-  }
-
   if (node.initializer.has_value()) {
     std::visit(
         [this](auto&& arg) {
@@ -477,10 +484,6 @@ void IrVisitor::visit(ForStmtNode& node) {
 
   m_ir_gen.emit_label(end_loop_label);
   m_loop_contexts.pop();
-
-  if (new_scope_created) {
-    m_vars = prev_var_operands;
-  }
 }
 
 static bool is_unsigned_int(std::shared_ptr<Type> type) {
@@ -511,7 +514,7 @@ void IrVisitor::visit(ReadStmtNode& node) {
 
   if (auto ident_node =
           std::dynamic_pointer_cast<IdentifierNode>(node.expression)) {
-    IR_Variable lval_var = m_vars.at(ident_node->name);
+    IR_Variable lval_var = get_var(ident_node->name, ident_node->scope_id);
     m_ir_gen.emit_assign(lval_var, temp_val_reg, expr_type->get_byte_size());
   } else {
     unimpl("ReadStmtNode with complex l-value");

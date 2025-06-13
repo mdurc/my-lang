@@ -102,9 +102,13 @@ std::shared_ptr<Type> SymTab::lookup_type(const Type& target) const {
 }
 
 std::shared_ptr<Variable> SymTab::lookup_variable(
-    const std::string& target_name) const {
-  size_t scope_id = m_current_scope;
-  const Scope* scope = &m_scopes[m_current_scope];
+    const std::string& target_name, int scope_id) const {
+  if (scope_id == -1) {
+    scope_id = m_current_scope;
+  } else if (scope_id < 0 || scope_id >= (int)m_scopes.size()) {
+    return nullptr;
+  }
+  const Scope* scope = &m_scopes[scope_id];
   while (true) {
     std::shared_ptr<Variable> v = scope->lookup_variable(target_name);
     if (v != nullptr) {
@@ -117,18 +121,6 @@ std::shared_ptr<Variable> SymTab::lookup_variable(
     scope = &m_scopes[scope_id];
   }
   return nullptr;
-}
-
-std::shared_ptr<Variable> SymTab::lookup_variable(
-    const std::string& target_name, size_t starting_scope) {
-  if (starting_scope >= m_scopes.size()) { // scope_id is unsigned
-    return nullptr;
-  }
-  size_t old_scope = m_current_scope;
-  m_current_scope = starting_scope;
-  std::shared_ptr<Variable> var = lookup_variable(target_name);
-  m_current_scope = old_scope;
-  return var;
 }
 
 std::shared_ptr<Type> SymTab::get_primitive_type(std::string primitive) const {

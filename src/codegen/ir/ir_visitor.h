@@ -1,22 +1,29 @@
 #ifndef CODEGEN_IR_IR_VISITOR_H
 #define CODEGEN_IR_IR_VISITOR_H
 
+#include <set>
 #include <stack>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
 
 #include "../../parser/ast.h"
+#include "../../parser/symtab.h"
 #include "../../parser/visitor.h"
 #include "ir_generator.h"
 
 class IrVisitor : public Visitor {
 public:
-  IrVisitor();
+  IrVisitor(const SymTab* tab);
 
   const std::vector<IRInstruction>& get_instructions() const;
   bool is_main_defined() const { return m_main_function_defined; }
   void visit_all(const std::vector<AstPtr>& ast);
+
+  // variable helpers to make sure that we take scopes into account + shadowing
+  bool var_exists(const std::string& name, size_t scope_id);
+  const IR_Variable& get_var(const std::string& name, size_t scope_id);
+  const IR_Variable* add_var(const std::string& name, size_t scope_id);
 
   // Expression Nodes
   void visit(IntegerLiteralNode& node) override;
@@ -63,8 +70,9 @@ public:
   void visit(StructDeclNode& node) override;
 
 private:
+  const SymTab* m_symtab;
   IrGenerator m_ir_gen;
-  std::unordered_map<std::string, IR_Variable> m_vars;
+  std::set<IR_Variable> m_vars;
   std::unordered_map<std::string, IR_Label> m_func_labels;
   std::stack<std::pair<IR_Label, IR_Label>> m_loop_contexts; // {continue,break}
 

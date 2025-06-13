@@ -53,9 +53,8 @@ public:
 
   std::shared_ptr<Type> lookup_type(const Type& target) const;
 
-  std::shared_ptr<Variable> lookup_variable(const std::string& name) const;
   std::shared_ptr<Variable> lookup_variable(const std::string& name,
-                                            size_t starting_scope);
+                                            int starting_scope = -1) const;
 
   std::shared_ptr<Type> get_primitive_type(std::string primitive) const;
 
