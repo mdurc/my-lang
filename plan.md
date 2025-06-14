@@ -76,17 +76,15 @@
     - [x] Free Statement (deallocation)
         - [x] Single block deletion `free ptr`
         - [x] Array block deletion `free[] ptr`
-    - [ ] Array Declaration (fixed size)
-    - [ ] List Declaration (dynamic list)
-    - [ ] Clock Declaration
-    - [ ] Throwable Errors
+    - [x] Error statments
+    - [ ] Dynamic List
 
 # IR (three address code)
 - [x] Three address code of standard operations (loops, conditionals, declarations, functions decls, function calls, asm blocks)
 - [x] Components:
     - Register
     - ParameterSlot (for the codegen to know the current index of the parameters so that if any overflow into the stack, we can identify the proper offsets)
-    - Variable (includes size of the variable in bytes)
+    - Variable (includes size of the variable in bytes, and if it is actually a function declaration due to first class functions)
     - Immediate (includes size of the immediate in bytes)
     - Label
 - [x] Instruction Component:
@@ -98,6 +96,10 @@
     - Arguments go into arg registers unless the stack is needed for overflow
     - Functions save callee-saved registers, use the `rbp` base ptr for variable allocations on the stack
     - Exit from `_start`
+- If a main function exists:
+    - All top level code is generated under `_start`, then, after all the top level statements are generated, we emit `call main` automatically, and exit from the program with exit code as the return value from main.
+- If no main function exists:
+    - We simply execute top level code in order, but note the fact that function implementations are emitted underneath ALL of the top level instructions, which may produce seemingly confusing results in some situations.
 
 # Post
 - [ ] Tree sitter highlighting
@@ -246,11 +248,9 @@ print *(px + 0); // value at px, using pointer arithmetic
 #### ASM Blocks and Errors
 - For inline assembly:
 ```
-asm {
-    mov ...
-}
+asm { call foo }
 ```
 - For fatal errors:
 ```
-Error(...);
+error "this is my error message just before the program will exit with code 1";
 ```

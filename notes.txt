@@ -68,13 +68,5 @@ Type checker:
 
 
 == TODO ==
-- Decide on how struct/field mutability should work and what it should look like syntactically
-- Decide on x86 asm representations:
-1. When spilling occurs or variables are used, they must be pushed to the stack. When this happens, we must know how many bytes this data takes up.
-- I need to clarify how data will be stored within the assembly.
-  - Integers/Bools are fairly clear.
-  - Floats are unclear.
-  - Strings: mutable/immutable, do we just store in the .data segment, do we allocate 8 bytes on the stack to store a label to a string, or do we store length(str) bytes when we need to put it on the stack. Will we allow for indexing through strings, if so, how and will strings decay into pointers and should they act as beautified pointers within the language itself as well, or should that simply be under-the-hood during assembly code generation?
-  - Structs are unclear regarding the group association of data. Member functions are added complexity regarding understanding the total size of the struct, and useability.
-  - Functions seem to be clear, though we need a way to pre/post process the amount of bytes needed on the stack so that we can account for it in the function preamble (this also is necessary when we don't have a main function and we simply have _start).
-  - Pointers are unclear though may be quite simple. How are they represented? It seems like they can simply be 8 byte values that equal the base pointer plus some defined offset?
+- Floats.
+- Structs are unclear regarding the group association of data. Member functions are added complexity regarding understanding the total size of the struct, and useability.
