@@ -192,7 +192,7 @@ std::string X86_64CodeGenerator::get_x86_reg(const IR_Register& ir_reg) {
 
   // check if we need to spill a register
   auto it_x86 = m_x86_reg_to_ir_reg.find(reg);
-  if (it_x86 != m_x86_reg_to_ir_reg.end()) {
+  if (it_x86 != m_x86_reg_to_ir_reg.end() && it_x86->second.first != -1) {
     assert(it_x86->second.first = ir_reg.id);
     spill_register(reg, it_x86->second.second, ir_reg.id);
   }
