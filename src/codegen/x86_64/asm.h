@@ -97,6 +97,7 @@ private:
                              const std::string& op_mnemonic);
 
   void handle_cmp(const IRInstruction& instr); // For all CMP_XX
+  void handle_cmp_str_eq(const IRInstruction& instr);
 
   void handle_label(const IRInstruction& instr);
   void handle_goto(const IRInstruction& instr);

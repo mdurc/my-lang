@@ -1,7 +1,7 @@
 	global exit, string_length, print_string, print_char, print_newline
 	global print_uint, print_int, read_char, read_word, parse_uint
 	global parse_int, string_equals, string_copy
-  global malloc, free
+  global malloc, free, clrscr
 
 	section .text
 
@@ -318,41 +318,62 @@ string_copy:
 ; rdi <- size in bytes
 ; rax -> allocated memory address (16-byte aligned), or 0 on error
 malloc:
-    test rdi, rdi
-    jz .invalid_size
-    push r12
-    mov r12, rdi
-    add rdi, 16        ; total_size = requested_size + 16
-    jc .error
-    mov rsi, rdi       ; length = total_size
-    xor rdi, rdi       ; addr = NULL (let kernel choose)
-    mov rdx, 3         ; prot = PROT_READ | PROT_WRITE
-    mov r10, 0x1002    ; flags = MAP_ANON | MAP_PRIVATE
-    mov r8, -1         ; fd = -1
-    xor r9, r9         ; offset = 0
-    mov rax, 0x20000C5 ; mmap syscall
-    syscall
-    cmp rax, -1
-    je .error
-    mov [rax], rsi     ; Store total_size at start of block
-    add rax, 16        ; Return address after header
-    pop r12
-    ret
-.invalid_size:
-    xor rax, rax
-    ret
-.error:
-    xor rax, rax
-    pop r12
-    ret
+  test rdi, rdi
+  jz .invalid_size
+  push r12
+  mov r12, rdi
+  add rdi, 16        ; total_size = requested_size + 16
+  jc .error
+  mov rsi, rdi       ; length = total_size
+  xor rdi, rdi       ; addr = NULL (let kernel choose)
+  mov rdx, 3         ; prot = PROT_READ | PROT_WRITE
+  mov r10, 0x1002    ; flags = MAP_ANON | MAP_PRIVATE
+  mov r8, -1         ; fd = -1
+  xor r9, r9         ; offset = 0
+  mov rax, 0x20000C5 ; mmap syscall
+  syscall
+  cmp rax, -1
+  je .error
+  mov [rax], rsi     ; Store total_size at start of block
+  add rax, 16        ; Return address after header
+  pop r12
+  ret
+  .invalid_size:
+  xor rax, rax
+  ret
+  .error:
+  xor rax, rax
+  pop r12
+  ret
 
 ; rdi <- memory address to free (must be from malloc or NULL)
 free:
-    test rdi, rdi
-    jz .end             ; free(NULL) is safe no-op
-    mov rsi, [rdi - 16] ; Retrieve stored total_size
-    lea rdi, [rdi - 16] ; Calculate base address
-    mov rax, 0x2000049  ; munmap syscall
-    syscall
-.end:
-    ret
+  test rdi, rdi
+  jz .end             ; free(NULL) is safe no-op
+  mov rsi, [rdi - 16] ; Retrieve stored total_size
+  lea rdi, [rdi - 16] ; Calculate base address
+  mov rax, 0x2000049  ; munmap syscall
+  syscall
+  .end:
+  ret
+
+clrscr:
+  ; I tried to make this have no side effects, so that the user can somewhat
+  ; safely run `asm { call clrscr };`, as I don't want to have that in the lang
+  push rdi
+  push rsi
+  push rdx
+  push rax
+  mov rax, 0x2000004
+  mov rdi, 1
+  mov rsi, clr_scr ; load address to rsi
+  mov rdx, 7
+  syscall
+  pop rax
+  pop rdx
+  pop rsi
+  pop rdi
+  ret
+
+section .data
+  clr_scr: db 0x1B, '[', '2', 'J', 0x1B, '[', 'H'  ; "\x1B[2J\x1B[H"

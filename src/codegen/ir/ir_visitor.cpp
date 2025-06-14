@@ -4,6 +4,11 @@
 
 #include "../../parser/visitor.h"
 
+static bool is_str_cmp(std::shared_ptr<Type> a, std::shared_ptr<Type> b) {
+  return a->is<Type::Named>() && a->as<Type::Named>().identifier == "string" &&
+         b->is<Type::Named>() && b->as<Type::Named>().identifier == "string";
+}
+
 IrVisitor::IrVisitor(const SymTab* tab)
     : m_symtab(tab),
       m_last_expr_operand(IR_Register(-1)),
@@ -134,10 +139,20 @@ void IrVisitor::visit(BinaryOpExprNode& node) {
       m_ir_gen.emit_div(dest_reg, left_op, right_op, size);
       break;
     case BinOperator::Equal:
-      m_ir_gen.emit_cmp_eq(dest_reg, left_op, right_op, size);
+      if (is_str_cmp(node.left->expr_type, node.right->expr_type)) {
+        // strings are essentially just pointers
+        m_ir_gen.emit_cmp_str_eq(dest_reg, left_op, right_op, Type::PTR_SIZE);
+      } else {
+        m_ir_gen.emit_cmp_eq(dest_reg, left_op, right_op, size);
+      }
       break;
     case BinOperator::NotEqual:
-      m_ir_gen.emit_cmp_ne(dest_reg, left_op, right_op, size);
+      if (is_str_cmp(node.left->expr_type, node.right->expr_type)) {
+        m_ir_gen.emit_cmp_str_eq(dest_reg, left_op, right_op, Type::PTR_SIZE);
+        m_ir_gen.emit_log_not(dest_reg, dest_reg, 1); // one bit for str_eqs
+      } else {
+        m_ir_gen.emit_cmp_ne(dest_reg, left_op, right_op, size);
+      }
       break;
     case BinOperator::LessThan:
       m_ir_gen.emit_cmp_lt(dest_reg, left_op, right_op, size);

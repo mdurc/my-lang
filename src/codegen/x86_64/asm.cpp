@@ -281,7 +281,7 @@ void X86_64CodeGenerator::generate(
   *m_out << "extern print_newline, print_uint, print_int" << std::endl;
   *m_out << "extern read_char, read_word, parse_uint" << std::endl;
   *m_out << "extern parse_int, string_equals, string_copy" << std::endl;
-  *m_out << "extern malloc, free" << std::endl;
+  *m_out << "extern malloc, free, clrscr" << std::endl;
 
   *m_out << std::endl;
 
@@ -400,6 +400,7 @@ void X86_64CodeGenerator::handle_instruction(const IRInstruction& instr) {
     case IROpCode::CMP_LE:
     case IROpCode::CMP_GT:
     case IROpCode::CMP_GE: handle_cmp(instr); break;
+    case IROpCode::CMP_STR_EQ: handle_cmp_str_eq(instr); break;
     case IROpCode::NOT: handle_logical_not(instr); break;
     case IROpCode::AND: handle_logical_and_or(instr, "and"); break;
     case IROpCode::OR: handle_logical_and_or(instr, "or"); break;
@@ -724,6 +725,36 @@ void X86_64CodeGenerator::handle_cmp(const IRInstruction& instr) {
   if (rax_pushed) emit("pop rax");
 }
 
+void X86_64CodeGenerator::handle_cmp_str_eq(const IRInstruction& instr) {
+  assert(std::holds_alternative<IR_Register>(instr.result.value()) &&
+         "CMP_STR_EQ instruction must have a register as the destination");
+  assert(instr.operands.size() == 2);
+  assert(instr.size == Type::PTR_SIZE);
+
+  std::string dst_str = get_sized_component(instr.result.value(), 1);
+  std::string s1_str = get_sized_component(instr.operands[0], instr.size);
+  std::string s2_str = get_sized_component(instr.operands[1], instr.size);
+
+  std::vector<std::string> clobbered_regs = {"rax", "rcx", "rdx"};
+  std::vector<std::string> pushed_regs;
+  for (const std::string& reg : clobbered_regs) {
+    auto it = m_x86_reg_to_ir_reg.find(reg);
+    if (it != m_x86_reg_to_ir_reg.end() && it->second.first != -1) {
+      emit("push " + reg + "  ; save " + reg + " for string_equals");
+      pushed_regs.push_back(reg);
+    }
+  }
+
+  emit("mov rdi, " + s1_str + " ; arg1 for string_equals");
+  emit("mov rsi, " + s2_str + " ; arg2 for string_equals");
+  emit("call string_equals");
+  emit("mov " + dst_str + ", al");
+
+  for (auto it = pushed_regs.rbegin(); it != pushed_regs.rend(); ++it) {
+    emit("pop " + *it + "          ; restore " + *it);
+  }
+}
+
 void X86_64CodeGenerator::handle_label(const IRInstruction& instr) {
   const IROperand& label = instr.result.value();
   assert(std::holds_alternative<IR_Label>(label));
@@ -829,7 +860,7 @@ void X86_64CodeGenerator::handle_asm_block(const IRInstruction& instr) {
          "std::string operand must exist for ASM_BLOCK in IR");
 
   const std::string& asm_code = std::get<std::string>(instr.operands[0]);
-  *m_out << asm_code << std::endl;
+  emit(asm_code);
 }
 
 void X86_64CodeGenerator::handle_load(const IRInstruction& instr) {

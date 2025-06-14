@@ -37,7 +37,8 @@ enum class IROpCode {
   CMP_LT,
   CMP_LE,
   CMP_GT,
-  CMP_GE, // Result: dest_temp, Operands: src1, src2
+  CMP_GE,     // Result: dest_temp, Operands: src1, src2
+  CMP_STR_EQ, // Result: dest_temp (bool), Operands: str_ptr1, str_ptr2
 
   // Control Flow
   LABEL, // Result: label_operand (defines the label)
