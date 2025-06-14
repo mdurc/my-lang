@@ -3,37 +3,37 @@ extern print_newline, print_uint, print_int
 extern read_char, read_word, parse_uint
 extern parse_int, string_equals, string_copy
 
+default rel
 global _start
 section .text
 _start:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 16
 	push r12
 	push r13
 	push r14
 	push r15
 	push rbx
 	mov r10, 0
-	mov QWORD[rbp - 8], r10
+	mov QWORD[global_vars + 8], r10
 _L0:
 	mov r11, 10
 	push rax
-	cmp QWORD[rbp - 8], r11
+	cmp QWORD[global_vars + 8], r11
 	setl al
 	movzx r12, al
 	pop rax
 	test r12b, r12b
 	jz _L1
-	mov rdi, QWORD[rbp - 8]
+	mov rdi, QWORD[global_vars + 8]
 	call print_int
 	mov r13, 1
-	mov r14, QWORD[rbp - 8]
+	mov r14, QWORD[global_vars + 8]
 	add r14, r13
-	mov QWORD[rbp - 8], r14
+	mov QWORD[global_vars + 8], r14
 	mov r15, 5
 	push rax
-	cmp QWORD[rbp - 8], r15
+	cmp QWORD[global_vars + 8], r15
 	sete al
 	movzx rbx, al
 	pop rax
@@ -43,7 +43,7 @@ _L0:
 _L2:
 	mov r10, 3
 	push rax
-	cmp QWORD[rbp - 8], r10
+	cmp QWORD[global_vars + 8], r10
 	sete al
 	movzx r11, al
 	pop rax
@@ -62,27 +62,27 @@ _L5:
 	jmp _L0
 _L1:
 	mov r14, 5
-	mov DWORD[rbp - 12], r14d
+	mov DWORD[global_vars + 12], r14d
 _L6:
 	mov r15, 10
 	push rax
-	cmp DWORD[rbp - 12], r15d
+	cmp DWORD[global_vars + 12], r15d
 	setl al
 	movzx ebx, al
 	pop rax
 	test bl, bl
 	jz _L9
 _L8:
-	mov edi, DWORD[rbp - 12]
+	mov edi, DWORD[global_vars + 12]
 	call print_int
 	jmp _L7
-	mov edi, DWORD[rbp - 12]
+	mov edi, DWORD[global_vars + 12]
 	call print_int
 _L7:
 	mov r10, 1
-	mov r11d, DWORD[rbp - 12]
+	mov r11d, DWORD[global_vars + 12]
 	add r11d, r10d
-	mov DWORD[rbp - 12], r11d
+	mov DWORD[global_vars + 12], r11d
 	jmp _L6
 _L9:
 	pop rbx
@@ -98,3 +98,5 @@ _L9:
 section .data
 LC0:
 	db "ok", 0
+section .bss
+	global_vars resb 16

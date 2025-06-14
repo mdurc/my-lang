@@ -3,11 +3,16 @@ extern print_newline, print_uint, print_int
 extern read_char, read_word, parse_uint
 extern parse_int, string_equals, string_copy
 
+default rel
 global _start
 section .text
 _start:
+	push rbp
+	mov rbp, rsp
 	call main
-	mov rdi, rax
+	mov rdi, rax ; main's return value as exit code
+	mov rsp, rbp ; restore stack
+	pop rbp
 	call exit
 main:
 	push rbp

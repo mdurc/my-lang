@@ -1,22 +1,22 @@
 --- IR Instructions ---
 _foo
 	BeginFunc
-	a = _param 0
-	b = _param 1
+	a_1 = _param 0
+	b_1 = _param 1
 	_t0 = 13
-	_t1 = a + _t0
-	i = _t1
+	_t1 = a_1 + _t0
+	i_1 = _t1
 	_t2 = 1
-	z = _t2
-	IfZ b Goto _L0
+	z_1 = _t2
+	IfZ b_1 Goto _L0
 	_t3 = 2
-	_t4 = i * _t3
-	z = _t4
+	_t4 = i_1 * _t3
+	z_1 = _t4
 _L0:
 	_t5 = 5
-	_t6 = z * _t5
-	z = _t6
-	EndFunc z
+	_t6 = z_1 * _t5
+	z_1 = _t6
+	EndFunc z_1
 	_t7 = 3
 	PushArg _t7
 	_t8 = 1
@@ -33,17 +33,17 @@ _L0:
 	PopArgs
 _bar
 	BeginFunc
-	a = _param 0
-	b = _param 1
-	c = _param 2
-	d = _param 3
-	e = _param 4
-	f = _param 5
-	g = _param 6
-	h = _param 7
-	i = _param 8
-	j = _param 9
-	PushArg g
+	a_3 = _param 0
+	b_3 = _param 1
+	c_3 = _param 2
+	d_3 = _param 3
+	e_3 = _param 4
+	f_3 = _param 5
+	g_3 = _param 6
+	h_3 = _param 7
+	i_3 = _param 8
+	j_3 = _param 9
+	PushArg g_3
 	LCall print_int
 	PopArgs
 	_t11 = "
@@ -51,7 +51,7 @@ _bar
 	PushArg _t11
 	LCall print_string
 	PopArgs
-	PushArg h
+	PushArg h_3
 	LCall print_int
 	PopArgs
 	_t12 = "
@@ -59,7 +59,7 @@ _bar
 	PushArg _t12
 	LCall print_string
 	PopArgs
-	PushArg i
+	PushArg i_3
 	LCall print_int
 	PopArgs
 	_t13 = "
@@ -67,7 +67,7 @@ _bar
 	PushArg _t13
 	LCall print_string
 	PopArgs
-	PushArg j
+	PushArg j_3
 	LCall print_int
 	PopArgs
 	_t14 = "

@@ -17,7 +17,7 @@ std::string generate_ir_output(const std::string& input_filepath) {
     SymTab symtab;
     Parser parser;
     TypeChecker type_checker;
-    IrVisitor ir_visitor;
+    IrVisitor ir_visitor(&symtab);
     try {
       std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
       try {

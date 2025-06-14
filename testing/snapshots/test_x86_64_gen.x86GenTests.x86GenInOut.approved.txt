@@ -3,36 +3,36 @@ extern print_newline, print_uint, print_int
 extern read_char, read_word, parse_uint
 extern parse_int, string_equals, string_copy
 
+default rel
 global _start
 section .text
 _start:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 16
 	push r12
 	push r13
 	push r14
 	mov r10, 8
-	mov DWORD[rbp - 4], r10d
+	mov DWORD[global_vars + 4], r10d
 	sub rsp, 64
 	mov rdi, rsp
 	call read_word
 	mov r11, rax
 	call parse_int
 	mov r11, rax
-	mov DWORD[rbp - 4], r11d
-	mov edi, DWORD[rbp - 4]
+	mov DWORD[global_vars + 4], r11d
+	mov edi, DWORD[global_vars + 4]
 	call print_int
 	mov r12, LC0
 	mov rdi, r12
 	call print_string
-	mov QWORD[rbp - 12], 0
+	mov QWORD[global_vars + 12], 0
 	sub rsp, 64
 	mov rdi, rsp
 	call read_word
 	mov r13, rax
-	mov QWORD[rbp - 12], r13
-	mov rdi, QWORD[rbp - 12]
+	mov QWORD[global_vars + 12], r13
+	mov rdi, QWORD[global_vars + 12]
 	call print_string
 	mov r14, LC0
 	mov rdi, r14
@@ -48,3 +48,5 @@ _start:
 section .data
 LC0:
 	db 10, 0
+section .bss
+	global_vars resb 16

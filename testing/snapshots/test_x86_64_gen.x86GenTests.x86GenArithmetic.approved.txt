@@ -3,50 +3,50 @@ extern print_newline, print_uint, print_int
 extern read_char, read_word, parse_uint
 extern parse_int, string_equals, string_copy
 
+default rel
 global _start
 section .text
 _start:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 32
 	push r12
 	push r13
 	push r14
 	push r15
 	push rbx
 	mov r10, 10
-	mov QWORD[rbp - 8], r10
+	mov QWORD[global_vars + 8], r10
 	mov r11, 5
-	mov r12, QWORD[rbp - 8]
+	mov r12, QWORD[global_vars + 8]
 	add r12, r11
 	mov r13, 2
 	mov r14, r12
 	imul r14, r13
-	mov QWORD[rbp - 16], r14
+	mov QWORD[global_vars + 16], r14
 	mov r15, 2
 	; --- DIV start ---
 	push rax
 	push rdx
-	mov rax, QWORD[rbp - 8]
+	mov rax, QWORD[global_vars + 8]
 	cqo
 	idiv r15
 	mov rbx, rax
 	pop rdx
 	pop rax
 	; --- DIV end ---
-	mov r10, QWORD[rbp - 16]
+	mov r10, QWORD[global_vars + 16]
 	sub r10, rbx
-	mov r11, QWORD[rbp - 8]
+	mov r11, QWORD[global_vars + 8]
 	neg r11
 	mov r12, r10
 	add r12, r11
-	mov QWORD[rbp - 24], r12
-	mov QWORD[rbp - 32], 0
+	mov QWORD[global_vars + 24], r12
+	mov QWORD[global_vars + 32], 0
 	mov r13, 100
-	mov r14, QWORD[rbp - 24]
+	mov r14, QWORD[global_vars + 24]
 	add r14, r13
-	mov QWORD[rbp - 32], r14
-	mov rdi, QWORD[rbp - 32]
+	mov QWORD[global_vars + 32], r14
+	mov rdi, QWORD[global_vars + 32]
 	call print_int
 	mov r15, LC0
 	mov rdi, r15
@@ -64,3 +64,5 @@ _start:
 section .data
 LC0:
 	db 10, 0
+section .bss
+	global_vars resb 32

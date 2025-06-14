@@ -1,10 +1,10 @@
 --- IR Instructions ---
 	_t0 = 8
-	x = _t0
+	x_0 = _t0
 	_t1 = LCall read_word
 	_t1 = LCall parse_int
-	x = _t1
-	PushArg x
+	x_0 = _t1
+	PushArg x_0
 	LCall print_int
 	PopArgs
 	_t2 = "
@@ -12,10 +12,10 @@
 	PushArg _t2
 	LCall print_string
 	PopArgs
-	y = 0
+	y_0 = 0
 	_t3 = LCall read_word
-	y = _t3
-	PushArg y
+	y_0 = _t3
+	PushArg y_0
 	LCall print_string
 	PopArgs
 	_t4 = "

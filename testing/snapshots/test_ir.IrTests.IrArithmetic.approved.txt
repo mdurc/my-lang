@@ -1,22 +1,22 @@
 --- IR Instructions ---
 	_t0 = 10
-	x = _t0
+	x_0 = _t0
 	_t1 = 5
-	_t2 = x + _t1
+	_t2 = x_0 + _t1
 	_t3 = 2
 	_t4 = _t2 * _t3
-	y = _t4
+	y_0 = _t4
 	_t5 = 2
-	_t6 = x / _t5
-	_t7 = y - _t6
-	_t8 = -x
+	_t6 = x_0 / _t5
+	_t7 = y_0 - _t6
+	_t8 = -x_0
 	_t9 = _t7 + _t8
-	z = _t9
-	result = 0
+	z_0 = _t9
+	result_0 = 0
 	_t10 = 100
-	_t11 = z + _t10
-	result = _t11
-	PushArg result
+	_t11 = z_0 + _t10
+	result_0 = _t11
+	PushArg result_0
 	LCall print_int
 	PopArgs
 	_t12 = "
