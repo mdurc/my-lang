@@ -87,10 +87,6 @@ TEST(IrTests, IrPointers) {
   ApprovalTests::Approvals::verify(generate_ir_output("./samples/pointers.sn"));
 }
 
-TEST(IrTests, IrMemory) {
-  ApprovalTests::Approvals::verify(generate_ir_output("./samples/memory.sn"));
-}
-
 TEST(IrTests, IrAsmAndErrors) {
   ApprovalTests::Approvals::verify(
       generate_ir_output("./samples/asm_and_errors.sn"));

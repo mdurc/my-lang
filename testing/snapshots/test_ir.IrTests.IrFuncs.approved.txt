@@ -21,7 +21,7 @@ _L0:
 	PushArg _t7
 	_t8 = 1
 	PushArg _t8
-	_t9 = LCall _foo
+	_t9 = LCall foo_0
 	PopArgs
 	PushArg _t9
 	LCall print_int
@@ -96,6 +96,6 @@ _bar
 	PushArg _t23
 	_t24 = 0
 	PushArg _t24
-	LCall _bar
+	LCall bar_0
 	PopArgs
 -----------------------

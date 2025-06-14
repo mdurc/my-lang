@@ -97,10 +97,6 @@ TEST(IrTests, IrPointers) {
   ApprovalTests::Approvals::verify(generate_x86gen_output("./samples/pointers.sn"));
 }
 
-TEST(IrTests, IrMemory) {
-  ApprovalTests::Approvals::verify(generate_x86gen_output("./samples/memory.sn"));
-}
-
 TEST(IrTests, IrAsmAndErrors) {
   ApprovalTests::Approvals::verify(
       generate_x86gen_output("./samples/asm_and_errors.sn"));

@@ -1,8 +1,112 @@
+FunctionDecl(
+  Name:
+    Ident(foo),
+  Params: [
+    Param(Modifier: ImmutablyBorrowed,
+      Name:
+        Ident(x),
+      Type:
+        {i32} Type::Named(i32)
+    ),
+    Param(Modifier: ImmutablyBorrowed,
+      Name:
+        Ident(y),
+      Type:
+        {i32} Type::Named(i32)
+    ),
+    Param(Modifier: ImmutablyBorrowed,
+      Name:
+        Ident(z),
+      Type:
+        {i32} Type::Named(i32)
+    )
+  ],
+  ReturnType:
+    {u0} Type::Named(u0),
+  Body:
+  Block([
+    PrintStmt(
+      String("Running foo_1
+")
+    ),
+    PrintStmt(
+      Ident(x)
+      String("
+")
+    ),
+    PrintStmt(
+      Ident(y)
+      String("
+")
+    ),
+    PrintStmt(
+      Ident(z)
+      String("
+")
+    )
+  ])
+)
+VariableDecl(Mutable: false,
+  Name:
+    Ident(p_foo),
+  Type:
+    {func(i32, i32, i32)->u0} Type::Function(
+      Params: [
+        Type:
+          {i32} Type::Named(i32)
+        ),
+        Type:
+          {i32} Type::Named(i32)
+        ),
+        Type:
+          {i32} Type::Named(i32)
+        )
+      ],
+      Return Type:
+        {u0} Type::Named(u0)
+    )
+  Initializer:
+    Ident(foo)
+)
+ExpressionStmt(
+  FunctionCall(
+    Callee:
+      Ident(foo),
+    Arguments: [
+      Argument(IsGive: false,
+        Int(1)
+      ),
+      Argument(IsGive: false,
+        Int(2)
+      ),
+      Argument(IsGive: false,
+        Int(3)
+      )
+    ]
+  )
+)
+ExpressionStmt(
+  FunctionCall(
+    Callee:
+      Ident(p_foo),
+    Arguments: [
+      Argument(IsGive: false,
+        Int(4)
+      ),
+      Argument(IsGive: false,
+        Int(5)
+      ),
+      Argument(IsGive: false,
+        Int(6)
+      )
+    ]
+  )
+)
 VariableDecl(Mutable: true,
   Name:
     Ident(x),
   Type:
-    {i32} Type::Named(i32)
+    {i64} Type::Named(i64)
   Initializer:
     Int(3)
 )
@@ -10,27 +114,79 @@ VariableDecl(Mutable: true,
   Name:
     Ident(px),
   Type:
-    {ptr<imm i32>} Type::Pointer(pointee mutable: false,
+    {ptr<imm i64>} Type::Pointer(pointee mutable: false,
       Pointee:
-        {i32} Type::Named(i32)
+        {i64} Type::Named(i64)
     )
   Initializer:
     UnaryOp(&,
       Ident(x)
     )
 )
+PrintStmt(
+  String("[*px, x] = ")
+  UnaryOp(*,
+    Ident(px)
+  )
+  String(", ")
+  Ident(x)
+  String("
+")
+)
 VariableDecl(Mutable: true,
   Name:
     Ident(py),
   Type:
-    {ptr<mut i32>} Type::Pointer(pointee mutable: true,
+    {ptr<mut i64>} Type::Pointer(pointee mutable: true,
       Pointee:
-        {i32} Type::Named(i32)
+        {i64} Type::Named(i64)
     )
   Initializer:
     UnaryOp(&mut,
       Ident(x)
     )
+)
+ExpressionStmt(
+  Assignment(
+    LValue:
+      UnaryOp(*,
+        Ident(py)
+      ),
+    RValue:
+      Int(15)
+  )
+)
+PrintStmt(
+  String("*py = 15;
+")
+)
+PrintStmt(
+  String("[*py, *px, x] = ")
+  UnaryOp(*,
+    Ident(py)
+  )
+  String(", ")
+  UnaryOp(*,
+    Ident(px)
+  )
+  String(", ")
+  Ident(x)
+  String("
+")
+)
+ExpressionStmt(
+  Assignment(
+    LValue:
+      Ident(px),
+    RValue:
+      null
+  )
+)
+PrintStmt(
+  String("Null(addr): ")
+  Ident(px)
+  String("
+")
 )
 ExpressionStmt(
   Assignment(
@@ -43,12 +199,17 @@ ExpressionStmt(
   )
 )
 PrintStmt(
+  String("Address: ")
   Ident(px)
+  String("
+")
 )
 PrintStmt(
   UnaryOp(*,
     Ident(px)
   )
+  String("
+")
 )
 PrintStmt(
   UnaryOp(*,
@@ -59,4 +220,197 @@ PrintStmt(
       )
     )
   )
+  String("
+")
+)
+PrintStmt(
+  ArrayIndex(
+    Object:
+      Ident(px),
+    Index:
+      Int(0)
+  )
+  String("
+")
+)
+FunctionDecl(
+  Name:
+    Ident(print_arr),
+  Params: [
+    Param(Modifier: ImmutablyBorrowed,
+      Name:
+        Ident(p),
+      Type:
+        {ptr<imm i64>} Type::Pointer(pointee mutable: false,
+          Pointee:
+            {i64} Type::Named(i64)
+        )
+    ),
+    Param(Modifier: ImmutablyBorrowed,
+      Name:
+        Ident(size),
+      Type:
+        {i64} Type::Named(i64)
+    )
+  ],
+  ReturnType:
+    {u0} Type::Named(u0),
+  Body:
+  Block([
+    ForStmt(
+      Initializer:
+        VariableDecl(Mutable: true,
+          Name:
+            Ident(i),
+          Type:
+            {i64} Type::Named(i64)
+          Initializer: null
+        ),
+      Condition:
+        BinaryOp(<,
+          Ident(i),
+          Ident(size)
+        ),
+      Iteration:
+        Assignment(
+          LValue:
+            Ident(i),
+          RValue:
+            BinaryOp(+,
+              Ident(i),
+              Int(1)
+            )
+        ),
+      Body:
+      Block([
+        PrintStmt(
+          ArrayIndex(
+            Object:
+              Ident(p),
+            Index:
+              Ident(i)
+          )
+          String("
+")
+        )
+      ])
+    )
+  ])
+)
+VariableDecl(Mutable: true,
+  Name:
+    Ident(pz),
+  Type:
+    {ptr<imm i64>} Type::Pointer(pointee mutable: false,
+      Pointee:
+        {i64} Type::Named(i64)
+    )
+  Initializer: null
+)
+ExpressionStmt(
+  Assignment(
+    LValue:
+      Ident(pz),
+    RValue:
+      NewExpr(
+        TypeToAllocate:(mutable memory, type: array)
+          {i64} Type::Named(i64)
+        AllocationSpecifier:
+          Int(3)
+      )
+  )
+)
+ExpressionStmt(
+  Assignment(
+    LValue:
+      ArrayIndex(
+        Object:
+          Ident(pz),
+        Index:
+          Int(0)
+      ),
+    RValue:
+      Int(30)
+  )
+)
+ExpressionStmt(
+  Assignment(
+    LValue:
+      ArrayIndex(
+        Object:
+          Ident(pz),
+        Index:
+          Int(1)
+      ),
+    RValue:
+      Int(60)
+  )
+)
+ExpressionStmt(
+  Assignment(
+    LValue:
+      ArrayIndex(
+        Object:
+          Ident(pz),
+        Index:
+          Int(2)
+      ),
+    RValue:
+      Int(90)
+  )
+)
+ExpressionStmt(
+  FunctionCall(
+    Callee:
+      Ident(print_arr),
+    Arguments: [
+      Argument(IsGive: false,
+        Ident(pz)
+      ),
+      Argument(IsGive: false,
+        Int(3)
+      )
+    ]
+  )
+)
+FreeStmt(IsArray: true,
+  Ident(pz)
+)
+ExpressionStmt(
+  Assignment(
+    LValue:
+      Ident(pz),
+    RValue:
+      null
+  )
+)
+ExpressionStmt(
+  Assignment(
+    LValue:
+      Ident(pz),
+    RValue:
+      NewExpr(
+        TypeToAllocate:(immutable memory, type: constructor)
+          {i64} Type::Named(i64)
+        AllocationSpecifier:
+          Int(32)
+      )
+  )
+)
+ExpressionStmt(
+  FunctionCall(
+    Callee:
+      Ident(print_arr),
+    Arguments: [
+      Argument(IsGive: false,
+        Ident(pz)
+      ),
+      Argument(IsGive: false,
+        Int(1)
+      )
+    ]
+  )
+)
+FreeStmt(IsArray: false,
+  Ident(pz)
 )

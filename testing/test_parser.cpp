@@ -52,11 +52,6 @@ TEST(ParserTests, ParserPointers) {
       generate_parser_output("./samples/pointers.sn"));
 }
 
-TEST(ParserTests, ParserMemory) {
-  ApprovalTests::Approvals::verify(
-      generate_parser_output("./samples/memory.sn"));
-}
-
 TEST(ParserTests, ParserAsmAndErrors) {
   ApprovalTests::Approvals::verify(
       generate_parser_output("./samples/asm_and_errors.sn"));

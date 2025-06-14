@@ -51,11 +51,6 @@ TEST(SymTabTests, SymTabPointers) {
       generate_symtab_output("./samples/pointers.sn"));
 }
 
-TEST(SymTabTests, SymTabMemory) {
-  ApprovalTests::Approvals::verify(
-      generate_symtab_output("./samples/memory.sn"));
-}
-
 TEST(SymTabTests, SymTabAsmAndErrors) {
   ApprovalTests::Approvals::verify(
       generate_symtab_output("./samples/asm_and_errors.sn"));

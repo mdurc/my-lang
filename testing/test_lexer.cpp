@@ -40,11 +40,6 @@ TEST(LexerTests, LexerPointers) {
       generate_lexer_output("./samples/pointers.sn"));
 }
 
-TEST(LexerTests, LexerMemory) {
-  ApprovalTests::Approvals::verify(
-      generate_lexer_output("./samples/memory.sn"));
-}
-
 TEST(LexerTests, LexerAsmAndErrors) {
   ApprovalTests::Approvals::verify(
       generate_lexer_output("./samples/asm_and_errors.sn"));
