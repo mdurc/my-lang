@@ -733,8 +733,18 @@ void IrVisitor::visit(FreeStmtNode& node) {
   m_ir_gen.emit_free(ptr_to_free_op);
 }
 
+void IrVisitor::visit(ErrorStmtNode& node) {
+  IR_Register temp_reg = m_ir_gen.new_temp_reg();
+  m_ir_gen.emit_assign(temp_reg, node.message_content, Type::PTR_SIZE);
+  m_last_expr_operand = temp_reg;
+
+  m_ir_gen.emit_push_arg(temp_reg, Type::PTR_SIZE);
+  m_ir_gen.emit_lcall(std::nullopt, IR_Label("print_string"), 0);
+  m_ir_gen.emit_pop_args();
+  m_ir_gen.emit_exit(1);
+}
+
 void IrVisitor::visit(FloatLiteralNode&) { unimpl("FloatLiteralNode"); }
-void IrVisitor::visit(ErrorStmtNode&) { unimpl("ErrorStmtNode"); }
 void IrVisitor::visit(StructDeclNode&) { unimpl("StructDeclNode"); }
 void IrVisitor::visit(StructFieldNode&) { unimpl("StructFieldNode"); }
 void IrVisitor::visit(MemberAccessNode&) { unimpl("MemberAccessNode"); }
