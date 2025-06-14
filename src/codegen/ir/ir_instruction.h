@@ -47,9 +47,17 @@ enum class IROpCode {
   // Procedure calls
   PUSH_ARG, // Operands: src_operand
   POP_ARGS, // No operands
-  LCALL,    // Result: opt_dst, Operands: func_label_operand
+  LCALL,    // Result: opt_dst, Operands: func_label_operand/func ptr variable
 
   ASM_BLOCK,
+
+  // Pointer & Memory
+  ADDR_OF,     // Result: dest_reg, Operands: src_value
+  ALLOC,       // Result: dest_ptr_reg, Operands: [size, ?initializer_op].
+               // instr.size = initializer_op's type size if present
+  ALLOC_ARRAY, // Result: dest_ptr_reg, Operands: [size_el, num_el].
+               // instr.size = num_el's type size
+  FREE,        // Operands: ptr_op
 };
 
 // == Operand Types ==
@@ -83,8 +91,10 @@ struct IR_ParameterSlot {
 struct IR_Variable {
   std::string name;
   uint64_t size; // size in bytes
+  bool is_func_decl;
 
-  IR_Variable(const std::string& n, uint64_t s) : name(n), size(s) {}
+  IR_Variable(const std::string& name, uint64_t size, bool func = false)
+      : name(name), size(size), is_func_decl(func) {}
   bool operator==(const IR_Variable& other) const { return name == other.name; }
   bool operator<(const IR_Variable& other) const { return name < other.name; }
 };

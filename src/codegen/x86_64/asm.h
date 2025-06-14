@@ -106,6 +106,11 @@ private:
   void handle_pop_args(const IRInstruction& instr);
   void handle_lcall(const IRInstruction& instr);
   void handle_asm_block(const IRInstruction& instr);
+
+  void handle_addr_of(const IRInstruction& instr);
+  void handle_alloc(const IRInstruction& instr);
+  void handle_alloc_array(const IRInstruction& instr);
+  void handle_free(const IRInstruction& instr);
 };
 
 #endif // CODEGEN_X86_64_ASM_H

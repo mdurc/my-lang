@@ -162,7 +162,8 @@ void IrGenerator::emit_pop_args() {
 }
 
 void IrGenerator::emit_lcall(std::optional<IR_Register> dst,
-                             IR_Label func_target, uint64_t return_size) {
+                             IROperand func_target, uint64_t return_size) {
+  // func_target is either a function label or function ptr variable
   m_instructions.emplace_back(IROpCode::LCALL, dst,
                               std::vector<IROperand>{func_target}, return_size);
 }
@@ -170,6 +171,38 @@ void IrGenerator::emit_lcall(std::optional<IR_Register> dst,
 void IrGenerator::emit_asm_block(const std::string& asm_code) {
   m_instructions.emplace_back(IROpCode::ASM_BLOCK, std::nullopt,
                               std::vector<IROperand>{asm_code});
+}
+
+void IrGenerator::emit_addr_of(IR_Register dst, IROperand src_lval) {
+  m_instructions.emplace_back(IROpCode::ADDR_OF, dst,
+                              std::vector<IROperand>{src_lval}, Type::PTR_SIZE);
+}
+
+void IrGenerator::emit_alloc(IR_Register dst_ptr, uint64_t type_size,
+                             std::optional<IROperand> initializer,
+                             uint64_t initializer_type_size) {
+  std::vector<IROperand> ops;
+  ops.push_back(IR_Immediate(type_size, type_size));
+  if (initializer.has_value()) {
+    ops.push_back(initializer.value());
+  }
+  m_instructions.emplace_back(
+      IROpCode::ALLOC, dst_ptr, std::move(ops),
+      initializer.has_value() ? initializer_type_size : 0);
+}
+
+void IrGenerator::emit_alloc_array(IR_Register dst_ptr, uint64_t size_el,
+                                   IROperand num_el,
+                                   uint64_t initializer_type_size) {
+  m_instructions.emplace_back(
+      IROpCode::ALLOC_ARRAY, dst_ptr,
+      std::vector<IROperand>{IR_Immediate(size_el, size_el), num_el},
+      initializer_type_size);
+}
+
+void IrGenerator::emit_free(IROperand ptr) {
+  m_instructions.emplace_back(IROpCode::FREE, std::nullopt,
+                              std::vector<IROperand>{ptr}, Type::PTR_SIZE);
 }
 
 const std::vector<IRInstruction>& IrGenerator::get_instructions() const {

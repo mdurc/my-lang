@@ -65,7 +65,7 @@ public:
     return std::get<T>(m_storage);
   }
 
-  static const uint64_t PTR_SIZE = 8;
+  inline static const uint64_t PTR_SIZE = 8;
 
   // returns the string format that should be used within the language
   std::string to_string() const;

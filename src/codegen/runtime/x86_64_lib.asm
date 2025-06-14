@@ -1,6 +1,7 @@
 	global exit, string_length, print_string, print_char, print_newline
 	global print_uint, print_int, read_char, read_word, parse_uint
 	global parse_int, string_equals, string_copy
+  global malloc, free
 
 	section .text
 
@@ -313,3 +314,45 @@ string_copy:
 .err:
 	xor rax, rax
 	ret
+
+; rdi <- size in bytes
+; rax -> allocated memory address (16-byte aligned), or 0 on error
+malloc:
+    test rdi, rdi
+    jz .invalid_size
+    push r12
+    mov r12, rdi
+    add rdi, 16        ; total_size = requested_size + 16
+    jc .error
+    mov rsi, rdi       ; length = total_size
+    xor rdi, rdi       ; addr = NULL (let kernel choose)
+    mov rdx, 3         ; prot = PROT_READ | PROT_WRITE
+    mov r10, 0x1002    ; flags = MAP_ANON | MAP_PRIVATE
+    mov r8, -1         ; fd = -1
+    xor r9, r9         ; offset = 0
+    mov rax, 0x20000C5 ; mmap syscall
+    syscall
+    cmp rax, -1
+    je .error
+    mov [rax], rsi     ; Store total_size at start of block
+    add rax, 16        ; Return address after header
+    pop r12
+    ret
+.invalid_size:
+    xor rax, rax
+    ret
+.error:
+    xor rax, rax
+    pop r12
+    ret
+
+; rdi <- memory address to free (must be from malloc or NULL)
+free:
+    test rdi, rdi
+    jz .end             ; free(NULL) is safe no-op
+    mov rsi, [rdi - 16] ; Retrieve stored total_size
+    lea rdi, [rdi - 16] ; Calculate base address
+    mov rax, 0x2000049  ; munmap syscall
+    syscall
+.end:
+    ret

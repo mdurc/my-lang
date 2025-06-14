@@ -54,11 +54,20 @@ public:
   // Procedure Calls
   void emit_push_arg(IROperand src, uint64_t arg_size);
   void emit_pop_args(); // backend should track size required to pop
-  void emit_lcall(std::optional<IR_Register> dst, IR_Label func_target,
+  void emit_lcall(std::optional<IR_Register> dst, IROperand func_target,
                   uint64_t return_size);
 
   // Raw Assembly
   void emit_asm_block(const std::string& asm_code);
+
+  // Pointer & Memory
+  void emit_addr_of(IR_Register dst, IROperand src_lval);
+  void emit_alloc(IR_Register dst_ptr, uint64_t type_size,
+                  std::optional<IROperand> initializer,
+                  uint64_t initializer_type_size);
+  void emit_alloc_array(IR_Register dst_ptr, uint64_t size_el, IROperand num_el,
+                        uint64_t initializer_type_size);
+  void emit_free(IROperand ptr);
 
   const std::vector<IRInstruction>& get_instructions() const;
 

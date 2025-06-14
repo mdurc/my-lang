@@ -23,7 +23,8 @@ public:
   // variable helpers to make sure that we take scopes into account + shadowing
   bool var_exists(const std::string& name, size_t scope_id);
   const IR_Variable& get_var(const std::string& name, size_t scope_id);
-  const IR_Variable* add_var(const std::string& name, size_t scope_id);
+  const IR_Variable* add_var(const std::string& name, size_t scope_id,
+                             bool is_func_decl);
 
   // Expression Nodes
   void visit(IntegerLiteralNode& node) override;
@@ -34,7 +35,10 @@ public:
   void visit(IdentifierNode& node) override;
   void visit(AssignmentNode& node) override;
   void visit(BinaryOpExprNode& node) override;
+
+  void visit_addrof(const ExprPtr& op, const IR_Register& dst);
   void visit(UnaryExprNode& node) override;
+
   void visit(FunctionCallNode& node) override;
   void visit(MemberAccessNode& node) override;
   void visit(ArrayIndexNode& node) override;
@@ -73,7 +77,6 @@ private:
   const SymTab* m_symtab;
   IrGenerator m_ir_gen;
   std::set<IR_Variable> m_vars;
-  std::unordered_map<std::string, IR_Label> m_func_labels;
   std::stack<std::pair<IR_Label, IR_Label>> m_loop_contexts; // {continue,break}
 
   IROperand m_last_expr_operand;

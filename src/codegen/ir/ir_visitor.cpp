@@ -47,17 +47,19 @@ const IR_Variable& IrVisitor::get_var(const std::string& name,
   std::shared_ptr<Variable> var = m_symtab->lookup_variable(name, scope_id);
   assert(var != nullptr && "var should exist within symbol table");
   uint64_t size = var->type->get_byte_size();
-  return *m_vars.find(
+  auto itr = m_vars.find(
       IR_Variable(name + "_" + std::to_string(var->scope_id), size));
+  assert(itr != m_vars.end());
+  return *itr;
 }
 
-const IR_Variable* IrVisitor::add_var(const std::string& name,
-                                      size_t scope_id) {
+const IR_Variable* IrVisitor::add_var(const std::string& name, size_t scope_id,
+                                      bool is_func_decl = false) {
   std::shared_ptr<Variable> var = m_symtab->lookup_variable(name, scope_id);
   assert(var != nullptr && "var should exist within symbol table");
   uint64_t size = var->type->get_byte_size();
-  auto itr = m_vars.insert(
-      IR_Variable(name + "_" + std::to_string(var->scope_id), size));
+  auto itr = m_vars.insert(IR_Variable(
+      name + "_" + std::to_string(var->scope_id), size, is_func_decl));
   return &(*itr.first);
 }
 
@@ -66,6 +68,14 @@ void IrVisitor::unimpl(const std::string& note) {
 }
 
 // Expression Nodes
+void IrVisitor::visit(NullLiteralNode&) {
+  // represented by zero
+  IR_Register temp_reg = m_ir_gen.new_temp_reg();
+  m_ir_gen.emit_assign(temp_reg, IR_Immediate(0, Type::PTR_SIZE),
+                       Type::PTR_SIZE);
+  m_last_expr_operand = temp_reg;
+}
+
 void IrVisitor::visit(IntegerLiteralNode& node) {
   IR_Register temp_reg = m_ir_gen.new_temp_reg();
   // 8 bytes for integer literal as of now
@@ -155,6 +165,43 @@ void IrVisitor::visit(BinaryOpExprNode& node) {
   m_last_expr_operand = dest_reg;
 }
 
+void IrVisitor::visit_addrof(const ExprPtr& op, const IR_Register& dst) {
+  if (auto ident_node = std::dynamic_pointer_cast<IdentifierNode>(op)) {
+    m_ir_gen.emit_addr_of(dst, get_var(ident_node->name, ident_node->scope_id));
+  } else if (auto array_idx_node =
+                 std::dynamic_pointer_cast<ArrayIndexNode>(op)) {
+    // calculate address of arr[idx] and store in dest_reg
+    array_idx_node->object->accept(*this);
+    IROperand base_addr_op = m_last_expr_operand;
+
+    array_idx_node->index->accept(*this);
+    IROperand index_op = m_last_expr_operand;
+
+    assert(array_idx_node->expr_type && array_idx_node->index->expr_type &&
+           "node and index should have a resolved type so that we can size it");
+    uint64_t pointee_type_size = array_idx_node->expr_type->get_byte_size();
+    uint64_t idx_type_size = array_idx_node->index->expr_type->get_byte_size();
+    IR_Immediate elem_size_imm(pointee_type_size, idx_type_size);
+
+    IR_Register offset_reg = m_ir_gen.new_temp_reg();
+    m_ir_gen.emit_mul(offset_reg, index_op, elem_size_imm, idx_type_size);
+
+    m_ir_gen.emit_add(dst, base_addr_op, offset_reg, idx_type_size);
+  } else if (auto unary_deref_node =
+                 std::dynamic_pointer_cast<UnaryExprNode>(op)) {
+    if (unary_deref_node->op_type == UnaryOperator::Dereference) {
+      unary_deref_node->operand->accept(*this);
+      m_ir_gen.emit_assign(dst, m_last_expr_operand, Type::PTR_SIZE);
+    } else {
+      unimpl("AddressOf non-dereference UnaryExpr for lvalue: " +
+             AstPrinter::unary_op_to_string(unary_deref_node->op_type));
+    }
+  } else {
+    // TODO MemberAccessNode for &struct.field
+    unimpl("AddressOf complex l-value");
+  }
+}
+
 void IrVisitor::visit(UnaryExprNode& node) {
   node.operand->accept(*this);
   IROperand operand_op = m_last_expr_operand;
@@ -172,13 +219,11 @@ void IrVisitor::visit(UnaryExprNode& node) {
       m_ir_gen.emit_log_not(dest_reg, operand_op, size);
       break;
     case UnaryOperator::Dereference:
-      m_ir_gen.emit_load(dest_reg, operand_op, size);
+      m_ir_gen.emit_load(dest_reg, operand_op, Type::PTR_SIZE);
       break;
     case UnaryOperator::AddressOf:
     case UnaryOperator::AddressOfMut:
-      // TODO addressof and addressofmut
-      unimpl("UnaryExprNode (unsupported op: " +
-             AstPrinter::unary_op_to_string(node.op_type) + ")");
+      visit_addrof(node.operand, dest_reg);
       break;
   }
 
@@ -344,7 +389,7 @@ void IrVisitor::visit(FunctionDeclNode& node) {
   }
 
   IR_Label func_label = m_ir_gen.new_func_label(func_ir_name);
-  m_func_labels.insert({original_func_name, func_label});
+  add_var(original_func_name, node.scope_id, true);
 
   m_ir_gen.emit_begin_func(func_label);
 
@@ -410,8 +455,8 @@ void IrVisitor::visit(FunctionCallNode& node) {
   }
   std::string func_name = callee_ident->name;
 
-  assert(m_func_labels.count(func_name));
-  IR_Label func_label = m_func_labels.at(func_name);
+  assert(var_exists(func_name, node.scope_id));
+  const IROperand& func_target = get_var(func_name, node.scope_id);
 
   std::optional<IR_Register> result_reg_opt = std::nullopt;
 
@@ -427,7 +472,7 @@ void IrVisitor::visit(FunctionCallNode& node) {
     m_last_expr_operand = IR_Immediate(0, 8);
   }
 
-  m_ir_gen.emit_lcall(result_reg_opt, func_label,
+  m_ir_gen.emit_lcall(result_reg_opt, func_target,
                       node.expr_type->get_byte_size());
   m_ir_gen.emit_pop_args();
 }
@@ -625,15 +670,56 @@ void IrVisitor::visit(SwitchStmtNode& node) {
 
   m_ir_gen.emit_label(end_switch_label);
 }
+void IrVisitor::visit(NewExprNode& node) {
+  assert(node.type_to_allocate && "NewExprNode must have a type to allocate");
+  assert(node.expr_type && node.expr_type->is<Type::Pointer>() &&
+         "NewExprNode result must be a pointer type");
+
+  IR_Register result_ptr_reg = m_ir_gen.new_temp_reg();
+
+  if (node.is_array_allocation) {
+    // new <T>[size_expr]
+    assert(node.allocation_specifier &&
+           "Array allocation must have a size specifier");
+    node.allocation_specifier->accept(*this);
+    IROperand size_op = m_last_expr_operand;
+
+    assert(node.allocation_specifier->expr_type &&
+           "Array size specifier must have a type");
+    uint64_t size_op_type_size =
+        node.allocation_specifier->expr_type->get_byte_size();
+
+    m_ir_gen.emit_alloc_array(result_ptr_reg,
+                              node.type_to_allocate->get_byte_size(), size_op,
+                              size_op_type_size);
+  } else {
+    // new <T>(init_expr) or new <T>()
+    std::optional<IROperand> init_op_opt = std::nullopt;
+    uint64_t initializer_type_size = 0;
+
+    if (node.allocation_specifier) {
+      node.allocation_specifier->accept(*this);
+      init_op_opt = m_last_expr_operand;
+      assert(node.allocation_specifier->expr_type &&
+             "Initializer for new must have a type");
+      initializer_type_size =
+          node.allocation_specifier->expr_type->get_byte_size();
+    }
+    m_ir_gen.emit_alloc(result_ptr_reg, node.type_to_allocate->get_byte_size(),
+                        init_op_opt, initializer_type_size);
+  }
+  m_last_expr_operand = result_ptr_reg;
+}
+
+void IrVisitor::visit(FreeStmtNode& node) {
+  node.expression->accept(*this);
+  IROperand ptr_to_free_op = m_last_expr_operand;
+  // right now we treat `node.is_array_deallocation` and normal, the same
+  m_ir_gen.emit_free(ptr_to_free_op);
+}
 
 void IrVisitor::visit(FloatLiteralNode&) { unimpl("FloatLiteralNode"); }
-void IrVisitor::visit(NullLiteralNode&) { unimpl("NullLiteralNode"); }
-
 void IrVisitor::visit(ErrorStmtNode&) { unimpl("ErrorStmtNode"); }
-
-void IrVisitor::visit(NewExprNode&) { unimpl("NewExprNode"); }
-void IrVisitor::visit(FreeStmtNode&) { unimpl("FreeStmtNode"); }
-
 void IrVisitor::visit(StructDeclNode&) { unimpl("StructDeclNode"); }
 void IrVisitor::visit(StructFieldNode&) { unimpl("StructFieldNode"); }
 void IrVisitor::visit(MemberAccessNode&) { unimpl("MemberAccessNode"); }

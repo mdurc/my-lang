@@ -166,6 +166,35 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
       print_ir_operand(instr.operands[0], out);
       break;
     case IROpCode::LABEL: break;
+    case IROpCode::ADDR_OF:
+      assert(instr.result.has_value() && instr.operands.size() == 1);
+      print_ir_operand(instr.result.value(), out);
+      out << " = AddrOf ";
+      print_ir_operand(instr.operands[0], out);
+      break;
+    case IROpCode::ALLOC:
+      assert(instr.result.has_value() && !instr.operands.empty());
+      print_ir_operand(instr.result.value(), out);
+      out << " = Alloc ";
+      print_ir_operand(instr.operands[0], out); // size_imm
+      if (instr.operands.size() > 1) {
+        out << ", ";
+        print_ir_operand(instr.operands[1], out); // init_val_op
+      }
+      break;
+    case IROpCode::ALLOC_ARRAY:
+      assert(instr.result.has_value() && instr.operands.size() == 2);
+      print_ir_operand(instr.result.value(), out);
+      out << " = AllocArray ";
+      print_ir_operand(instr.operands[0], out); // elem_size_imm
+      out << ", ";
+      print_ir_operand(instr.operands[1], out); // num_elements_op
+      break;
+    case IROpCode::FREE:
+      assert(!instr.result.has_value() && instr.operands.size() == 1);
+      out << "Free ";
+      print_ir_operand(instr.operands[0], out);
+      break;
     default:
       out << "UNKNOWN_IR_OPCODE(" << static_cast<int>(instr.opcode) << ")";
       break;

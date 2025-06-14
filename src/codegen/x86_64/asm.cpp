@@ -80,6 +80,11 @@ std::string X86_64CodeGenerator::operand_to_string(const IROperand& operand) {
   } else if (std::holds_alternative<IR_Variable>(operand)) { // Variable
     const IR_Variable& ir_var = std::get<IR_Variable>(operand);
     const std::string& var_name = ir_var.name;
+    if (ir_var.is_func_decl) {
+      size_t underscore_pos = var_name.rfind('_');
+      assert(underscore_pos != std::string::npos);
+      return "_" + var_name.substr(0, underscore_pos);
+    }
     uint64_t var_size = ir_var.size;
     auto itr = m_var_locations.find(var_name);
     if (itr == m_var_locations.end()) {
@@ -130,6 +135,10 @@ std::string X86_64CodeGenerator::get_sized_component(const IROperand& operand,
     return get_sized_register_name(str, size);
   } else if (std::holds_alternative<IR_Variable>(operand)) {
     // memory (variables on the stack), add size prefix
+    const IR_Variable& var = std::get<IR_Variable>(operand);
+    if (var.is_func_decl) {
+      return str;
+    }
     return get_size_prefix(size) + str;
   }
   // immediate or label, which we leave
@@ -146,7 +155,7 @@ void X86_64CodeGenerator::spill_register(const std::string& reg, uint64_t size,
         "[rbp - " + std::to_string(m_current_func_stack_offset) + "]";
     m_spilled_ir_reg_locations[occupant_id] = std::make_pair(spill_addr, size);
     emit("mov " + get_size_prefix(size) + spill_addr + ", " +
-         get_sized_register_name(reg, size));
+         get_sized_register_name(reg, size) + " ; spilling register");
     m_ir_reg_to_x86_reg.erase(occupant_id);
   }
 }
@@ -194,7 +203,8 @@ std::string X86_64CodeGenerator::get_x86_reg(const IR_Register& ir_reg) {
     std::pair<std::string, uint64_t> p = m_spilled_ir_reg_locations[ir_reg.id];
     const std::string& old_spill_addr = p.first;
     emit("mov " + get_sized_register_name(reg, p.second) + ", " +
-         get_size_prefix(p.second) + old_spill_addr);
+         get_size_prefix(p.second) + old_spill_addr +
+         " ; loading back from spill");
     m_spilled_ir_reg_locations.erase(ir_reg.id);
   }
 
@@ -203,9 +213,7 @@ std::string X86_64CodeGenerator::get_x86_reg(const IR_Register& ir_reg) {
   // we can use ptr_size because this reg has never been used before
   // and we can't know what the size is yet, and this function is only
   // ever used within operand_to_string which is intended to not use size contxt
-
-  uint64_t sz = Type::PTR_SIZE;
-  m_x86_reg_to_ir_reg[reg] = std::make_pair(ir_reg.id, sz);
+  m_x86_reg_to_ir_reg[reg] = std::make_pair(ir_reg.id, Type::PTR_SIZE);
 
   if (std::find(m_callee_saved_regs.begin(), m_callee_saved_regs.end(), reg) !=
       m_callee_saved_regs.end()) {
@@ -273,6 +281,7 @@ void X86_64CodeGenerator::generate(
   *m_out << "extern print_newline, print_uint, print_int" << std::endl;
   *m_out << "extern read_char, read_word, parse_uint" << std::endl;
   *m_out << "extern parse_int, string_equals, string_copy" << std::endl;
+  *m_out << "extern malloc, free" << std::endl;
 
   *m_out << std::endl;
 
@@ -401,6 +410,10 @@ void X86_64CodeGenerator::handle_instruction(const IRInstruction& instr) {
     case IROpCode::POP_ARGS: handle_pop_args(instr); break;
     case IROpCode::LCALL: handle_lcall(instr); break;
     case IROpCode::ASM_BLOCK: handle_asm_block(instr); break;
+    case IROpCode::ADDR_OF: handle_addr_of(instr); break;
+    case IROpCode::ALLOC: handle_alloc(instr); break;
+    case IROpCode::ALLOC_ARRAY: handle_alloc_array(instr); break;
+    case IROpCode::FREE: handle_free(instr); break;
     default:
       throw std::runtime_error("Unsupported IR opcode for x86_64: " +
                                std::to_string((int)instr.opcode));
@@ -546,73 +559,55 @@ void X86_64CodeGenerator::handle_assign(const IRInstruction& instr) {
     src_str = get_sized_component(src, instr.size);
   }
 
+  // case for if the source is a function, where destination is a func ptr
+  if (std::holds_alternative<IR_Variable>(src) &&
+      std::get<IR_Variable>(src).is_func_decl) {
+    std::string temp = get_temp_x86_reg(instr.size);
+    emit("lea " + temp + ", " + src_str);
+    src_str = temp;
+  }
+
   emit_one_operand_memory_operation(dst_str, src_str, "mov", instr.size);
-}
-
-void X86_64CodeGenerator::handle_load(const IRInstruction& instr) {
-  // IRInstruction: result: dest_temp(reg), operands[0]:
-  // address_operand(*addr) reg = [mem]
-  IROperand dst = instr.result.value();
-  IROperand src_addr = instr.operands[0];
-  emit("mov " + get_sized_component(dst, instr.size) + ", " +
-       get_sized_component(src_addr, instr.size));
-}
-
-void X86_64CodeGenerator::handle_store(const IRInstruction& instr) {
-  // IRInstruction: result: address_dest(*addr), operands[0]: src(reg)
-  // [mem] = reg
-  IROperand dst_addr = instr.result.value();
-  IROperand src_val = instr.operands[0];
-  assert((std::holds_alternative<IR_Register>(src_val) ||
-          std::holds_alternative<IR_Immediate>(src_val)) &&
-         "Store instructions source must be a register or immediate");
-
-  emit("mov " + get_sized_component(dst_addr, instr.size) + ", " +
-       get_sized_component(src_val, instr.size));
 }
 
 void X86_64CodeGenerator::handle_add(const IRInstruction& instr) {
   assert(std::holds_alternative<IR_Register>(instr.result.value()) &&
          "Add instructions must have a register as the destination");
-  std::string dest_reg_str =
-      get_sized_component(instr.result.value(), instr.size);
+  std::string dst_str = get_sized_component(instr.result.value(), instr.size);
   std::string src1_str = get_sized_component(instr.operands[0], instr.size);
   std::string src2_str = get_sized_component(instr.operands[1], instr.size);
 
-  emit("mov " + dest_reg_str + ", " + src1_str);
-  emit("add " + dest_reg_str + ", " + src2_str);
+  emit("mov " + dst_str + ", " + src1_str);
+  emit("add " + dst_str + ", " + src2_str);
 }
 
 void X86_64CodeGenerator::handle_sub(const IRInstruction& instr) {
   assert(std::holds_alternative<IR_Register>(instr.result.value()) &&
          "Sub instructions must have a register as the destination");
-  std::string dest_reg_str =
-      get_sized_component(instr.result.value(), instr.size);
+  std::string dst_str = get_sized_component(instr.result.value(), instr.size);
   std::string src1_str = get_sized_component(instr.operands[0], instr.size);
   std::string src2_str = get_sized_component(instr.operands[1], instr.size);
 
-  emit("mov " + dest_reg_str + ", " + src1_str);
-  emit("sub " + dest_reg_str + ", " + src2_str);
+  emit("mov " + dst_str + ", " + src1_str);
+  emit("sub " + dst_str + ", " + src2_str);
 }
 
 void X86_64CodeGenerator::handle_mul(const IRInstruction& instr) {
   assert(std::holds_alternative<IR_Register>(instr.result.value()) &&
          "Mul instructions must have a register as the destination");
-  std::string dest_reg_str =
-      get_sized_component(instr.result.value(), instr.size);
+  std::string dst_str = get_sized_component(instr.result.value(), instr.size);
   std::string src1_str = get_sized_component(instr.operands[0], instr.size);
   std::string src2_str = get_sized_component(instr.operands[1], instr.size);
 
-  emit("mov " + dest_reg_str + ", " + src1_str);
-  emit("imul " + dest_reg_str + ", " + src2_str);
+  emit("mov " + dst_str + ", " + src1_str);
+  emit("imul " + dst_str + ", " + src2_str);
 }
 
 void X86_64CodeGenerator::handle_div(const IRInstruction& instr) {
   // idiv r/m64: RDX:RAX / r/m64. Quotient in RAX, Remainder in RDX.
   assert(std::holds_alternative<IR_Register>(instr.result.value()) &&
          "Div instructions must have a register as the destination");
-  std::string dest_reg_str =
-      get_sized_component(instr.result.value(), instr.size);
+  std::string dst_str = get_sized_component(instr.result.value(), instr.size);
   std::string src1_str =
       get_sized_component(instr.operands[0], instr.size); // Dividend
   std::string src2_str =
@@ -630,7 +625,7 @@ void X86_64CodeGenerator::handle_div(const IRInstruction& instr) {
   // RDX:RAX / src2. Quotient in RAX, Remainder in RDX.
   emit("idiv " + src2_str);
 
-  emit("mov " + dest_reg_str + ", " + sized_rax); // Store quotient
+  emit("mov " + dst_str + ", " + sized_rax); // Store quotient
 
   emit("pop rdx");
   emit("pop rax");
@@ -641,8 +636,7 @@ void X86_64CodeGenerator::handle_mod(const IRInstruction& instr) {
   // idiv r/m64: RDX:RAX / r/m64. Quotient in RAX, Remainder in RDX.
   assert(std::holds_alternative<IR_Register>(instr.result.value()) &&
          "Mod instructions must have a register as the destination");
-  std::string dest_reg_str =
-      get_sized_component(instr.result.value(), instr.size);
+  std::string dst_str = get_sized_component(instr.result.value(), instr.size);
   std::string src1_str = get_sized_component(instr.operands[0], instr.size);
   std::string src2_str = get_sized_component(instr.operands[1], instr.size);
 
@@ -657,7 +651,7 @@ void X86_64CodeGenerator::handle_mod(const IRInstruction& instr) {
   emit("idiv " + src2_str);
 
   std::string sized_rdx = get_sized_register_name("rdx", instr.size);
-  emit("mov " + dest_reg_str + ", " + sized_rdx); // Store remainder
+  emit("mov " + dst_str + ", " + sized_rdx); // Store remainder
   emit("pop rdx");
   emit("pop rax");
   emit("; --- MOD end ---");
@@ -666,36 +660,33 @@ void X86_64CodeGenerator::handle_mod(const IRInstruction& instr) {
 void X86_64CodeGenerator::handle_neg(const IRInstruction& instr) {
   assert(std::holds_alternative<IR_Register>(instr.result.value()) &&
          "Neg instructions must have a register as the destination");
-  std::string dest_reg_str =
-      get_sized_component(instr.result.value(), instr.size);
+  std::string dst_str = get_sized_component(instr.result.value(), instr.size);
   std::string src_str = get_sized_component(instr.operands[0], instr.size);
 
-  emit("mov " + dest_reg_str + ", " + src_str);
-  emit("neg " + dest_reg_str);
+  emit("mov " + dst_str + ", " + src_str);
+  emit("neg " + dst_str);
 }
 
 void X86_64CodeGenerator::handle_logical_not(const IRInstruction& instr) {
   assert(std::holds_alternative<IR_Register>(instr.result.value()) &&
          "Not instructions must have a register as the destination");
-  std::string dest_reg_str =
-      get_sized_component(instr.result.value(), instr.size);
+  std::string dst_str = get_sized_component(instr.result.value(), instr.size);
   std::string src_str = get_sized_component(instr.operands[0], instr.size);
 
-  emit("mov " + dest_reg_str + ", " + src_str);
-  emit("xor " + dest_reg_str + ", 1");
+  emit("mov " + dst_str + ", " + src_str);
+  emit("xor " + dst_str + ", 1");
 }
 
 void X86_64CodeGenerator::handle_logical_and_or(
     const IRInstruction& instr, const std::string& op_mnemonic) {
   assert(std::holds_alternative<IR_Register>(instr.result.value()) &&
          "Or instructions must have a register as the destination");
-  std::string dest_reg_str =
-      get_sized_component(instr.result.value(), instr.size);
+  std::string dst_str = get_sized_component(instr.result.value(), instr.size);
   std::string src1_str = get_sized_component(instr.operands[0], instr.size);
   std::string src2_str = get_sized_component(instr.operands[1], instr.size);
 
-  emit("mov " + dest_reg_str + ", " + src1_str);
-  emit(op_mnemonic + " " + dest_reg_str + ", " + src2_str);
+  emit("mov " + dst_str + ", " + src1_str);
+  emit(op_mnemonic + " " + dst_str + ", " + src2_str);
 }
 
 void X86_64CodeGenerator::handle_cmp(const IRInstruction& instr) {
@@ -704,13 +695,12 @@ void X86_64CodeGenerator::handle_cmp(const IRInstruction& instr) {
   assert(std::holds_alternative<IR_Register>(instr.result.value()) &&
          "Cmp instructions must have a register as the destination");
 
-  std::string dest_reg_str =
-      get_sized_component(instr.result.value(), instr.size);
+  std::string dst_str = get_sized_component(instr.result.value(), instr.size);
 
   // If the destination is rax, then we don't have to save its context,
   // otherwise, we have to push it, as we will be using the lower byte `al`
   bool rax_pushed = false;
-  if (dest_reg_str != "rax") {
+  if (dst_str != "rax") {
     emit("push rax");
     rax_pushed = true;
   }
@@ -730,7 +720,7 @@ void X86_64CodeGenerator::handle_cmp(const IRInstruction& instr) {
     default: throw std::runtime_error("Unhandled CMP type in handle_cmp");
   }
   emit(set_instr + " " + byte_reg);
-  emit("movzx " + dest_reg_str + ", " + byte_reg); // Zero-extend al to dest_reg
+  emit("movzx " + dst_str + ", " + byte_reg); // Zero-extend al to dest_reg
   if (rax_pushed) emit("pop rax");
 }
 
@@ -791,7 +781,8 @@ void X86_64CodeGenerator::handle_pop_args(const IRInstruction&) {
 
 void X86_64CodeGenerator::handle_lcall(const IRInstruction& instr) {
   const IROperand& label = instr.operands[0];
-  assert(std::holds_alternative<IR_Label>(label));
+  assert(std::holds_alternative<IR_Label>(label) ||
+         std::holds_alternative<IR_Variable>(label)); // variable is func ptr
 
   // make sure that rsp is 16-byte aligned before call
   size_t amt = m_allocated_arg_bytes.top();
@@ -805,7 +796,9 @@ void X86_64CodeGenerator::handle_lcall(const IRInstruction& instr) {
   m_allocated_arg_bytes.pop();
   m_allocated_arg_bytes.push(amt + padding_needed);
 
-  const std::string& name = std::get<IR_Label>(label).name;
+  const std::string& name = std::holds_alternative<IR_Label>(label)
+                                ? std::get<IR_Label>(label).name
+                                : get_sized_component(label, Type::PTR_SIZE);
   if (name == "read_word") {
     // just doing 64 byte input buffer for now for the read procedure
     emit("sub rsp, 64");
@@ -837,4 +830,115 @@ void X86_64CodeGenerator::handle_asm_block(const IRInstruction& instr) {
 
   const std::string& asm_code = std::get<std::string>(instr.operands[0]);
   *m_out << asm_code << std::endl;
+}
+
+void X86_64CodeGenerator::handle_load(const IRInstruction& instr) {
+  // IRInstruction: result: dest_temp(reg), operands[0]:
+  // address_operand(*addr) reg = [mem]
+  IROperand dst = instr.result.value();
+  IROperand src_addr = instr.operands[0];
+  std::string dst_str = get_sized_component(dst, instr.size);
+  std::string src_str = get_sized_component(src_addr, instr.size);
+  emit("mov " + dst_str + ", " + src_str);        // dst is now at the memory
+  emit("mov " + dst_str + ", [" + dst_str + "]"); // load it
+}
+
+void X86_64CodeGenerator::handle_store(const IRInstruction& instr) {
+  // IRInstruction: result: address_dest(*addr), operands[0]: src(reg)
+  // [mem] = reg
+  IROperand dst_addr = instr.result.value();
+  IROperand src_val = instr.operands[0];
+  assert((std::holds_alternative<IR_Register>(src_val) ||
+          std::holds_alternative<IR_Immediate>(src_val)) &&
+         "Store instructions source must be a register or immediate");
+
+  std::string temp = get_temp_x86_reg(Type::PTR_SIZE);
+  std::string dst_str = get_sized_component(dst_addr, instr.size);
+  std::string src_str = get_sized_component(src_val, instr.size);
+  emit("mov " + temp + ", " + dst_str);   // store ptr/addr in temp
+  emit("mov [" + temp + "], " + src_str); // now we can deref the addr
+}
+
+void X86_64CodeGenerator::handle_addr_of(const IRInstruction& instr) {
+  assert(instr.result.has_value() &&
+         std::holds_alternative<IR_Register>(instr.result.value()));
+  assert(instr.operands.size() == 1);
+  assert(instr.size == Type::PTR_SIZE); // size of an address
+
+  const IROperand& dst = instr.result.value();
+  std::string dst_str = get_sized_component(dst, instr.size);
+  IROperand src = instr.operands[0];
+
+  if (std::holds_alternative<IR_Variable>(src)) {
+    std::string var_mem = operand_to_string(src);
+    emit("lea " + dst_str + ", " + var_mem);
+  } else if (std::holds_alternative<IR_Register>(src)) {
+    std::string src_addr = get_sized_component(src, instr.size);
+    emit("mov " + dst_str + ", " + src_addr);
+  }
+}
+
+void X86_64CodeGenerator::handle_alloc(const IRInstruction& instr) {
+  assert(instr.result.has_value() &&
+         std::holds_alternative<IR_Register>(instr.result.value()));
+  assert(!instr.operands.empty() &&
+         std::holds_alternative<IR_Immediate>(instr.operands[0]));
+
+  const IROperand& dst = instr.result.value();
+  std::string dst_ptr_str = get_sized_component(dst, Type::PTR_SIZE);
+
+  uint64_t type_alloc_size = std::get<IR_Immediate>(instr.operands[0]).val;
+
+  emit("mov rdi, " + std::to_string(type_alloc_size));
+  emit("call malloc");
+  emit("mov " + dst_ptr_str + ", rax");
+
+  if (instr.operands.size() > 1) {
+    const IROperand& initializer_op = instr.operands[1];
+    uint64_t init_type_size = instr.size;
+    assert(init_type_size > 0 && "Initializer present but its type size is 0");
+
+    std::string init_val = get_sized_component(initializer_op, init_type_size);
+    std::string allocated = get_size_prefix(init_type_size) + "[rax]";
+
+    emit_one_operand_memory_operation(allocated, init_val, "mov",
+                                      init_type_size);
+  }
+}
+
+void X86_64CodeGenerator::handle_alloc_array(const IRInstruction& instr) {
+  assert(instr.result.has_value() &&
+         std::holds_alternative<IR_Register>(instr.result.value()));
+  assert(instr.operands.size() == 2 &&
+         std::holds_alternative<IR_Immediate>(instr.operands[0]));
+
+  const IROperand& dst = instr.result.value();
+  std::string dst_ptr_str = get_sized_component(dst, Type::PTR_SIZE);
+
+  uint64_t element_size_val = std::get<IR_Immediate>(instr.operands[0]).val;
+  IROperand num_elements_op = instr.operands[1];
+  uint64_t num_elements_type_size = instr.size;
+  assert(num_elements_type_size > 0 &&
+         "Num_elements operand must have a valid type size");
+
+  std::string num_elements_str =
+      get_sized_component(num_elements_op, num_elements_type_size);
+
+  std::string temp_total_size_reg =
+      get_sized_register_name(get_temp_x86_reg(Type::PTR_SIZE), Type::PTR_SIZE);
+  emit("mov " + temp_total_size_reg + ", " + num_elements_str);
+  emit("imul " + temp_total_size_reg + ", " + std::to_string(element_size_val));
+
+  emit("mov rdi, " + temp_total_size_reg);
+  emit("call malloc");
+  emit("mov " + dst_ptr_str + ", rax");
+}
+
+void X86_64CodeGenerator::handle_free(const IRInstruction& instr) {
+  assert(instr.operands.size() == 1);
+  IROperand ptr_op = instr.operands[0];
+  std::string ptr_str = get_sized_component(ptr_op, Type::PTR_SIZE);
+
+  emit("mov rdi, " + ptr_str);
+  emit("call free");
 }
