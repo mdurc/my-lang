@@ -795,7 +795,8 @@ void X86_64CodeGenerator::handle_lcall(const IRInstruction& instr) {
 
   // make sure that rsp is 16-byte aligned before call
   size_t amt = m_allocated_arg_bytes.top();
-  size_t padding_needed = get_align(amt);
+  size_t aligned_amt = get_align(amt);
+  size_t padding_needed = aligned_amt > amt ? aligned_amt - amt : 0;
   if (padding_needed > 0) {
     emit("sub rsp, " + std::to_string(padding_needed) +
          " ; align stack for call");

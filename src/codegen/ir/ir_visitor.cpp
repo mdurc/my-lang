@@ -368,7 +368,7 @@ void IrVisitor::visit(FunctionDeclNode& node) {
 
   if (node.return_type_name.has_value()) {
     const std::string& ret_name = node.return_type_name.value();
-    add_var(ret_name, node.return_type->get_scope_id());
+    add_var(ret_name, node.body->scope_id);
   }
 
   m_emitted_return = false; // reset
