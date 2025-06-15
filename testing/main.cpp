@@ -1,5 +1,5 @@
 #define APPROVALS_GOOGLETEST_EXISTING_MAIN
-#include "vendor/ApprovalTests.hpp"
+#include "../vendor/ApprovalTests.hpp"
 
 std::string rtrim(const std::string& s) {
   size_t end = s.size();

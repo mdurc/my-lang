@@ -4,6 +4,7 @@
 #include <iostream>
 #include <list>
 #include <set>
+#include <sstream>
 #include <stack>
 #include <stdexcept>
 #include <string>
@@ -16,11 +17,11 @@ class X86_64CodeGenerator {
 public:
   X86_64CodeGenerator();
 
-  void generate(const std::vector<IRInstruction>& instructions,
-                bool is_main_defined, std::ostream& out);
+  std::string generate(const std::vector<IRInstruction>& instructions,
+                       bool is_main_defined);
 
 private:
-  std::ostream* m_out;
+  std::ostringstream m_out;
 
   bool m_handling_top_level;
   size_t m_global_var_alloc;

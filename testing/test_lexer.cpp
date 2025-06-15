@@ -1,18 +1,12 @@
 #include <gtest/gtest.h>
 
-#include "../src/lexer/lexer.h"
+#include "../src/driver.h"
+#include "../vendor/ApprovalTests.hpp"
 #include "util.h"
-#include "vendor/ApprovalTests.hpp"
 
 std::string generate_lexer_output(const std::string& input_filepath) {
   std::stringstream ss;
-  Lexer lexer;
-  try {
-    std::vector<Token> tokens = lexer.tokenize(input_filepath);
-    print_tokens(tokens, ss);
-  } catch (const std::exception& e) {
-    ss << "LEXER_EXCEPTION: " << e.what() << std::endl;
-  }
+  compile_tokens(input_filepath, ss);
   return rtrim(ss.str());
 }
 

@@ -1,86 +1,69 @@
+#include <fstream>
 #include <iostream>
 #include <string>
+#include <unordered_set>
 
-#include "checker/typechecker.h"
-#include "codegen/ir/ir_printer.h"
-#include "codegen/ir/ir_visitor.h"
-#include "codegen/x86_64/asm.h"
-#include "lexer/lexer.h"
-#include "parser/parser.h"
-#include "parser/symtab.h"
+#define drive_print(func, input, output) \
+  if (output.empty()) {                  \
+    func(input, std::cout);              \
+  } else {                               \
+    std::ofstream out(output);           \
+    func(input, out);                    \
+    out.close();                         \
+  }
+
+#include "driver.h"
+
+static void usage() {
+  std::cerr << "Usage: ./a.out <input>\n"
+            << "       [--tokens [filename]]\n"
+            << "       [--ast [filename]]\n"
+            << "       [--symtab [filename]]\n"
+            << "       [--ir [filename]]\n"
+            << "       [--asm [filename]]\n"
+            << "       [--exe [filename]]\n";
+  exit(1);
+}
+
+static void drive(const std::string& arg, const std::string& input,
+                  const std::string& output) {
+  if (arg == "--tokens") {
+    drive_print(compile_tokens, input, output);
+  } else if (arg == "--ast") {
+    drive_print(compile_ast, input, output);
+  } else if (arg == "--symtab") {
+    drive_print(compile_symtab, input, output);
+  } else if (arg == "--ir") {
+    drive_print(compile_ir, input, output);
+  } else if (arg == "--asm") {
+    drive_print(compile_asm, input, output);
+  } else if (arg == "--exe") {
+    if (output.empty()) throw std::runtime_error("Exe output file must exist");
+    compile_exe(input, output);
+  }
+}
 
 int main(int argc, char** argv) {
   if (argc < 2) {
-    std::cerr << "Usage: " << argv[0]
-              << " <file_name> [--tokens] [--ast] [--symtab] [--ir] [--gen]"
-              << std::endl;
-    return 1;
+    usage();
   }
-
-  const std::string& filename = argv[1];
-
-  bool print_tokens_flag = false;
-  bool print_ast_flag = false;
-  bool print_symtab_flag = false;
-  bool print_ir_flag = false;
-  bool generate_code_flag = false;
-
-  for (int i = 2; i < argc; ++i) {
+  std::string input = argv[1];
+  std::unordered_set<std::string> opts = {"--tokens", "--ast", "--symtab",
+                                          "--ir",     "--asm", "--exe"};
+  for (int i = 2; i < argc;) {
     std::string arg = argv[i];
-    if (arg == "--tokens")
-      print_tokens_flag = true;
-    else if (arg == "--ast")
-      print_ast_flag = true;
-    else if (arg == "--symtab")
-      print_symtab_flag = true;
-    else if (arg == "--ir")
-      print_ir_flag = true;
-    else if (arg == "--gen")
-      generate_code_flag = true;
-    else {
+    if (opts.find(arg) != opts.end()) {
+      if (i + 1 < argc && argv[i + 1][0] != '-') {
+        drive(arg, input, argv[i + 1]);
+        i += 2;
+      } else {
+        drive(arg, input, "");
+        i += 1;
+      }
+    } else {
       std::cerr << "Unknown option: " << arg << std::endl;
       return 1;
     }
   }
-
-  try {
-    Lexer lexer;
-    const std::vector<Token>& tokens = lexer.tokenize(filename);
-    if (print_tokens_flag) {
-      print_tokens(tokens, std::cout);
-    }
-
-    SymTab symtab;
-
-    Parser parser;
-    std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
-    if (print_ast_flag) {
-      print_ast(ast, std::cout);
-    }
-
-    if (print_symtab_flag) {
-      symtab.print(std::cout);
-    }
-
-    TypeChecker type_checker;
-    type_checker.check_program(&symtab, ast);
-
-    IrVisitor ir_visitor(&symtab);
-    ir_visitor.visit_all(ast);
-    const std::vector<IRInstruction>& instrs = ir_visitor.get_instructions();
-    if (print_ir_flag) {
-      print_ir_instructions(instrs, std::cout);
-    }
-
-    if (generate_code_flag) {
-      X86_64CodeGenerator gen;
-      gen.generate(instrs, ir_visitor.is_main_defined(), std::cout);
-    }
-
-  } catch (const std::exception& e) {
-    std::cerr << e.what() << std::endl;
-    return 1;
-  }
-
   return 0;
 }

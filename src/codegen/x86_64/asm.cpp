@@ -7,8 +7,7 @@
 static size_t get_align(size_t s) { return ((s + 15) & ~15); }
 
 X86_64CodeGenerator::X86_64CodeGenerator()
-    : m_out(nullptr),
-      m_handling_top_level(false),
+    : m_handling_top_level(false),
       m_global_var_alloc(0),
       m_is_buffering_function(false),
       m_current_func_alloc_placeholder_idx(0),
@@ -256,7 +255,7 @@ void X86_64CodeGenerator::emit(const std::string& instruction) {
   if (m_is_buffering_function) {
     m_current_func_asm_buffer.push_back("\t" + instruction);
   } else {
-    *m_out << "\t" << instruction << std::endl;
+    m_out << "\t" << instruction << std::endl;
   }
 }
 
@@ -264,30 +263,28 @@ void X86_64CodeGenerator::emit_label(const std::string& label_name) {
   if (m_is_buffering_function) {
     m_current_func_asm_buffer.push_back(label_name + ":");
   } else {
-    *m_out << label_name << ":" << std::endl;
+    m_out << label_name << ":" << std::endl;
   }
 }
 
-void X86_64CodeGenerator::generate(
-    const std::vector<IRInstruction>& instructions, bool is_main_defined,
-    std::ostream& out) {
-  m_out = &out;
+std::string X86_64CodeGenerator::generate(
+    const std::vector<IRInstruction>& instructions, bool is_main_defined) {
   clear_func_data();
   m_string_literals_data.clear();
   m_string_literal_to_label.clear();
 
   // preamble
-  *m_out << "extern exit, string_length, print_string, print_char" << std::endl;
-  *m_out << "extern print_newline, print_uint, print_int" << std::endl;
-  *m_out << "extern read_char, read_word, parse_uint" << std::endl;
-  *m_out << "extern parse_int, string_equals, string_copy" << std::endl;
-  *m_out << "extern malloc, free, clrscr" << std::endl;
+  m_out << "extern exit, string_length, print_string, print_char" << std::endl;
+  m_out << "extern print_newline, print_uint, print_int" << std::endl;
+  m_out << "extern read_char, read_word, parse_uint" << std::endl;
+  m_out << "extern parse_int, string_equals, string_copy" << std::endl;
+  m_out << "extern malloc, free, clrscr" << std::endl;
 
-  *m_out << std::endl;
+  m_out << std::endl;
 
-  *m_out << "default rel" << std::endl;
-  *m_out << "global _start" << std::endl;
-  *m_out << "section .text" << std::endl;
+  m_out << "default rel" << std::endl;
+  m_out << "global _start" << std::endl;
+  m_out << "section .text" << std::endl;
 
   std::vector<IRInstruction> top_level;
   std::vector<IRInstruction> functions;
@@ -342,38 +339,40 @@ void X86_64CodeGenerator::generate(
   }
 
   // output the gathered string labels in the data section
-  *m_out << std::endl;
-  *m_out << "section .data" << std::endl;
+  m_out << std::endl;
+  m_out << "section .data" << std::endl;
   for (const std::string& str : m_string_literals_data) {
-    *m_out << m_string_literal_to_label.at(str) << ":" << std::endl;
+    m_out << m_string_literal_to_label.at(str) << ":" << std::endl;
     if (str.size() == 1 && str[0] == '\n') {
-      *m_out << "\tdb 10, 0" << std::endl;
+      m_out << "\tdb 10, 0" << std::endl;
       continue;
     }
-    *m_out << "\tdb \"";
+    m_out << "\tdb \"";
     for (char c : str) {
       if (c == '"')
-        *m_out << "\", `\"`, \""; // NASM escape for quote
+        m_out << "\", `\"`, \""; // NASM escape for quote
       else if (c == '\n')
-        *m_out << "\", 10, \""; // Newline
+        m_out << "\", 10, \""; // Newline
       else if (c == '\t')
-        *m_out << "\", 9, \""; // Tab
+        m_out << "\", 9, \""; // Tab
       else if (c == 0)
-        *m_out << "\", 0, \""; // Explicit null
+        m_out << "\", 0, \""; // Explicit null
       else if (c < 32 || c > 126) {
-        *m_out << "\", " << static_cast<int>(c) << ", \"";
+        m_out << "\", " << static_cast<int>(c) << ", \"";
       } else {
-        *m_out << c;
+        m_out << c;
       }
     }
     // always end with a null byte just in case
-    *m_out << "\", 0" << std::endl;
+    m_out << "\", 0" << std::endl;
   }
 
   if (m_global_var_alloc > 0) {
-    *m_out << "section .bss" << std::endl;
+    m_out << "section .bss" << std::endl;
     emit("global_vars resb " + std::to_string(get_align(m_global_var_alloc)));
   }
+
+  return m_out.str();
 }
 
 void X86_64CodeGenerator::handle_instruction(const IRInstruction& instr) {
@@ -479,7 +478,7 @@ void X86_64CodeGenerator::handle_end_preamble() {
       // skip the placeholders if they are empty
       continue;
     }
-    *m_out << m_current_func_asm_buffer[i] << std::endl;
+    m_out << m_current_func_asm_buffer[i] << std::endl;
   }
   m_current_func_asm_buffer.clear();
   m_is_buffering_function = false;

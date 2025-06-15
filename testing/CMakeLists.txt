@@ -11,7 +11,7 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/checker
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/logging
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/codegen
-    ${CMAKE_CURRENT_SOURCE_DIR}/vendor
+    ${CMAKE_CURRENT_SOURCE_DIR}/../vendor
 )
 
 set(CODEGEN_SOURCES
@@ -44,6 +44,7 @@ set(LOGGING_SOURCES
 
 add_executable(${PROJECT_NAME}
     main.cpp
+    ../src/driver.cpp
     test_lexer.cpp
     test_parser.cpp
     test_symtab.cpp
