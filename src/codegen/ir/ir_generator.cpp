@@ -163,10 +163,6 @@ void IrGenerator::emit_push_arg(IROperand src, uint64_t size) {
                               std::vector<IROperand>{src}, size);
 }
 
-void IrGenerator::emit_pop_args() {
-  m_instructions.emplace_back(IROpCode::POP_ARGS);
-}
-
 void IrGenerator::emit_lcall(std::optional<IR_Register> dst,
                              IROperand func_target, uint64_t return_size) {
   // func_target is either a function label or function ptr variable

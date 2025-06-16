@@ -10,7 +10,7 @@ func foo(a: i32, b: bool) returns (z: i32) {
 
 print foo(3, true), "\n";
 
-// Testing arguments pushed onto the stack
+// testing arguments pushed onto the stack
 func bar(a: bool, b : bool, c : bool, d: bool, e : bool, f : bool, g : bool, h : bool, i : bool, j : bool) {
   print g, "\n";
   print h, "\n";

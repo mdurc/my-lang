@@ -55,7 +55,6 @@ public:
 
   // Procedure Calls
   void emit_push_arg(IROperand src, uint64_t arg_size);
-  void emit_pop_args(); // backend should track size required to pop
   void emit_lcall(std::optional<IR_Register> dst, IROperand func_target,
                   uint64_t return_size);
 

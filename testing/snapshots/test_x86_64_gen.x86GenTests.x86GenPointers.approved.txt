@@ -1,0 +1,140 @@
+extern exit, string_length, print_string, print_char
+extern print_newline, print_uint, print_int
+extern read_char, read_word, parse_uint
+extern parse_int, string_equals, string_copy
+extern malloc, free, clrscr
+
+default rel
+global _start
+section .text
+_start:
+	push rbp
+	mov rbp, rsp
+	sub rsp, 160
+	push r12 ; saving callee-saved register
+	push r13 ; saving callee-saved register
+	push r14 ; saving callee-saved register
+	push r15 ; saving callee-saved register
+	lea r10, _foo
+	mov QWORD[global_vars + 8], r10
+	mov r11, 1
+	mov rdi, r11
+	push r11 ; saving caller-saved register r11
+	sub rsp, 8 ; align stack for call
+	call _foo
+	pop r11 ; restoring caller-saved register
+	mov r12, 2
+	mov rdi, r12
+	push r11 ; saving caller-saved register r11
+	sub rsp, 8 ; align stack for call
+	call QWORD[global_vars + 8]
+	pop r11 ; restoring caller-saved register
+	mov r13, 3
+	mov QWORD[global_vars + 16], r13
+	lea r14, [global_vars + 16]
+	mov QWORD[global_vars + 24], r14
+	lea r15, [global_vars + 16]
+	mov QWORD[global_vars + 32], r15
+	mov rbx, 15
+	mov r10, QWORD[global_vars + 32]
+	mov [r10], rbx
+	mov QWORD[rbp - 8], r11 ; spilling register r11 to stack
+	mov r11, 0
+	mov QWORD[global_vars + 24], r11
+	mov QWORD[rbp - 16], r12 ; spilling register r12 to stack
+	lea r12, [global_vars + 16]
+	mov QWORD[global_vars + 24], r12
+	mov QWORD[global_vars + 40], 0
+	mov QWORD[rbp - 24], r13 ; spilling register r13 to stack
+	mov r13, 3
+	mov QWORD[rbp - 32], r14 ; spilling register r14 to stack
+	mov QWORD[rbp - 40], r15 ; spilling register r15 to stack
+	mov r15, r13
+	imul r15, 8
+	push r11 ; saving caller-saved register r11
+	mov rdi, r15
+	call malloc
+	mov r14, rax
+	pop r11 ; restoring caller-saved register
+	mov QWORD[global_vars + 40], r14
+	mov QWORD[rbp - 48], rbx ; spilling register rbx to stack
+	mov rbx, 30
+	mov r10, 0
+	mov QWORD[rbp - 56], r11 ; spilling register r11 to stack
+	mov r11, r10
+	imul r11, 8
+	mov QWORD[rbp - 64], r12 ; spilling register r12 to stack
+	mov r12, QWORD[global_vars + 40]
+	add r12, r11
+	mov QWORD[rbp - 72], r13 ; spilling register r13 to stack
+	mov r13, r12
+	mov [r13], rbx
+	mov QWORD[rbp - 80], r14 ; spilling register r14 to stack
+	mov r14, 60
+	mov r15, 1
+	mov QWORD[rbp - 88], rbx ; spilling register rbx to stack
+	mov rbx, r15
+	imul rbx, 8
+	mov QWORD[rbp - 96], r10 ; spilling register r10 to stack
+	mov r10, QWORD[global_vars + 40]
+	add r10, rbx
+	mov QWORD[rbp - 104], r11 ; spilling register r11 to stack
+	mov r11, r10
+	mov [r11], r14
+	mov QWORD[rbp - 112], r12 ; spilling register r12 to stack
+	mov r12, 90
+	mov r13, 2
+	mov QWORD[rbp - 120], r14 ; spilling register r14 to stack
+	mov r14, r13
+	imul r14, 8
+	mov QWORD[rbp - 128], r15 ; spilling register r15 to stack
+	mov r15, QWORD[global_vars + 40]
+	add r15, r14
+	mov QWORD[rbp - 136], rbx ; spilling register rbx to stack
+	mov rbx, r15
+	mov [rbx], r12
+	push r10 ; saving caller-saved register r10
+	mov rdi, QWORD[global_vars + 40]
+	call free
+	pop r10 ; restoring caller-saved register
+	mov QWORD[rbp - 144], r10 ; spilling register r10 to stack
+	mov r10, 0
+	mov QWORD[global_vars + 40], r10
+	mov r11, 32
+	mov QWORD[rbp - 152], r12 ; spilling register r12 to stack
+	push r10 ; saving caller-saved register r10
+	push r11 ; saving caller-saved register r11
+	mov rdi, 8
+	call malloc
+	pop r11 ; restoring caller-saved register
+	pop r10 ; restoring caller-saved register
+	mov r12, rax
+	mov QWORD[rax], r11
+	mov QWORD[global_vars + 40], r12
+	push r10 ; saving caller-saved register r10
+	push r11 ; saving caller-saved register r11
+	mov rdi, QWORD[global_vars + 40]
+	call free
+	pop r11 ; restoring caller-saved register
+	pop r10 ; restoring caller-saved register
+	pop r15 ; restoring callee-saved register
+	pop r14 ; restoring callee-saved register
+	pop r13 ; restoring callee-saved register
+	pop r12 ; restoring callee-saved register
+	mov rsp, rbp ; restore stack
+	pop rbp
+	xor rdi, rdi
+	call exit
+_foo:
+	push rbp
+	mov rbp, rsp
+	sub rsp, 16
+	mov DWORD[rbp - 4], edi
+	xor rax, rax ; void return
+	mov rsp, rbp ; restore stack
+	pop rbp
+	ret
+
+section .data
+section .bss
+	global_vars resb 48

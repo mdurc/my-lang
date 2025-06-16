@@ -1,0 +1,89 @@
+extern exit, string_length, print_string, print_char
+extern print_newline, print_uint, print_int
+extern read_char, read_word, parse_uint
+extern parse_int, string_equals, string_copy
+extern malloc, free, clrscr
+
+default rel
+global _start
+section .text
+_start:
+	push rbp
+	mov rbp, rsp
+	push r12 ; saving callee-saved register
+	push r13 ; saving callee-saved register
+	push r14 ; saving callee-saved register
+	push r15 ; saving callee-saved register
+	lea r10, _foo_2
+	mov QWORD[global_vars + 8], r10
+	mov r11, 10
+	mov QWORD[global_vars + 16], r11
+	mov r12, 1
+	mov QWORD[global_vars + 24], r12
+	mov r13, 2
+	mov QWORD[global_vars + 32], r13
+	mov rdi, QWORD[global_vars + 24]
+	mov r14, 2
+	mov rsi, r14
+	mov rdx, QWORD[global_vars + 16]
+	push r11 ; saving caller-saved register r11
+	sub rsp, 8 ; align stack for call
+	call QWORD[global_vars + 8]
+	pop r11 ; restoring caller-saved register
+	mov rdi, QWORD[global_vars + 32]
+	mov r15, 2
+	mov rsi, r15
+	mov rdx, QWORD[global_vars + 16]
+	push r11 ; saving caller-saved register r11
+	sub rsp, 8 ; align stack for call
+	call QWORD[global_vars + 8]
+	pop r11 ; restoring caller-saved register
+	pop r15 ; restoring callee-saved register
+	pop r14 ; restoring callee-saved register
+	pop r13 ; restoring callee-saved register
+	pop r12 ; restoring callee-saved register
+	mov rsp, rbp ; restore stack
+	pop rbp
+	xor rdi, rdi
+	call exit
+_foo:
+	push rbp
+	mov rbp, rsp
+	sub rsp, 16
+	mov r10, 18
+	mov DWORD[rbp - 4], r10d
+	xor rax, rax ; void return
+	mov rsp, rbp ; restore stack
+	pop rbp
+	ret
+_bar:
+	push rbp
+	mov rbp, rsp
+	mov r10, 5
+	mov rax, r10 ; return value
+	mov rsp, rbp ; restore stack
+	pop rbp
+	ret
+_foo_2:
+	push rbp
+	mov rbp, rsp
+	sub rsp, 16
+	mov DWORD[rbp - 4], edi
+	mov DWORD[rbp - 8], esi
+	mov DWORD[rbp - 12], edx
+	mov r10, LC0
+	mov rdi, r10
+	push r10 ; saving caller-saved register r10
+	sub rsp, 8 ; align stack for call
+	call print_string
+	pop r10 ; restoring caller-saved register
+	xor rax, rax ; void return
+	mov rsp, rbp ; restore stack
+	pop rbp
+	ret
+
+section .data
+LC0:
+	db "hi", 0
+section .bss
+	global_vars resb 32

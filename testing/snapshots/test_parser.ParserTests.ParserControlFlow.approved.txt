@@ -16,6 +16,14 @@ IfStmt(
   Block([
   ])
 )
+WhileStmt(
+  Condition:
+    true,
+  Body:
+  Block([
+    BreakStmt
+  ])
+)
 ForStmt(
   Initializer:
     VariableDecl(Mutable: true,
@@ -42,54 +50,7 @@ ForStmt(
     ),
   Body:
   Block([
-    IfStmt(
-      Condition:
-        BinaryOp(!=,
-          Ident(i),
-          Int(5)
-        ),
-      ThenBranch:
-      Block([
-        VariableDecl(Mutable: false,
-          Name:
-            Ident(z),
-          Type: inferred
-          Initializer:
-            Int(1)
-        ),
-        ContinueStmt
-      ])
-    ),
-    VariableDecl(Mutable: false,
-      Name:
-        Ident(y),
-      Type: inferred
-      Initializer:
-        Int(9)
-    ),
-    BreakStmt
-  ])
-)
-WhileStmt(
-  Condition:
-    true,
-  Body:
-  Block([
-    VariableDecl(Mutable: false,
-      Name:
-        Ident(z),
-      Type: inferred
-      Initializer:
-        Int(3)
-    ),
-    VariableDecl(Mutable: false,
-      Name:
-        Ident(y),
-      Type:
-        {i32} Type::Named(i32)
-      Initializer:
-        Ident(z)
-    )
+    ContinueStmt
   ])
 )
 VariableDecl(Mutable: true,
@@ -115,9 +76,6 @@ SwitchStmt(
           Type: inferred
           Initializer:
             Int(2)
-        ),
-        PrintStmt(
-          Ident(x)
         )
       ])
     )

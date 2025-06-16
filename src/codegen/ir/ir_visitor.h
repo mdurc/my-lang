@@ -85,6 +85,9 @@ private:
 
   IR_Label get_runtime_print_call(const std::shared_ptr<Type>& type);
 
+  IR_Register compute_struct_field_addr(const ExprPtr& object,
+                                        const std::string& field_name);
+
   void unimpl(const std::string& nodeName);
 };
 

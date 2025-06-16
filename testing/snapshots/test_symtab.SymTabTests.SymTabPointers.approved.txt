@@ -1,10 +1,10 @@
 Symbol Table State:
 Current Scope ID: 0
-Total Scopes: 5
+Total Scopes: 2
 
 Scope ID: 0
   Parent Scope ID: 0
-  Declared Types (16):
+  Declared Types (15):
     - u0 (declared in scope 0)
     - u8 (declared in scope 0)
     - u16 (declared in scope 0)
@@ -17,18 +17,17 @@ Scope ID: 0
     - f64 (declared in scope 0)
     - bool (declared in scope 0)
     - string (declared in scope 0)
-    - func(i32, i32, i32)->u0 (declared in scope 0)
+    - func(i32)->u0 (declared in scope 0)
     - ptr<imm i64> (declared in scope 0)
     - ptr<mut i64> (declared in scope 0)
-    - func(ptr<imm i64>, i64)->u0 (declared in scope 0)
-  Declared Variables (7):
+  Declared Variables (6):
     - Name: foo
         Modifier: imm
-        Type: func(i32, i32, i32)->u0
+        Type: func(i32)->u0
         Scope ID: 0
     - Name: p_foo
         Modifier: imm
-        Type: func(i32, i32, i32)->u0
+        Type: func(i32)->u0
         Scope ID: 0
     - Name: x
         Modifier: mut
@@ -42,10 +41,6 @@ Scope ID: 0
         Modifier: mut
         Type: ptr<mut i64>
         Scope ID: 0
-    - Name: print_arr
-        Modifier: imm
-        Type: func(ptr<imm i64>, i64)->u0
-        Scope ID: 0
     - Name: pz
         Modifier: mut
         Type: ptr<imm i64>
@@ -54,43 +49,8 @@ Scope ID: 0
 Scope ID: 1
   Parent Scope ID: 0
   Declared Types (0):
-  Declared Variables (3):
+  Declared Variables (1):
     - Name: x
         Modifier: imm
         Type: i32
         Scope ID: 1
-    - Name: y
-        Modifier: imm
-        Type: i32
-        Scope ID: 1
-    - Name: z
-        Modifier: imm
-        Type: i32
-        Scope ID: 1
-
-Scope ID: 2
-  Parent Scope ID: 0
-  Declared Types (0):
-  Declared Variables (2):
-    - Name: p
-        Modifier: imm
-        Type: ptr<imm i64>
-        Scope ID: 2
-    - Name: size
-        Modifier: imm
-        Type: i64
-        Scope ID: 2
-
-Scope ID: 3
-  Parent Scope ID: 2
-  Declared Types (0):
-  Declared Variables (1):
-    - Name: i
-        Modifier: mut
-        Type: i64
-        Scope ID: 3
-
-Scope ID: 4
-  Parent Scope ID: 3
-  Declared Types (0):
-  Declared Variables (0):

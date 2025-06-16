@@ -1,8 +1,10 @@
 asm {
 
-  anything can be in here
-  it is just a buffer for now
+  mov rdi, 15
+  call print_int
 
 };
 
-error "err msg";
+print "\n";
+
+error "err msg\n";

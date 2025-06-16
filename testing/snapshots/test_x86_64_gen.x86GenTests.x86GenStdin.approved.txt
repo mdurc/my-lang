@@ -10,44 +10,31 @@ section .text
 _start:
 	push rbp
 	mov rbp, rsp
-	push r12
-	push r13
-	push r14
-	mov r10, 8
-	mov DWORD[global_vars + 4], r10d
+	mov DWORD[global_vars + 4], 0
 	sub rsp, 64
 	mov rdi, rsp
 	call read_word
-	mov r11, rax
+	mov r10, rax
+	push r10 ; saving caller-saved register r10
+	sub rsp, 8 ; align stack for call
 	call parse_int
-	mov r11, rax
-	mov DWORD[global_vars + 4], r11d
-	mov edi, DWORD[global_vars + 4]
-	call print_int
-	mov r12, LC0
-	mov rdi, r12
-	call print_string
+	pop r10 ; restoring caller-saved register
+	mov r10, rax
+	mov DWORD[global_vars + 4], r10d
 	mov QWORD[global_vars + 12], 0
+	push r10 ; saving caller-saved register r10
+	sub rsp, 8 ; align stack for call
 	sub rsp, 64
 	mov rdi, rsp
 	call read_word
-	mov r13, rax
-	mov QWORD[global_vars + 12], r13
-	mov rdi, QWORD[global_vars + 12]
-	call print_string
-	mov r14, LC0
-	mov rdi, r14
-	call print_string
-	pop r14
-	pop r13
-	pop r12
+	pop r10 ; restoring caller-saved register
+	mov r11, rax
+	mov QWORD[global_vars + 12], r11
 	mov rsp, rbp ; restore stack
 	pop rbp
 	xor rdi, rdi
 	call exit
 
 section .data
-LC0:
-	db 10, 0
 section .bss
 	global_vars resb 16

@@ -1,18 +1,12 @@
 struct Point {
-    x: i32,
-    y: i32,
-
-    func is_origin() returns (r: bool) {
-        return x == 0 and y == 0;
-    }
-}
-
-func foo(p: Point) {
-  print p.x;
-  print p.y;
+  x: i64,
+  y: i64
+  //func is_origin() returns (r: bool) {
+  //    return x == 0 and y == 0;
+  //}
 }
 
 mut origin := Point(x = 0, y = 0);
 
-mut x_o : i32 = origin.x;
-mut y_o : i32 = origin.y;
+mut x_o : i64 = origin.x;
+mut y_o : i64 = origin.y;

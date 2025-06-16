@@ -39,6 +39,6 @@ TEST(LexerTests, LexerAsmAndErrors) {
       generate_lexer_output("./samples/asm_and_errors.sn"));
 }
 
-TEST(LexerTests, LexerRead) {
-  ApprovalTests::Approvals::verify(generate_lexer_output("./samples/read.sn"));
+TEST(LexerTests, LexerStdin) {
+  ApprovalTests::Approvals::verify(generate_lexer_output("./samples/stdin.sn"));
 }

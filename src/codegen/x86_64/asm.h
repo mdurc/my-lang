@@ -32,9 +32,13 @@ private:
   std::vector<std::string> m_current_func_asm_buffer;
   size_t m_current_func_alloc_placeholder_idx;
   size_t m_current_func_stack_offset;
-  std::stack<size_t> m_allocated_arg_bytes;
 
-  size_t m_current_call_arg_count;
+  // argument handling
+  size_t m_current_call_arg_count; // tracks number of arguments processed
+  size_t m_stack_args_size;        // total size of arguments pushed to stack
+  std::vector<std::string> m_arg_regs;  // register argument order
+  std::vector<int> m_stack_arg_offsets; // tracks stack offsets for each
+                                        // argument relative to rbp
 
   std::vector<std::string> m_string_literals_data;
   std::unordered_map<std::string, std::string> m_string_literal_to_label;
@@ -47,11 +51,14 @@ private:
   std::unordered_map<int, std::pair<std::string, uint64_t>>
       m_spilled_ir_reg_locations;
   size_t m_reg_count;
+
   std::vector<std::string> m_temp_regs;
   std::vector<std::string> m_callee_saved_regs;
   std::vector<std::string> m_caller_saved_regs;
-  std::vector<std::string> m_arg_regs;
-  std::set<std::string> m_used_callee_saved;
+
+  std::vector<std::string> m_used_caller_saved; // saved prior to calls
+  void save_caller_saved_regs();
+  void restore_caller_saved_regs();
 
   void clear_func_data();
 
@@ -61,7 +68,8 @@ private:
   std::string operand_to_string(const IROperand& operand);
   std::string get_sized_component(const IROperand& operand, uint64_t size);
 
-  void spill_register(const std::string& reg, uint64_t size, int new_id);
+  void spill_register(const std::string& reg, int ir_reg,
+                      uint64_t old_reg_size);
   std::string get_temp_x86_reg(uint64_t size);
   std::string get_x86_reg(const IR_Register& ir_reg);
 
@@ -105,7 +113,6 @@ private:
   void handle_if_z(const IRInstruction& instr);
 
   void handle_push_arg(const IRInstruction& instr);
-  void handle_pop_args(const IRInstruction& instr);
   void handle_lcall(const IRInstruction& instr);
   void handle_asm_block(const IRInstruction& instr);
 

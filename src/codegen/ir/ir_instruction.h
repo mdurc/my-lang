@@ -47,7 +47,6 @@ enum class IROpCode {
 
   // Procedure calls
   PUSH_ARG, // Operands: src_operand
-  POP_ARGS, // No operands
   LCALL,    // Result: opt_dst, Operands: func_label_operand/func ptr variable
 
   ASM_BLOCK,

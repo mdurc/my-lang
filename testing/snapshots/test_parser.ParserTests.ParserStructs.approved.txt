@@ -13,64 +13,8 @@ StructDecl(
         Ident(y),
       Type:
         {i32} Type::Named(i32)
-    ),
-    FunctionDecl(
-      Name:
-        Ident(is_origin),
-      Params: [
-      ],
-      ReturnType: (NamedVar:r)
-        {bool} Type::Named(bool),
-      Body:
-      Block([
-        ReturnStmt(
-          BinaryOp(&&,
-            BinaryOp(==,
-              Ident(x),
-              Int(0)
-            ),
-            BinaryOp(==,
-              Ident(y),
-              Int(0)
-            )
-          )
-        )
-      ])
     )
   ]
-)
-FunctionDecl(
-  Name:
-    Ident(foo),
-  Params: [
-    Param(Modifier: ImmutablyBorrowed,
-      Name:
-        Ident(p),
-      Type:
-        {Point} Type::Named(Point)
-    )
-  ],
-  ReturnType:
-    {u0} Type::Named(u0),
-  Body:
-  Block([
-    PrintStmt(
-      MemberAccess(
-        Object:
-          Ident(p),
-        Member:
-          Ident(x)
-      )
-    ),
-    PrintStmt(
-      MemberAccess(
-        Object:
-          Ident(p),
-        Member:
-          Ident(y)
-      )
-    )
-  ])
 )
 VariableDecl(Mutable: true,
   Name:

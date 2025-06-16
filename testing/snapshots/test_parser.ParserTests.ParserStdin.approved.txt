@@ -8,9 +8,6 @@ VariableDecl(Mutable: true,
 ReadStmt(
   Ident(x)
 )
-PrintStmt(
-  Ident(x)
-)
 VariableDecl(Mutable: true,
   Name:
     Ident(y),
@@ -19,8 +16,5 @@ VariableDecl(Mutable: true,
   Initializer: null
 )
 ReadStmt(
-  Ident(y)
-)
-PrintStmt(
   Ident(y)
 )

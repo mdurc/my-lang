@@ -1,52 +1,29 @@
-func foo(x: i32, y: i32, z: i32) {
-  print "Running foo_1\n";
-  print x, "\n";
-  print y, "\n";
-  print z, "\n";
-}
+func foo(x: i32) {}
 
 // Function ptr:
-p_foo : func(i32, i32, i32)->u0 = foo;
+p_foo : func(i32)->u0 = foo;
 
-foo(1, 2, 3);
-p_foo(4, 5, 6);
+foo(1);
+p_foo(2);
 
-// Pointer operations:
 // Address Of
 mut x : i64 = 3;
 mut px : ptr<imm i64> = &x; // mutable pointer to immutable reference to i32
-print "[*px, x] = ", *px, ", ", x, "\n";
-
 mut py : ptr<mut i64> = &mut x; // mutable pointer to mutable reference to i32
-*py = 15;
-print "*py = 15;\n";
-print "[*py, *px, x] = ", *py, ", ", *px, ", ", x, "\n";
 
 // Accessing
+*py = 15;
 px = null;
-print "Null(addr): ", px, "\n"; // prints '0'
 px = &x;
-print "Address: ", px, "\n"; // address
-print *px, "\n"; // value
-print *(px + 0), "\n"; // value at px, using pointer arithmetic
-print px[0], "\n"; // equivalent with subscripting
 
 // Ptr Allocation:
-func print_arr(p : ptr<imm i64>, size: i64) {
-  for (mut i: i64; i < size; i = i + 1) {
-    print p[i], "\n";
-  }
-}
 mut pz : ptr<imm i64>;
-
 pz = new<mut i64>[3];
 pz[0] = 30;
 pz[1] = 60;
 pz[2] = 90;
-print_arr(pz, 3);
 free[] pz;
 
 pz = null;
 pz = new<imm i64>(32);
-print_arr(pz, 1);
 free pz;

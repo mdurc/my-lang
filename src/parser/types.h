@@ -18,11 +18,16 @@ enum BorrowState {
   ImmutablyBorrowed, // as param: imm
 };
 
+class StructDeclNode;
+
 class Type {
 public:
   struct Named {
     std::string identifier;
-    Named(std::string id) : identifier(std::move(id)) {}
+    std::shared_ptr<StructDeclNode> struct_decl; // set by `set_struct_decl`
+    size_t struct_size;
+    Named(std::string id)
+        : identifier(std::move(id)), struct_decl(nullptr), struct_size(0) {}
 
     friend bool operator==(const Named& a, const Named& b) {
       return a.identifier == b.identifier;
@@ -72,6 +77,17 @@ public:
   size_t get_scope_id() const { return m_scope_id; }
   uint64_t get_byte_size() const { return m_bytes; }
   void set_byte_size(uint64_t size) { m_bytes = size; }
+
+  void set_struct_decl(std::shared_ptr<StructDeclNode> decl) {
+    if (is<Named>()) {
+      std::get<Named>(m_storage).struct_decl = decl;
+    }
+  }
+  void set_struct_size(size_t struct_size) {
+    if (is<Named>()) {
+      std::get<Named>(m_storage).struct_size = struct_size;
+    }
+  }
 
   // Constructors
   Type(Named n, size_t sc, uint64_t bytes = PTR_SIZE)

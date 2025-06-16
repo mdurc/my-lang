@@ -1,6 +1,6 @@
 Symbol Table State:
 Current Scope ID: 0
-Total Scopes: 9
+Total Scopes: 8
 
 Scope ID: 0
   Parent Scope ID: 0
@@ -40,57 +40,36 @@ Scope ID: 2
 Scope ID: 3
   Parent Scope ID: 0
   Declared Types (0):
+  Declared Variables (0):
+
+Scope ID: 4
+  Parent Scope ID: 0
+  Declared Types (0):
   Declared Variables (1):
     - Name: i
         Modifier: mut
-        Type: nullptr/inferred
-        Scope ID: 3
-
-Scope ID: 4
-  Parent Scope ID: 3
-  Declared Types (0):
-  Declared Variables (1):
-    - Name: y
-        Modifier: imm
         Type: nullptr/inferred
         Scope ID: 4
 
 Scope ID: 5
   Parent Scope ID: 4
   Declared Types (0):
-  Declared Variables (1):
-    - Name: z
-        Modifier: imm
-        Type: nullptr/inferred
-        Scope ID: 5
+  Declared Variables (0):
 
 Scope ID: 6
   Parent Scope ID: 0
   Declared Types (0):
-  Declared Variables (2):
+  Declared Variables (1):
     - Name: z
         Modifier: imm
         Type: nullptr/inferred
-        Scope ID: 6
-    - Name: y
-        Modifier: imm
-        Type: i32
         Scope ID: 6
 
 Scope ID: 7
   Parent Scope ID: 0
   Declared Types (0):
   Declared Variables (1):
-    - Name: z
-        Modifier: imm
-        Type: nullptr/inferred
-        Scope ID: 7
-
-Scope ID: 8
-  Parent Scope ID: 0
-  Declared Types (0):
-  Declared Variables (1):
     - Name: x
         Modifier: mut
         Type: nullptr/inferred
-        Scope ID: 8
+        Scope ID: 7

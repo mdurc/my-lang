@@ -3,29 +3,22 @@ if (condition) {
 } else {
 }
 
-for (mut i := 0; i < 10; i = i+1) {
-    if (i != 5) {
-        z := 1;
-        continue;
-    }
-    y := 9;
-    break;
+while (true) {
+  break;
 }
 
-while (true) {
-  z := 3;
-  y : i32 = z;
+for (mut i := 0; i < 10; i = i+1) {
+  continue;
 }
 
 mut x : i32 = 5;
 switch (x) {
-    case 3: {
-        z := 2;
-        print x;
-    }
+  case 3: {
+    z := 2;
+  }
 }
 
 {
-    // this is a shadow of x from outer scope
-    mut x := 3;
+  // this is a shadow of x from outer scope
+  mut x := 3;
 }

@@ -52,7 +52,7 @@ update_test_asm: $(PROGRAM)
 	mkdir -p $(BUILD_DIR)
 	./$(PROGRAM) $(TEST_SN_FILE) --asm $(TEST_ASM_FILE)
 
-compile_test_exe: update_test_asm
+compile_test_exe:
 	nasm -f macho64 $(TEST_ASM_FILE) -o $(BUILD_DIR)/test_main.o
 	ld $(RUNTIME_OBJ) $(BUILD_DIR)/test_main.o -o $(TEST_EXE_FILE) \
 	-macos_version_min 10.13 \
@@ -61,7 +61,7 @@ compile_test_exe: update_test_asm
 	-no_pie \
 	-syslibroot $(shell xcrun --sdk macosx --show-sdk-path)
 
-test: compile_test_exe
+test: update_test_asm compile_test_exe
 	./$(TEST_EXE_FILE)
 
 # --- Installation ---

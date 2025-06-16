@@ -550,7 +550,8 @@ void TypeChecker::visit(StructDeclNode& node) {
       current_struct_size += field->type->get_byte_size();
     }
   }
-  node.type->set_byte_size(current_struct_size);
+  node.type->set_byte_size(Type::PTR_SIZE);
+  node.type->set_struct_size(current_struct_size);
 }
 
 // Struct Field Node

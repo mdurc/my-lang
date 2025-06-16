@@ -7,57 +7,20 @@ FunctionDecl(
         Ident(x),
       Type:
         {i32} Type::Named(i32)
-    ),
-    Param(Modifier: ImmutablyBorrowed,
-      Name:
-        Ident(y),
-      Type:
-        {i32} Type::Named(i32)
-    ),
-    Param(Modifier: ImmutablyBorrowed,
-      Name:
-        Ident(z),
-      Type:
-        {i32} Type::Named(i32)
     )
   ],
   ReturnType:
     {u0} Type::Named(u0),
   Body:
   Block([
-    PrintStmt(
-      String("Running foo_1
-")
-    ),
-    PrintStmt(
-      Ident(x)
-      String("
-")
-    ),
-    PrintStmt(
-      Ident(y)
-      String("
-")
-    ),
-    PrintStmt(
-      Ident(z)
-      String("
-")
-    )
   ])
 )
 VariableDecl(Mutable: false,
   Name:
     Ident(p_foo),
   Type:
-    {func(i32, i32, i32)->u0} Type::Function(
+    {func(i32)->u0} Type::Function(
       Params: [
-        Type:
-          {i32} Type::Named(i32)
-        ),
-        Type:
-          {i32} Type::Named(i32)
-        ),
         Type:
           {i32} Type::Named(i32)
         )
@@ -75,12 +38,6 @@ ExpressionStmt(
     Arguments: [
       Argument(IsGive: false,
         Int(1)
-      ),
-      Argument(IsGive: false,
-        Int(2)
-      ),
-      Argument(IsGive: false,
-        Int(3)
       )
     ]
   )
@@ -91,13 +48,7 @@ ExpressionStmt(
       Ident(p_foo),
     Arguments: [
       Argument(IsGive: false,
-        Int(4)
-      ),
-      Argument(IsGive: false,
-        Int(5)
-      ),
-      Argument(IsGive: false,
-        Int(6)
+        Int(2)
       )
     ]
   )
@@ -123,16 +74,6 @@ VariableDecl(Mutable: true,
       Ident(x)
     )
 )
-PrintStmt(
-  String("[*px, x] = ")
-  UnaryOp(*,
-    Ident(px)
-  )
-  String(", ")
-  Ident(x)
-  String("
-")
-)
 VariableDecl(Mutable: true,
   Name:
     Ident(py),
@@ -156,24 +97,6 @@ ExpressionStmt(
       Int(15)
   )
 )
-PrintStmt(
-  String("*py = 15;
-")
-)
-PrintStmt(
-  String("[*py, *px, x] = ")
-  UnaryOp(*,
-    Ident(py)
-  )
-  String(", ")
-  UnaryOp(*,
-    Ident(px)
-  )
-  String(", ")
-  Ident(x)
-  String("
-")
-)
 ExpressionStmt(
   Assignment(
     LValue:
@@ -181,12 +104,6 @@ ExpressionStmt(
     RValue:
       null
   )
-)
-PrintStmt(
-  String("Null(addr): ")
-  Ident(px)
-  String("
-")
 )
 ExpressionStmt(
   Assignment(
@@ -197,105 +114,6 @@ ExpressionStmt(
         Ident(x)
       )
   )
-)
-PrintStmt(
-  String("Address: ")
-  Ident(px)
-  String("
-")
-)
-PrintStmt(
-  UnaryOp(*,
-    Ident(px)
-  )
-  String("
-")
-)
-PrintStmt(
-  UnaryOp(*,
-    GroupedExpr(
-      BinaryOp(+,
-        Ident(px),
-        Int(0)
-      )
-    )
-  )
-  String("
-")
-)
-PrintStmt(
-  ArrayIndex(
-    Object:
-      Ident(px),
-    Index:
-      Int(0)
-  )
-  String("
-")
-)
-FunctionDecl(
-  Name:
-    Ident(print_arr),
-  Params: [
-    Param(Modifier: ImmutablyBorrowed,
-      Name:
-        Ident(p),
-      Type:
-        {ptr<imm i64>} Type::Pointer(pointee mutable: false,
-          Pointee:
-            {i64} Type::Named(i64)
-        )
-    ),
-    Param(Modifier: ImmutablyBorrowed,
-      Name:
-        Ident(size),
-      Type:
-        {i64} Type::Named(i64)
-    )
-  ],
-  ReturnType:
-    {u0} Type::Named(u0),
-  Body:
-  Block([
-    ForStmt(
-      Initializer:
-        VariableDecl(Mutable: true,
-          Name:
-            Ident(i),
-          Type:
-            {i64} Type::Named(i64)
-          Initializer: null
-        ),
-      Condition:
-        BinaryOp(<,
-          Ident(i),
-          Ident(size)
-        ),
-      Iteration:
-        Assignment(
-          LValue:
-            Ident(i),
-          RValue:
-            BinaryOp(+,
-              Ident(i),
-              Int(1)
-            )
-        ),
-      Body:
-      Block([
-        PrintStmt(
-          ArrayIndex(
-            Object:
-              Ident(p),
-            Index:
-              Ident(i)
-          )
-          String("
-")
-        )
-      ])
-    )
-  ])
 )
 VariableDecl(Mutable: true,
   Name:
@@ -359,20 +177,6 @@ ExpressionStmt(
       Int(90)
   )
 )
-ExpressionStmt(
-  FunctionCall(
-    Callee:
-      Ident(print_arr),
-    Arguments: [
-      Argument(IsGive: false,
-        Ident(pz)
-      ),
-      Argument(IsGive: false,
-        Int(3)
-      )
-    ]
-  )
-)
 FreeStmt(IsArray: true,
   Ident(pz)
 )
@@ -395,20 +199,6 @@ ExpressionStmt(
         AllocationSpecifier:
           Int(32)
       )
-  )
-)
-ExpressionStmt(
-  FunctionCall(
-    Callee:
-      Ident(print_arr),
-    Arguments: [
-      Argument(IsGive: false,
-        Ident(pz)
-      ),
-      Argument(IsGive: false,
-        Int(1)
-      )
-    ]
   )
 )
 FreeStmt(IsArray: false,

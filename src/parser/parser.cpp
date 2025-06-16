@@ -157,8 +157,11 @@ AstPtr Parser::parse_struct_decl() {
 
   m_symtab->exit_scope();
 
-  return _AST(StructDeclNode, struct_tok, m_symtab->current_scope(),
-              sym_struct_type, std::move(members));
+  std::shared_ptr<StructDeclNode> node =
+      _AST(StructDeclNode, struct_tok, m_symtab->current_scope(),
+           sym_struct_type, std::move(members));
+  sym_struct_type->set_struct_decl(node);
+  return node;
 }
 
 // <StructMember> ::= <StructField>  | <FunctionDecl>

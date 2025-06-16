@@ -245,6 +245,104 @@ void IrVisitor::visit(UnaryExprNode& node) {
   m_last_expr_operand = dest_reg;
 }
 
+IR_Register IrVisitor::compute_struct_field_addr(
+    const ExprPtr& object, const std::string& field_name) {
+  object->accept(*this);
+  IROperand base = m_last_expr_operand;
+
+  // type of the base is either a struct or pointer to a struct
+  std::shared_ptr<Type> obj_type = object->expr_type;
+  std::shared_ptr<Type> struct_type;
+  bool is_ptr = false;
+  if (obj_type->is<Type::Pointer>()) {
+    struct_type = obj_type->as<Type::Pointer>().pointee;
+    is_ptr = true;
+  } else {
+    struct_type = obj_type;
+  }
+
+  assert(struct_type->is<Type::Named>() && "Member access on non-struct");
+
+  std::shared_ptr<StructDeclNode> struct_decl =
+      struct_type->as<Type::Named>().struct_decl;
+  assert(struct_decl && "Struct definition not found");
+
+  // find the field offset and type
+  size_t offset = 0;
+  std::shared_ptr<Type> field_type;
+  bool found = false;
+  for (const auto& member : struct_decl->members) {
+    if (std::holds_alternative<StructFieldPtr>(member)) {
+      const auto& field = std::get<StructFieldPtr>(member);
+      if (field->name->name == field_name) {
+        field_type = field->type;
+        found = true;
+        break;
+      }
+      offset += field->type->get_byte_size();
+    }
+  }
+  assert(found && "Struct field not found");
+
+  // compute address of the field
+  IR_Register addr_reg = m_ir_gen.new_temp_reg();
+  if (is_ptr) {
+    // for actual pointer types (ptr<T>), just add offset to the pointer value
+    IR_Immediate off_imm(offset, Type::PTR_SIZE);
+    m_ir_gen.emit_add(addr_reg, base, off_imm, Type::PTR_SIZE);
+  } else {
+    if (auto ident_node = std::dynamic_pointer_cast<IdentifierNode>(object)) {
+      // for struct variables: get its stack addr, load ptr, add offset
+      IR_Register var_addr = m_ir_gen.new_temp_reg();
+      m_ir_gen.emit_addr_of(var_addr, base);
+
+      IR_Register ptr_reg = m_ir_gen.new_temp_reg();
+      m_ir_gen.emit_load(ptr_reg, var_addr, Type::PTR_SIZE);
+
+      IR_Immediate off_imm(offset, Type::PTR_SIZE);
+      m_ir_gen.emit_add(addr_reg, ptr_reg, off_imm, Type::PTR_SIZE);
+    } else {
+      // for struct literals: result is heap address so we can just offset
+      IR_Immediate off_imm(offset, Type::PTR_SIZE);
+      m_ir_gen.emit_add(addr_reg, base, off_imm, Type::PTR_SIZE);
+    }
+  }
+
+  return addr_reg;
+}
+
+void IrVisitor::visit(MemberAccessNode& node) {
+  // for r-value access (loading), we compute the address and load from it
+  IR_Register field_addr =
+      compute_struct_field_addr(node.object, node.member->name); // not lvalue
+
+  // get the field type to know how many bytes to load
+  std::shared_ptr<Type> obj_type = node.object->expr_type;
+  std::shared_ptr<Type> struct_type =
+      obj_type->is<Type::Pointer>() ? obj_type->as<Type::Pointer>().pointee
+                                    : obj_type;
+
+  std::shared_ptr<StructDeclNode> struct_decl =
+      struct_type->as<Type::Named>().struct_decl;
+
+  std::shared_ptr<Type> field_type;
+  for (const auto& member : struct_decl->members) {
+    if (std::holds_alternative<StructFieldPtr>(member)) {
+      const auto& field = std::get<StructFieldPtr>(member);
+      if (field->name->name == node.member->name) {
+        field_type = field->type;
+        break;
+      }
+    }
+  }
+  assert(field_type && "Field type not found");
+
+  // load the value from the computed address
+  IR_Register result_reg = m_ir_gen.new_temp_reg();
+  m_ir_gen.emit_load(result_reg, field_addr, field_type->get_byte_size());
+  m_last_expr_operand = result_reg;
+}
+
 void IrVisitor::visit(AssignmentNode& node) {
   node.rvalue->accept(*this);
   IROperand rval_op = m_last_expr_operand;
@@ -287,8 +385,13 @@ void IrVisitor::visit(AssignmentNode& node) {
       throw std::runtime_error(
           "IR Error: AssignmentNode to non-dereference UnaryExpr LValue");
     }
+  } else if (auto member_access =
+                 std::dynamic_pointer_cast<MemberAccessNode>(node.lvalue)) {
+    // for struct field assignment, compute the field address and store to it
+    IR_Register field_addr = compute_struct_field_addr(
+        member_access->object, member_access->member->name); // is an lvalue
+    m_ir_gen.emit_store(field_addr, rval_op, size);
   } else {
-    // TODO: MemberAccessNode
     unimpl("AssignmentNode (complex lvalue)");
   }
 
@@ -489,7 +592,6 @@ void IrVisitor::visit(FunctionCallNode& node) {
 
   m_ir_gen.emit_lcall(result_reg_opt, func_target,
                       node.expr_type->get_byte_size());
-  m_ir_gen.emit_pop_args();
 }
 
 void IrVisitor::visit(ReturnStmtNode& node) {
@@ -593,7 +695,6 @@ void IrVisitor::visit(PrintStmtNode& node) {
 
     m_ir_gen.emit_push_arg(val_op, expr_type->get_byte_size());
     m_ir_gen.emit_lcall(std::nullopt, print_func_lbl, 0);
-    m_ir_gen.emit_pop_args();
   }
 }
 
@@ -740,13 +841,51 @@ void IrVisitor::visit(ErrorStmtNode& node) {
 
   m_ir_gen.emit_push_arg(temp_reg, Type::PTR_SIZE);
   m_ir_gen.emit_lcall(std::nullopt, IR_Label("print_string"), 0);
-  m_ir_gen.emit_pop_args();
   m_ir_gen.emit_exit(1);
 }
 
 void IrVisitor::visit(FloatLiteralNode&) { unimpl("FloatLiteralNode"); }
-void IrVisitor::visit(StructDeclNode&) { unimpl("StructDeclNode"); }
 void IrVisitor::visit(StructFieldNode&) { unimpl("StructFieldNode"); }
-void IrVisitor::visit(MemberAccessNode&) { unimpl("MemberAccessNode"); }
-void IrVisitor::visit(StructLiteralNode&) { unimpl("StructLiteralNode"); }
-void IrVisitor::visit(StructFieldInitializerNode&) { unimpl("FieldInitNode"); }
+
+void IrVisitor::visit(StructDeclNode&) { /* no implementation needed */ }
+void IrVisitor::visit(
+    StructFieldInitializerNode&) { /* no implementation needed */ }
+
+void IrVisitor::visit(StructLiteralNode& node) {
+  // allocate memory for the struct
+  uint64_t struct_size = node.struct_type->as<Type::Named>().struct_size;
+  IR_Register struct_addr = m_ir_gen.new_temp_reg();
+  m_ir_gen.emit_alloc(struct_addr, struct_size, std::nullopt, 0);
+
+  // for each field initializer, store the value at the correct offset
+  assert(node.struct_type->is<Type::Named>() && "Member access on non-struct");
+  std::shared_ptr<StructDeclNode> struct_decl =
+      node.struct_type->as<Type::Named>().struct_decl;
+  assert(struct_decl && "Struct definition not found");
+
+  size_t offset = 0;
+  for (const auto& member : struct_decl->members) {
+    if (std::holds_alternative<StructFieldPtr>(member)) {
+      const auto& field = std::get<StructFieldPtr>(member);
+      // find the initializer for this field
+      ExprPtr value = nullptr;
+      for (const auto& init : node.initializers) {
+        if (init->field->name == field->name->name) {
+          value = init->value;
+          break;
+        }
+      }
+      assert(value && "Missing struct field initializer");
+      value->accept(*this);
+      IROperand val = m_last_expr_operand;
+      // store at struct_addr + offset
+      IR_Register field_addr = m_ir_gen.new_temp_reg();
+      m_ir_gen.emit_add(field_addr, struct_addr,
+                        IR_Immediate(offset, Type::PTR_SIZE), Type::PTR_SIZE);
+      m_ir_gen.emit_store(field_addr, val, field->type->get_byte_size());
+      offset += field->type->get_byte_size();
+    }
+  }
+  // the result of the struct literal is the address
+  m_last_expr_operand = struct_addr;
+}

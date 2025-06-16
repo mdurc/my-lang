@@ -1,0 +1,30 @@
+extern exit, string_length, print_string, print_char
+extern print_newline, print_uint, print_int
+extern read_char, read_word, parse_uint
+extern parse_int, string_equals, string_copy
+extern malloc, free, clrscr
+
+default rel
+global _start
+section .text
+_start:
+	push rbp
+	mov rbp, rsp
+	anything can be in here
+it is just a buffer for now
+	mov r10, LC0
+	mov rdi, r10
+	push r10 ; saving caller-saved register r10
+	sub rsp, 8 ; align stack for call
+	call print_string
+	pop r10 ; restoring caller-saved register
+	mov rdi, 1
+	call exit
+	mov rsp, rbp ; restore stack
+	pop rbp
+	xor rdi, rdi
+	call exit
+
+section .data
+LC0:
+	db "err msg", 0

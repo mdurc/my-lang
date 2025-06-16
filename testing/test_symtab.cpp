@@ -40,6 +40,7 @@ TEST(SymTabTests, SymTabAsmAndErrors) {
       generate_symtab_output("./samples/asm_and_errors.sn"));
 }
 
-TEST(SymTabTests, SymTabRead) {
-  ApprovalTests::Approvals::verify(generate_symtab_output("./samples/read.sn"));
+TEST(SymTabTests, SymTabStdin) {
+  ApprovalTests::Approvals::verify(
+      generate_symtab_output("./samples/stdin.sn"));
 }

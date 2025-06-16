@@ -1,0 +1,69 @@
+extern exit, string_length, print_string, print_char
+extern print_newline, print_uint, print_int
+extern read_char, read_word, parse_uint
+extern parse_int, string_equals, string_copy
+extern malloc, free, clrscr
+
+default rel
+global _start
+section .text
+_start:
+	push rbp
+	mov rbp, rsp
+	sub rsp, 48
+	push rbx ; saving callee-saved register
+	push r12 ; saving callee-saved register
+	push r13 ; saving callee-saved register
+	push r14 ; saving callee-saved register
+	push r15 ; saving callee-saved register
+	push r10 ; saving caller-saved register r10
+	mov rdi, 8
+	call malloc
+	pop r10 ; restoring caller-saved register
+	mov r10, rax
+	mov r11, 0
+	mov r12, r10
+	add r12, 0
+	mov r13, r12d
+	mov [r13], r11d
+	mov r14, 0
+	mov r15, r10
+	add r15, 4
+	mov rbx, r15d
+	mov [rbx], r14d
+	mov QWORD[global_vars + 8], r10
+	mov QWORD[rbp - 8], r10 ; spilling register r10 to stack
+	lea r10, [global_vars + 8]
+	mov QWORD[rbp - 16], r11 ; spilling register r11 to stack
+	mov r11, r10
+	mov r11, [r11]
+	mov QWORD[rbp - 24], r12 ; spilling register r12 to stack
+	mov r12, r11
+	add r12, 0
+	mov r13d, r12d
+	mov r13d, [r13d]
+	mov DWORD[global_vars + 12], r13d
+	mov QWORD[rbp - 32], r14 ; spilling register r14 to stack
+	lea r14, [global_vars + 8]
+	mov QWORD[rbp - 40], r15 ; spilling register r15 to stack
+	mov r15, r14
+	mov r15, [r15]
+	mov rbx, r15
+	add rbx, 4
+	mov QWORD[rbp - 48], r10 ; spilling register r10 to stack
+	mov r10d, ebx
+	mov r10d, [r10d]
+	mov DWORD[global_vars + 16], r10d
+	pop r15 ; restoring callee-saved register
+	pop r14 ; restoring callee-saved register
+	pop r13 ; restoring callee-saved register
+	pop r12 ; restoring callee-saved register
+	pop rbx ; restoring callee-saved register
+	mov rsp, rbp ; restore stack
+	pop rbp
+	xor rdi, rdi
+	call exit
+
+section .data
+section .bss
+	global_vars resb 16

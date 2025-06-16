@@ -40,6 +40,7 @@ TEST(ParserTests, ParserAsmAndErrors) {
       generate_parser_output("./samples/asm_and_errors.sn"));
 }
 
-TEST(ParserTests, ParserRead) {
-  ApprovalTests::Approvals::verify(generate_parser_output("./samples/read.sn"));
+TEST(ParserTests, ParserStdin) {
+  ApprovalTests::Approvals::verify(
+      generate_parser_output("./samples/stdin.sn"));
 }

@@ -10,29 +10,6 @@ std::string generate_ir_output(const std::string& input_filepath) {
   return rtrim(ss.str());
 }
 
-TEST(IrTests, IrFizzBuzz) {
-  ApprovalTests::Approvals::verify(
-      generate_ir_output("./ir-samples/fizzbuzz.sn"));
-}
-
-TEST(IrTests, IrArithmetic) {
-  ApprovalTests::Approvals::verify(
-      generate_ir_output("./ir-samples/arithmetic.sn"));
-}
-
-TEST(IrTests, IrLoops) {
-  ApprovalTests::Approvals::verify(generate_ir_output("./ir-samples/loops.sn"));
-}
-
-TEST(IrTests, IrFuncs) {
-  ApprovalTests::Approvals::verify(generate_ir_output("./ir-samples/funcs.sn"));
-}
-
-TEST(IrTests, IrInOut) {
-  ApprovalTests::Approvals::verify(generate_ir_output("./ir-samples/inout.sn"));
-}
-
-/*
 TEST(IrTests, IrVarDecl) {
   ApprovalTests::Approvals::verify(generate_ir_output("./samples/var_decl.sn"));
 }
@@ -60,7 +37,6 @@ TEST(IrTests, IrAsmAndErrors) {
       generate_ir_output("./samples/asm_and_errors.sn"));
 }
 
-TEST(IrTests, IrRead) {
-  ApprovalTests::Approvals::verify(generate_ir_output("./samples/read.sn"));
+TEST(IrTests, IrStdin) {
+  ApprovalTests::Approvals::verify(generate_ir_output("./samples/stdin.sn"));
 }
-*/
