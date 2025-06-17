@@ -744,8 +744,8 @@ void X86_64CodeGenerator::handle_cmp_str_eq(const IRInstruction& instr) {
   emit("mov rdi, " + s1_str + " ; arg1 for string_equals");
   emit("mov rsi, " + s2_str + " ; arg2 for string_equals");
   emit("call string_equals");
-  emit("mov " + dst_str + ", al");
   restore_caller_saved_regs();
+  emit("mov " + dst_str + ", al");
 }
 
 void X86_64CodeGenerator::handle_label(const IRInstruction& instr) {
@@ -990,8 +990,8 @@ void X86_64CodeGenerator::handle_alloc_array(const IRInstruction& instr) {
   save_caller_saved_regs();
   emit("mov rdi, " + temp_total_size_reg);
   emit("call malloc");
-  emit("mov " + dst_ptr_str + ", rax");
   restore_caller_saved_regs();
+  emit("mov " + dst_ptr_str + ", rax");
 }
 
 void X86_64CodeGenerator::handle_free(const IRInstruction& instr) {
