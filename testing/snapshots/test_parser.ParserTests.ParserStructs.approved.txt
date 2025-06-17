@@ -6,13 +6,13 @@ StructDecl(
       Name:
         Ident(x),
       Type:
-        {i32} Type::Named(i32)
+        {i64} Type::Named(i64)
     ),
     StructField(
       Name:
         Ident(y),
       Type:
-        {i32} Type::Named(i32)
+        {i64} Type::Named(i64)
     )
   ]
 )
@@ -44,7 +44,7 @@ VariableDecl(Mutable: true,
   Name:
     Ident(x_o),
   Type:
-    {i32} Type::Named(i32)
+    {i64} Type::Named(i64)
   Initializer:
     MemberAccess(
       Object:
@@ -57,7 +57,7 @@ VariableDecl(Mutable: true,
   Name:
     Ident(y_o),
   Type:
-    {i32} Type::Named(i32)
+    {i64} Type::Named(i64)
   Initializer:
     MemberAccess(
       Object:

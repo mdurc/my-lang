@@ -17,16 +17,14 @@ _start:
 	push r15 ; saving callee-saved register
 	lea r10, _foo
 	mov QWORD[global_vars + 8], r10
-	mov r11, 1
-	mov rdi, r11
 	push r11 ; saving caller-saved register r11
-	sub rsp, 8 ; align stack for call
+	mov r11, 1
+	mov rdi, r11; value stored in arg reg
 	call _foo
 	pop r11 ; restoring caller-saved register
-	mov r12, 2
-	mov rdi, r12
 	push r11 ; saving caller-saved register r11
-	sub rsp, 8 ; align stack for call
+	mov r12, 2
+	mov rdi, r12; value stored in arg reg
 	call QWORD[global_vars + 8]
 	pop r11 ; restoring caller-saved register
 	mov r13, 3

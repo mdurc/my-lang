@@ -10,13 +10,19 @@ section .text
 _start:
 	push rbp
 	mov rbp, rsp
-	anything can be in here
-it is just a buffer for now
+	mov rdi , 15
+call print_int
 	mov r10, LC0
-	mov rdi, r10
 	push r10 ; saving caller-saved register r10
-	sub rsp, 8 ; align stack for call
+	mov rdi, r10; value stored in arg reg
 	call print_string
+	pop r10 ; restoring caller-saved register
+	mov r11, LC1
+	push r10 ; saving caller-saved register r10
+	push r11 ; saving caller-saved register r11
+	mov rdi, r11; value stored in arg reg
+	call print_string
+	pop r11 ; restoring caller-saved register
 	pop r10 ; restoring caller-saved register
 	mov rdi, 1
 	call exit
@@ -27,4 +33,6 @@ it is just a buffer for now
 
 section .data
 LC0:
-	db "err msg", 0
+	db 10, 0
+LC1:
+	db "err msg", 10, "", 0

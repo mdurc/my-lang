@@ -16,14 +16,12 @@ _start:
 	call read_word
 	mov r10, rax
 	push r10 ; saving caller-saved register r10
-	sub rsp, 8 ; align stack for call
 	call parse_int
 	pop r10 ; restoring caller-saved register
 	mov r10, rax
 	mov DWORD[global_vars + 4], r10d
 	mov QWORD[global_vars + 12], 0
 	push r10 ; saving caller-saved register r10
-	sub rsp, 8 ; align stack for call
 	sub rsp, 64
 	mov rdi, rsp
 	call read_word

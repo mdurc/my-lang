@@ -25,11 +25,11 @@ Scope ID: 0
         Scope ID: 0
     - Name: x_o
         Modifier: mut
-        Type: i32
+        Type: i64
         Scope ID: 0
     - Name: y_o
         Modifier: mut
-        Type: i32
+        Type: i64
         Scope ID: 0
 
 Scope ID: 1
@@ -38,9 +38,9 @@ Scope ID: 1
   Declared Variables (2):
     - Name: x
         Modifier: mut
-        Type: i32
+        Type: i64
         Scope ID: 1
     - Name: y
         Modifier: mut
-        Type: i32
+        Type: i64
         Scope ID: 1

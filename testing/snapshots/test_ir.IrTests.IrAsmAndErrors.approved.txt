@@ -1,9 +1,13 @@
 --- IR Instructions ---
-	Asm "anything can be in here
-it is just a buffer for now"
-	_t0 = "err msg"
+	Asm "mov rdi , 15
+call print_int"
+	_t0 = "
+"
 	PushArg _t0
 	LCall print_string
-	PopArgs
+	_t1 = "err msg
+"
+	PushArg _t1
+	LCall print_string
 	Exit
 -----------------------

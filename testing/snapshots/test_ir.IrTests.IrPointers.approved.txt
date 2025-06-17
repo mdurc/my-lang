@@ -4,14 +4,14 @@ _foo
 	x_1 = _param 0
 	EndFunc
 	p_foo_0 = foo_0
+	BeginLCallPrep
 	_t0 = 1
 	PushArg _t0
 	LCall foo_0
-	PopArgs
+	BeginLCallPrep
 	_t1 = 2
 	PushArg _t1
 	LCall p_foo_0
-	PopArgs
 	_t2 = 3
 	x_0 = _t2
 	_t3 = AddrOf x_0

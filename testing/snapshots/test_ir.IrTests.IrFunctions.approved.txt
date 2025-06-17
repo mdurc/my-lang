@@ -16,7 +16,6 @@ _foo_2
 	_t2 = "hi"
 	PushArg _t2
 	LCall print_string
-	PopArgs
 	EndFunc
 	x_0 = foo_2_0
 	_t3 = 10
@@ -25,16 +24,16 @@ _foo_2
 	a_0 = _t4
 	_t5 = 2
 	b_0 = _t5
+	BeginLCallPrep
 	PushArg a_0
 	_t6 = 2
 	PushArg _t6
 	PushArg z_0
 	LCall x_0
-	PopArgs
+	BeginLCallPrep
 	PushArg b_0
 	_t7 = 2
 	PushArg _t7
 	PushArg z_0
 	LCall x_0
-	PopArgs
 -----------------------
