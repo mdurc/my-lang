@@ -46,6 +46,7 @@ enum class IROpCode {
   IF_Z,  // Operands: cond_operand, target_label_operand (IfZero/IfFalse)
 
   // Procedure calls
+  BEGIN_LCALL_PREP,
   PUSH_ARG, // Operands: src_operand
   LCALL,    // Result: opt_dst, Operands: func_label_operand/func ptr variable
 

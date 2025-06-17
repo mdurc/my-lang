@@ -54,6 +54,7 @@ public:
                  uint64_t cond_operands_size); // IfZero (false)
 
   // Procedure Calls
+  void emit_begin_lcall_prep();
   void emit_push_arg(IROperand src, uint64_t arg_size);
   void emit_lcall(std::optional<IR_Register> dst, IROperand func_target,
                   uint64_t return_size);

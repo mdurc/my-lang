@@ -143,6 +143,7 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
       out << " Goto ";
       print_ir_operand(instr.operands[1], out);
       break;
+    case IROpCode::BEGIN_LCALL_PREP: out << "BeginLCallPrep"; break;
     case IROpCode::PUSH_ARG:
       assert(!instr.result.has_value() && instr.operands.size() == 1);
       out << "PushArg ";

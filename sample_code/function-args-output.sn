@@ -8,9 +8,6 @@ func foo(a: i32, b: bool) returns (z: i32) {
   return z;
 }
 
-print foo(3, true), "\n";
-
-// testing arguments pushed onto the stack
 func bar(a: bool, b : bool, c : bool, d: bool, e : bool, f : bool, g : bool, h : bool, i : bool, j : bool) {
   print g, "\n";
   print h, "\n";
@@ -18,4 +15,22 @@ func bar(a: bool, b : bool, c : bool, d: bool, e : bool, f : bool, g : bool, h :
   print j, "\n";
 }
 
+func tar (a:i64, b:i64, c:i32, d:i64, e:i64,
+          f:i64, g:i32, h:i64, i:i32, j:i64
+         ) {
+  print a, "\n";
+  print b, "\n";
+  print c, "\n";
+  print d, "\n";
+  print e, "\n";
+  print f, "\n";
+  print g, "\n";
+  print h, "\n";
+  print i, "\n";
+  print j, "\n";
+}
+
+print foo(3, true), "\n";
+x : i32 = 9;
+tar(1, 2, 3, 4, 5, 6, 7, 8, x, 10);
 bar(true,true,true,true,true,true,true,false, true, false);

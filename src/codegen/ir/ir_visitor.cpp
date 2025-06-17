@@ -556,6 +556,7 @@ void IrVisitor::visit(ParamNode& node) {
 }
 
 void IrVisitor::visit(FunctionCallNode& node) {
+  m_ir_gen.emit_begin_lcall_prep();
   for (const ArgPtr& arg_node : node.arguments) {
     arg_node->accept(*this);
 

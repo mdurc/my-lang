@@ -10,8 +10,9 @@ X86_64CodeGenerator::X86_64CodeGenerator()
       m_is_buffering_function(false),
       m_current_func_alloc_placeholder_idx(0),
       m_current_func_stack_offset(0),
-      m_current_call_arg_count(0),
+      m_in_lcall_prep(false),
       m_stack_args_size(0),
+      m_current_args_passed(0),
       m_string_count(0),
       m_reg_count(0) {
   assert(Type::PTR_SIZE == 8);
@@ -247,7 +248,9 @@ void X86_64CodeGenerator::emit_one_operand_memory_operation(
 }
 
 void X86_64CodeGenerator::emit(const std::string& instruction) {
-  if (m_is_buffering_function) {
+  if (m_in_lcall_prep) {
+    m_current_arg_instrs.push_back(instruction);
+  } else if (m_is_buffering_function) {
     m_current_func_asm_buffer.push_back("\t" + instruction);
   } else {
     m_out << "\t" << instruction << std::endl;
@@ -401,6 +404,7 @@ void X86_64CodeGenerator::handle_instruction(const IRInstruction& instr) {
     case IROpCode::LABEL: handle_label(instr); break;
     case IROpCode::GOTO: handle_goto(instr); break;
     case IROpCode::IF_Z: handle_if_z(instr); break;
+    case IROpCode::BEGIN_LCALL_PREP: m_in_lcall_prep = true; break;
     case IROpCode::PUSH_ARG: handle_push_arg(instr); break;
     case IROpCode::LCALL: handle_lcall(instr); break;
     case IROpCode::ASM_BLOCK: handle_asm_block(instr); break;
@@ -426,7 +430,6 @@ void X86_64CodeGenerator::clear_func_data() {
   m_reg_count = 0;
   m_spilled_ir_reg_locations.clear();
   m_stack_args_size = 0;
-  m_stack_arg_offsets.clear();
 }
 
 void X86_64CodeGenerator::handle_begin_func(const IRInstruction& instr) {
@@ -464,12 +467,9 @@ void X86_64CodeGenerator::handle_end_preamble() {
 
     // save callee-saved registers that are in use
     std::string& placeheld = m_current_func_asm_buffer[idx + 1];
-    for (const std::string& reg : m_callee_saved_regs) {
-      auto it = m_x86_reg_to_ir_reg.find(reg);
-      if (it != m_x86_reg_to_ir_reg.end() && it->second.first != -1) {
-        if (!placeheld.empty()) placeheld += "\n";
-        placeheld += "\tpush " + reg + " ; saving callee-saved register";
-      }
+    for (const std::string& used_reg : get_used_callee_regs()) {
+      if (!placeheld.empty()) placeheld += "\n";
+      placeheld += "\tpush " + used_reg + " ; saving callee-saved register";
     }
   }
 
@@ -485,12 +485,9 @@ void X86_64CodeGenerator::handle_end_preamble() {
   m_is_buffering_function = false;
 
   // restore callee-saved registers in reverse order
-  for (int i = m_callee_saved_regs.size() - 1; i >= 0; --i) {
-    const std::string& reg = m_callee_saved_regs[i];
-    auto it = m_x86_reg_to_ir_reg.find(reg);
-    if (it != m_x86_reg_to_ir_reg.end() && it->second.first != -1) {
-      emit("pop " + reg + " ; restoring callee-saved register");
-    }
+  const std::vector<std::string>& used_regs = get_used_callee_regs();
+  for (int i = used_regs.size() - 1; i >= 0; --i) {
+    emit("pop " + used_regs[i] + " ; restoring callee-saved register");
   }
 }
 
@@ -549,10 +546,18 @@ void X86_64CodeGenerator::handle_assign(const IRInstruction& instr) {
       src_str = get_sized_register_name(m_arg_regs[arg_slot.index], instr.size);
     } else {
       // arg should be on the stack
-      size_t stack_arg_index = arg_slot.index - m_arg_regs.size();
-      assert(stack_arg_index < m_stack_arg_offsets.size() &&
-             "Stack argument index out of bounds");
-      int offset_from_rbp = m_stack_arg_offsets[stack_arg_index];
+      int stack_arg_on_caller_idx = arg_slot.index - m_arg_regs.size();
+      int max_stack_arg_idx = arg_slot.param_amt - m_arg_regs.size();
+      int reversed_index = (max_stack_arg_idx - 1) - stack_arg_on_caller_idx;
+
+      // count how many callee-saved registers are actually in use
+      size_t callee_saved_count = get_used_callee_regs().size();
+
+      // rbp + 0 is the rbp.
+      // rbp + 8 is the return address to get back to the caller.
+      // then account for the callee-saved registers pushed to the stack
+      int offset_from_rbp = 16 + (callee_saved_count * Type::PTR_SIZE) +
+                            reversed_index * Type::PTR_SIZE;
       src_str = get_size_prefix(instr.size) + "[rbp + " +
                 std::to_string(offset_from_rbp) + "]";
     }
@@ -770,25 +775,23 @@ void X86_64CodeGenerator::handle_if_z(const IRInstruction& instr) {
 void X86_64CodeGenerator::handle_push_arg(const IRInstruction& instr) {
   IROperand src = instr.operands[0];
 
-  // bytes will be passed as pointer size
-  uint64_t arg_size = instr.size == 1 ? Type::PTR_SIZE : instr.size;
+  uint64_t arg_size = instr.size;
 
-  if (m_current_call_arg_count < m_arg_regs.size()) {
+  if (m_current_args_passed < m_arg_regs.size()) {
     // handle register arguments (first 6 args)
-    std::string arg_reg = m_arg_regs[m_current_call_arg_count++];
+    std::string arg_reg = m_arg_regs[m_current_args_passed++];
     std::string src_str = get_sized_component(src, arg_size);
-    emit("mov " + get_sized_register_name(arg_reg, arg_size) + ", " + src_str);
+    m_current_arg_instrs.push_back(
+        "mov " + get_sized_register_name(arg_reg, arg_size) + ", " + src_str +
+        "; value stored in arg reg");
     return;
   }
 
-  // handle stack arguments (args beyond the first 6)
-  emit("push " + get_sized_component(src, arg_size));
-  m_stack_args_size += arg_size;
-
-  // track this argument's offset from rbp
-  // when we push, rsp decreases, so the offset increases
-  int offset = 16 + (m_stack_arg_offsets.size() * Type::PTR_SIZE);
-  m_stack_arg_offsets.push_back(offset);
+  // handle stack arguments (args beyond the first 6), note it requires QWORD sz
+  m_current_arg_instrs.push_back("push " +
+                                 get_sized_component(src, Type::PTR_SIZE) +
+                                 "; pushing arg to stack");
+  m_stack_args_size += Type::PTR_SIZE; // we must push 8 bytes
 }
 
 void X86_64CodeGenerator::save_caller_saved_regs() {
@@ -814,26 +817,31 @@ void X86_64CodeGenerator::restore_caller_saved_regs() {
   m_used_caller_saved.clear();
 }
 
+std::vector<std::string> X86_64CodeGenerator::get_used_callee_regs() {
+  std::vector<std::string> used;
+  for (const std::string& reg : m_callee_saved_regs) {
+    auto it = m_x86_reg_to_ir_reg.find(reg);
+    if (it != m_x86_reg_to_ir_reg.end() && it->second.first != -1) {
+      used.push_back(reg);
+    }
+  }
+  return used;
+}
+
 void X86_64CodeGenerator::handle_lcall(const IRInstruction& instr) {
+  m_in_lcall_prep = false;
   const IROperand& label = instr.operands[0];
   assert(std::holds_alternative<IR_Label>(label) ||
          std::holds_alternative<IR_Variable>(label)); // variable is a func ptr
 
   save_caller_saved_regs();
 
-  // calculate total stack space needed for arguments
-  // this includes both pushed registers and stack arguments
-  size_t total_stack_usage =
-      m_stack_args_size + (m_used_caller_saved.size() * Type::PTR_SIZE);
-
-  // ensure 16-byte alignment
-  size_t aligned_size = get_align(total_stack_usage);
-  size_t padding_needed = aligned_size - total_stack_usage;
-
-  if (padding_needed > 0) {
-    emit("sub rsp, " + std::to_string(padding_needed) +
-         " ; align stack for call");
+  for (const std::string& instr : m_current_arg_instrs) {
+    emit(instr);
   }
+
+  // TODO add a proper stack tracking system so that proper alignment handling
+  // can be done here.
 
   // special handling for read_word
   const std::string& name = std::holds_alternative<IR_Label>(label)
@@ -847,14 +855,14 @@ void X86_64CodeGenerator::handle_lcall(const IRInstruction& instr) {
 
   emit("call " + name);
 
-  // restore caller-saved registers
-  restore_caller_saved_regs();
-
   // restore stack pointer by adding back the total stack space used
-  if (total_stack_usage + padding_needed > 0) {
-    emit("add rsp, " + std::to_string(total_stack_usage + padding_needed) +
+  if (m_stack_args_size > 0) {
+    emit("add rsp, " + std::to_string(m_stack_args_size) +
          " ; restore stack after call for args");
   }
+
+  // restore caller-saved registers
+  restore_caller_saved_regs();
 
   // if the call has a result, it's in rax: move it to the IR result register.
   if (instr.result.has_value()) {
@@ -867,9 +875,9 @@ void X86_64CodeGenerator::handle_lcall(const IRInstruction& instr) {
   }
 
   // reset argument tracking for next call
-  m_current_call_arg_count = 0;
   m_stack_args_size = 0;
-  m_stack_arg_offsets.clear();
+  m_current_args_passed = 0;
+  m_current_arg_instrs.clear();
 }
 
 void X86_64CodeGenerator::handle_asm_block(const IRInstruction& instr) {

@@ -34,11 +34,11 @@ private:
   size_t m_current_func_stack_offset;
 
   // argument handling
-  size_t m_current_call_arg_count; // tracks number of arguments processed
-  size_t m_stack_args_size;        // total size of arguments pushed to stack
-  std::vector<std::string> m_arg_regs;  // register argument order
-  std::vector<int> m_stack_arg_offsets; // tracks stack offsets for each
-                                        // argument relative to rbp
+  bool m_in_lcall_prep;
+  size_t m_stack_args_size; // total size of arguments pushed to stack
+  size_t m_current_args_passed;
+  std::vector<std::string> m_current_arg_instrs; // movs and pushes for args
+  std::vector<std::string> m_arg_regs;           // register argument order
 
   std::vector<std::string> m_string_literals_data;
   std::unordered_map<std::string, std::string> m_string_literal_to_label;
@@ -59,6 +59,7 @@ private:
   std::vector<std::string> m_used_caller_saved; // saved prior to calls
   void save_caller_saved_regs();
   void restore_caller_saved_regs();
+  std::vector<std::string> get_used_callee_regs();
 
   void clear_func_data();
 

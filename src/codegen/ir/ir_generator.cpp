@@ -158,6 +158,10 @@ void IrGenerator::emit_if_z(IROperand cond, IR_Label target,
                               cond_operands_size);
 }
 
+void IrGenerator::emit_begin_lcall_prep() {
+  m_instructions.emplace_back(IROpCode::BEGIN_LCALL_PREP);
+}
+
 void IrGenerator::emit_push_arg(IROperand src, uint64_t size) {
   m_instructions.emplace_back(IROpCode::PUSH_ARG, std::nullopt,
                               std::vector<IROperand>{src}, size);
