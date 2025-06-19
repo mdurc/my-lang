@@ -1,8 +1,7 @@
 <Program>               ::= ( <StructDecl> | <FunctionDecl> | <Stmt> )*
 
-<StructDecl>            ::= 'struct' Identifier '{' <StructMembers>? '}'
-<StructMembers>         ::= <StructMember> ( ',' <StructMember> )*
-<StructMember>          ::= <StructField>  | <FunctionDecl>
+<StructDecl>            ::= 'struct' Identifier '{' <StructFields>? '}'
+<StructFields>         ::= <StructField> ( ',' <StructField> )*
 <StructField>           ::= Identifier ':' <Type>
 
 <FunctionDecl>          ::= 'func' Identifier '(' <Params>? ')' <ReturnType>? <Block>

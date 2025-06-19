@@ -35,7 +35,6 @@ private:
 
   // Structs
   AstPtr parse_struct_decl();
-  std::variant<StructFieldPtr, FuncDeclPtr> parse_struct_member();
   StructFieldPtr parse_struct_field();
 
   // Functions

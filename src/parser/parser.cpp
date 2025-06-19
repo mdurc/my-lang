@@ -121,7 +121,7 @@ AstPtr Parser::parse_toplevel_declaration() {
 }
 
 // Structs
-// <StructDecl> ::= 'struct' Identifier '{' <StructMembers>? '}'
+// <StructDecl> ::= 'struct' Identifier '{' <StructFields>? '}'
 AstPtr Parser::parse_struct_decl() {
   const Token* struct_tok = current();
   _consume(TokenType::STRUCT);
@@ -146,10 +146,10 @@ AstPtr Parser::parse_struct_decl() {
 
   _consume(TokenType::LBRACE);
 
-  std::vector<std::variant<StructFieldPtr, FuncDeclPtr>> members;
+  std::vector<StructFieldPtr> fields;
   if (!match(TokenType::RBRACE)) {
     do {
-      members.push_back(parse_struct_member());
+      fields.push_back(parse_struct_field());
     } while (match(TokenType::COMMA) && advance());
   }
 
@@ -159,18 +159,9 @@ AstPtr Parser::parse_struct_decl() {
 
   std::shared_ptr<StructDeclNode> node =
       _AST(StructDeclNode, struct_tok, m_symtab->current_scope(),
-           sym_struct_type, std::move(members));
+           sym_struct_type, std::move(fields));
   sym_struct_type->set_struct_decl(node);
   return node;
-}
-
-// <StructMember> ::= <StructField>  | <FunctionDecl>
-std::variant<StructFieldPtr, FuncDeclPtr> Parser::parse_struct_member() {
-  if (match(TokenType::FUNC)) {
-    return parse_function_decl();
-  } else {
-    return parse_struct_field();
-  }
 }
 
 // <StructField> ::= Identifier ':' <Type>
@@ -975,16 +966,16 @@ ExprPtr Parser::parse_postfix() {
         break;
       }
       case TokenType::DOT: {
-        // member access via dot
+        // field access via dot
         advance();
-        const Token* member_name_tok = current();
+        const Token* field_name_tok = current();
         _consume(TokenType::IDENTIFIER);
 
-        IdentPtr member_ident =
-            _AST(IdentifierNode, member_name_tok, m_symtab->current_scope(),
-                 member_name_tok->get_lexeme());
-        expr = _AST(MemberAccessNode, op_tok, m_symtab->current_scope(), expr,
-                    member_ident);
+        IdentPtr field_ident =
+            _AST(IdentifierNode, field_name_tok, m_symtab->current_scope(),
+                 field_name_tok->get_lexeme());
+        expr = _AST(FieldAccessNode, op_tok, m_symtab->current_scope(), expr,
+                    field_ident);
         break;
       }
       default: return expr;

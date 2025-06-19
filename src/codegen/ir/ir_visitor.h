@@ -42,7 +42,7 @@ public:
   void call_func_name(const std::string& func_name, size_t scope_id,
                       std::shared_ptr<Type> expr_type);
   void visit(FunctionCallNode& node) override;
-  void visit(MemberAccessNode& node) override;
+  void visit(FieldAccessNode& node) override;
   void visit(ArrayIndexNode& node) override;
   void visit(GroupedExprNode& node) override;
   void visit(StructLiteralNode& node) override;

@@ -27,7 +27,7 @@ public:
   void visit(BinaryOpExprNode& node) override;
   void visit(UnaryExprNode& node) override;
   void visit(FunctionCallNode& node) override;
-  void visit(MemberAccessNode& node) override;
+  void visit(FieldAccessNode& node) override;
   void visit(ArrayIndexNode& node) override;
   void visit(GroupedExprNode& node) override;
   void visit(StructLiteralNode& node) override;
@@ -71,7 +71,7 @@ private:
   // To check case stmt compatibility
   std::shared_ptr<Type> m_current_switch_expr_type;
 
-  // To resolve struct definitions for member access and literal checking
+  // To resolve struct definitions for field access and literal checking
   std::unordered_map<std::string, const StructDeclNode*> m_struct_definitions;
 
   // To resolve correct ownership when passing args to params

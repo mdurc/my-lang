@@ -261,11 +261,11 @@ std::shared_ptr<Type> TypeChecker::get_lvalue_type_if_mutable(
         return operand_type->as<Type::Pointer>().pointee;
       }
     }
-  } else if (auto member_access_node =
-                 std::dynamic_pointer_cast<MemberAccessNode>(expr)) {
+  } else if (auto field_access_node =
+                 std::dynamic_pointer_cast<FieldAccessNode>(expr)) {
     // let the access be a valid l-value iff the object is mut
     std::shared_ptr<Type> field_type = get_expr_type(expr);
-    if (field_type && get_lvalue_type_if_mutable(member_access_node->object)) {
+    if (field_type && get_lvalue_type_if_mutable(field_access_node->object)) {
       return field_type;
     }
   } else if (auto array_index_node =
@@ -534,21 +534,17 @@ void TypeChecker::visit(StructDeclNode& node) {
   assert(node.type != nullptr &&
          "Parser should ensure that struct declaration nodes are typed");
 
-  // store it in the map for later member access checking
+  // store it in the map for later field access checking
   const std::string& struct_name = node.type->as<Type::Named>().identifier;
   m_struct_definitions[struct_name] = &node;
 
-  // resolve members (fields and methods).
+  // resolve fields
   // set the size of the struct based on its fields.
   uint64_t current_struct_size = 0;
-  for (const auto& member_variant : node.members) {
-    std::visit([this](auto&& arg) { arg->accept(*this); }, member_variant);
-
-    if (std::holds_alternative<StructFieldPtr>(member_variant)) {
-      const StructFieldPtr& field = std::get<StructFieldPtr>(member_variant);
-      assert(field->type);
-      current_struct_size += field->type->get_byte_size();
-    }
+  for (const StructFieldPtr& field : node.fields) {
+    field->accept(*this);
+    assert(field->type);
+    current_struct_size += field->type->get_byte_size();
   }
   node.type->set_byte_size(Type::PTR_SIZE);
   node.type->set_struct_size(current_struct_size);
@@ -837,7 +833,7 @@ void TypeChecker::visit(ArgumentNode& node) {
 }
 
 // Other:
-void TypeChecker::visit(MemberAccessNode& node) {
+void TypeChecker::visit(FieldAccessNode& node) {
   std::shared_ptr<Type> object_type = get_expr_type(node.object);
   if (!object_type) return;
 
@@ -851,7 +847,7 @@ void TypeChecker::visit(MemberAccessNode& node) {
     // object_type->as<Type::Pointer>().is_pointee_mutable;
     if (!base_object_type) {
       m_logger.report(Error(node.object->token->get_span(),
-                            "Cannot access member of a pointer to an "
+                            "Cannot access field of a pointer to an "
                             "unresolved or void type."));
       return;
     }
@@ -868,40 +864,19 @@ void TypeChecker::visit(MemberAccessNode& node) {
   const std::string& name = base_object_type->as<Type::Named>().identifier;
   const StructDeclNode* struct_decl = m_struct_definitions.at(name);
 
-  const std::string& member_name = node.member->name;
+  const std::string& field_name = node.field->name;
 
-  // Search for the field or method in the struct's members
-  for (const auto& member_variant : struct_decl->members) {
-    if (std::holds_alternative<StructFieldPtr>(member_variant)) {
-      const StructFieldPtr& field = std::get<StructFieldPtr>(member_variant);
-      if (field->name->name == member_name) {
-        node.expr_type = field->type;
-        return;
-      }
-    } else if (std::holds_alternative<FuncDeclPtr>(member_variant)) {
-      const FuncDeclPtr& method = std::get<FuncDeclPtr>(member_variant);
-      if (method->name->name == member_name) {
-        std::vector<std::shared_ptr<Type>> param_types;
-        for (const auto& p_node : method->params) {
-          param_types.push_back(p_node->type);
-        }
-
-        node.expr_type = m_symtab->lookup_type(
-            Type(Type::Function(std::move(param_types), method->return_type),
-                 method->scope_id));
-
-        if (!node.expr_type) {
-          m_logger.report(Error("Member func was not declared as a symbol"));
-        }
-
-        return;
-      }
+  // Search for the field or method in the struct's fields
+  for (const StructFieldPtr& field : struct_decl->fields) {
+    if (field->name->name == field_name) {
+      node.expr_type = field->type;
+      return;
     }
   }
 
-  m_logger.report(Error(
-      node.member->token->get_span(),
-      "Struct '" + name + "' has no member named '" + member_name + "'."));
+  m_logger.report(
+      Error(node.field->token->get_span(),
+            "Struct '" + name + "' has no field named '" + field_name + "'."));
 }
 
 void TypeChecker::visit(ArrayIndexNode& node) {
@@ -948,16 +923,13 @@ void TypeChecker::visit(StructLiteralNode& node) {
 
   // Type check field initializers
   std::set<std::string> declared_field_names;
-  for (const auto& member_variant : struct_decl->members) {
-    if (std::holds_alternative<StructFieldPtr>(member_variant)) {
-      declared_field_names.insert(
-          std::get<StructFieldPtr>(member_variant)->name->name);
-    }
+  for (const StructFieldPtr& field : struct_decl->fields) {
+    declared_field_names.insert(field->name->name);
   }
 
   for (const StructFieldInitPtr& initializer : node.initializers) {
     // we do not resolve the field because it simply must be an identifier
-    // that matches with the member field names which we will check in a
+    // that matches with the field field names which we will check in a
     // moment.
 
     // resolve the value
@@ -965,22 +937,20 @@ void TypeChecker::visit(StructLiteralNode& node) {
     if (!value_type) continue;
 
     const std::string& field_name_str = initializer->field->name;
-    auto field_decl_it = std::find_if(
-        struct_decl->members.begin(), struct_decl->members.end(),
-        [&](const auto& member) {
-          return std::holds_alternative<StructFieldPtr>(member) &&
-                 std::get<StructFieldPtr>(member)->name->name == field_name_str;
-        });
+    std::vector<StructFieldPtr>::const_iterator itr =
+        std::find_if(struct_decl->fields.begin(), struct_decl->fields.end(),
+                     [&](const StructFieldPtr& field) {
+                       return field->name->name == field_name_str;
+                     });
 
-    if (field_decl_it == struct_decl->members.end()) {
+    if (itr == struct_decl->fields.end()) {
       m_logger.report(Error(initializer->field->token->get_span(),
                             "Struct '" + name + "' has no field named '" +
                                 field_name_str + "'."));
       continue;
     }
 
-    const StructFieldPtr& actual = std::get<StructFieldPtr>(*field_decl_it);
-    check_type_assignable(actual->type, value_type,
+    check_type_assignable((*itr)->type, value_type,
                           initializer->value->token->get_span());
   }
   // We currently allow for partial initialization of the named fields

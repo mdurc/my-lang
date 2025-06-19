@@ -70,7 +70,7 @@ Type checker:
 == TODO ==
 - Structs improvements:
   - Handling/supporting data types other than i64
-  - Supporting member functions within structs
+  - ~~Supporting member functions within structs~~
 - Parameter ownership (copying vs referencing)
   - Make sure that regular assignment performs copying
   - Referencing will only be possible through params. Note that ptrs can always be used to simulate references.

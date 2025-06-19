@@ -9,13 +9,13 @@ struct Rectangle {
     height: i64
 }
 
-// Test basic struct literal and member access
-print "Testing struct literal member access:\n";
+// Test basic struct literal and field access
+print "Testing struct literal field access:\n";
 print Point(x = 5, y = 2).x, "\n";  // should print 5
 print Point(x = 5, y = 2).y, "\n";  // should print 2
 
 // Test local variable with struct
-print "\nTesting local variable member access:\n";
+print "\nTesting local variable field access:\n";
 mut origin := Point(x = 10, y = 20);
 print origin.x, "\n";  // should print 10
 print origin.y, "\n";  // should print 20

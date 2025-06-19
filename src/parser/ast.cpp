@@ -15,7 +15,7 @@ void BinaryOpExprNode::accept(Visitor& v) { v.visit(*this); }
 void UnaryExprNode::accept(Visitor& v) { v.visit(*this); }
 void ArgumentNode::accept(Visitor& v) { v.visit(*this); }
 void FunctionCallNode::accept(Visitor& v) { v.visit(*this); }
-void MemberAccessNode::accept(Visitor& v) { v.visit(*this); }
+void FieldAccessNode::accept(Visitor& v) { v.visit(*this); }
 void ArrayIndexNode::accept(Visitor& v) { v.visit(*this); }
 void GroupedExprNode::accept(Visitor& v) { v.visit(*this); }
 void StructFieldInitializerNode::accept(Visitor& v) { v.visit(*this); }

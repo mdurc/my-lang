@@ -23,7 +23,7 @@ public:
   virtual void visit(BinaryOpExprNode& node) = 0;
   virtual void visit(UnaryExprNode& node) = 0;
   virtual void visit(FunctionCallNode& node) = 0;
-  virtual void visit(MemberAccessNode& node) = 0;
+  virtual void visit(FieldAccessNode& node) = 0;
   virtual void visit(ArrayIndexNode& node) = 0;
   virtual void visit(GroupedExprNode& node) = 0;
   virtual void visit(StructLiteralNode& node) = 0;
@@ -157,9 +157,9 @@ public:
     out << ")";
   }
 
-  void visit(MemberAccessNode& node) override {
+  void visit(FieldAccessNode& node) override {
     print_indent();
-    out << "MemberAccess(\n";
+    out << "FieldAccess(\n";
     indent++;
     print_indent();
     out << "Object:\n";
@@ -168,9 +168,9 @@ public:
     indent--;
     out << ",\n";
     print_indent();
-    out << "Member:\n";
+    out << "Field:\n";
     indent++;
-    node.member->accept(*this);
+    node.field->accept(*this);
     indent--;
     out << "\n";
     indent--;
@@ -726,11 +726,12 @@ public:
     indent--;
     out << ",\n";
     print_indent();
-    out << "Members: [\n";
+    out << "Fields: [\n";
     indent++;
-    for (size_t i = 0; i < node.members.size(); ++i) {
-      std::visit([this](auto&& arg) { arg->accept(*this); }, node.members[i]);
-      if (i < node.members.size() - 1) {
+    size_t size = node.fields.size();
+    for (size_t i = 0; i < size; ++i) {
+      node.fields[i]->accept(*this);
+      if (i < size - 1) {
         out << ",";
       }
       out << "\n";

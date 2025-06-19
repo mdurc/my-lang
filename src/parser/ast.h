@@ -157,15 +157,14 @@ public:
   void accept(Visitor& v) override;
 };
 
-class MemberAccessNode : public ExpressionNode {
+class FieldAccessNode : public ExpressionNode {
 public:
   ExprPtr object;
-  IdentPtr member;
-  // <object>.<member>
+  IdentPtr field;
+  // <object>.<field>
 
-  MemberAccessNode(const Token* tok, size_t sc, ExprPtr obj_expr,
-                   IdentPtr member)
-      : ExpressionNode(tok, sc), object(obj_expr), member(member) {}
+  FieldAccessNode(const Token* tok, size_t sc, ExprPtr obj_expr, IdentPtr field)
+      : ExpressionNode(tok, sc), object(obj_expr), field(field) {}
   void accept(Visitor& v) override;
 };
 
@@ -409,12 +408,12 @@ public:
   // the custom user defined type that is this struct
   std::shared_ptr<Type> type;
 
-  // A struct member can be a field or a method (FunctionDecl)
-  std::vector<std::variant<StructFieldPtr, FuncDeclPtr>> members;
+  // we have removed the feature of member functions
+  std::vector<StructFieldPtr> fields;
 
   StructDeclNode(const Token* tok, size_t sc, std::shared_ptr<Type> type,
-                 decltype(members) m)
-      : AstNode(tok, sc), type(type), members(std::move(m)) {}
+                 std::vector<StructFieldPtr> f)
+      : AstNode(tok, sc), type(type), fields(std::move(f)) {}
   void accept(Visitor& v) override;
 };
 

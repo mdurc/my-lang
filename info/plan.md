@@ -69,7 +69,7 @@
     - [x] Struct Declaration
         - [x] Field Declaration
         - [x] Struct Literal Creation
-        - [x] Struct Member Access
+        - [x] Struct Field Access
     - [x] New Statement (allocation)
         - [x] Direct creation of type and value `new<T>(value)`
         - [x] Array allocation of type `new<T>[size]`
