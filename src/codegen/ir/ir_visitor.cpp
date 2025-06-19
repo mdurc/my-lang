@@ -105,7 +105,7 @@ void IrVisitor::visit(StringLiteralNode& node) {
 
 void IrVisitor::visit(IdentifierNode& node) {
   assert(var_exists(node.name, node.scope_id) &&
-         "Type checker should identifier use of undeclared identifiers");
+         "Type checker should identify use of undeclared identifiers");
   m_last_expr_operand = get_var(node.name, node.scope_id);
 }
 
@@ -272,15 +272,17 @@ IR_Register IrVisitor::compute_struct_field_addr(
   std::shared_ptr<Type> field_type;
   bool found = false;
   for (const auto& member : struct_decl->members) {
-    if (std::holds_alternative<StructFieldPtr>(member)) {
-      const auto& field = std::get<StructFieldPtr>(member);
-      if (field->name->name == field_name) {
-        field_type = field->type;
-        found = true;
-        break;
-      }
-      offset += field->type->get_byte_size();
-    }
+    std::visit(
+        [&](const auto& field) {
+          if (field->name->name == field_name) {
+            field_type = field->type;
+            found = true;
+          } else {
+            offset += field->type->get_byte_size();
+          }
+        },
+        member);
+    if (found) break;
   }
   assert(found && "Struct field not found");
 
@@ -327,13 +329,13 @@ void IrVisitor::visit(MemberAccessNode& node) {
 
   std::shared_ptr<Type> field_type;
   for (const auto& member : struct_decl->members) {
-    if (std::holds_alternative<StructFieldPtr>(member)) {
-      const auto& field = std::get<StructFieldPtr>(member);
-      if (field->name->name == node.member->name) {
-        field_type = field->type;
-        break;
-      }
-    }
+    std::visit(
+        [&](const auto& field) {
+          if (field->name->name == node.member->name) {
+            field_type = field->type;
+          }
+        },
+        member);
   }
   assert(field_type && "Field type not found");
 
@@ -555,6 +557,28 @@ void IrVisitor::visit(ParamNode& node) {
   add_var(param_name, node.scope_id);
 }
 
+void IrVisitor::call_func_name(const std::string& func_name, size_t scope_id,
+                               std::shared_ptr<Type> expr_type) {
+  assert(var_exists(func_name, scope_id));
+  const IROperand& func_target = get_var(func_name, scope_id);
+
+  std::optional<IR_Register> result_reg_opt = std::nullopt;
+
+  // if it is not void, prepare a temp register for return value
+  assert(expr_type && "Type checker should resolve function call");
+  if (!(expr_type->is<Type::Named>() &&
+        expr_type->as<Type::Named>().identifier == "u0")) {
+    IR_Register call_result_reg = m_ir_gen.new_temp_reg();
+    result_reg_opt = call_result_reg;
+    m_last_expr_operand = call_result_reg;
+  } else {
+    // void placeholder
+    m_last_expr_operand = IR_Immediate(0, 8);
+  }
+
+  m_ir_gen.emit_lcall(result_reg_opt, func_target, expr_type->get_byte_size());
+}
+
 void IrVisitor::visit(FunctionCallNode& node) {
   m_ir_gen.emit_begin_lcall_prep();
   for (const ArgPtr& arg_node : node.arguments) {
@@ -572,27 +596,7 @@ void IrVisitor::visit(FunctionCallNode& node) {
     unimpl("FunctionCallNode with complex callee expressions (func ptr)");
     return;
   }
-  std::string func_name = callee_ident->name;
-
-  assert(var_exists(func_name, node.scope_id));
-  const IROperand& func_target = get_var(func_name, node.scope_id);
-
-  std::optional<IR_Register> result_reg_opt = std::nullopt;
-
-  // if it is not void, prepare a temp register for return value
-  assert(node.expr_type && "Type checker should resolve function call");
-  if (!(node.expr_type->is<Type::Named>() &&
-        node.expr_type->as<Type::Named>().identifier == "u0")) {
-    IR_Register call_result_reg = m_ir_gen.new_temp_reg();
-    result_reg_opt = call_result_reg;
-    m_last_expr_operand = call_result_reg;
-  } else {
-    // void placeholder
-    m_last_expr_operand = IR_Immediate(0, 8);
-  }
-
-  m_ir_gen.emit_lcall(result_reg_opt, func_target,
-                      node.expr_type->get_byte_size());
+  call_func_name(callee_ident->name, node.scope_id, node.expr_type);
 }
 
 void IrVisitor::visit(ReturnStmtNode& node) {
@@ -846,9 +850,21 @@ void IrVisitor::visit(ErrorStmtNode& node) {
 }
 
 void IrVisitor::visit(FloatLiteralNode&) { unimpl("FloatLiteralNode"); }
-void IrVisitor::visit(StructFieldNode&) { unimpl("StructFieldNode"); }
 
-void IrVisitor::visit(StructDeclNode&) { /* no implementation needed */ }
+void IrVisitor::visit(StructFieldNode& node) {
+  add_var(node.name->name, node.scope_id);
+}
+
+void IrVisitor::visit(StructDeclNode& node) {
+  for (size_t i = 0; i < node.members.size(); ++i) {
+    std::visit(
+        [this](auto&& arg) {
+          if (arg) arg->accept(*this);
+        },
+        node.members[i]);
+  }
+}
+
 void IrVisitor::visit(
     StructFieldInitializerNode&) { /* no implementation needed */ }
 

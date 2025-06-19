@@ -39,6 +39,8 @@ public:
   void visit_addrof(const ExprPtr& op, const IR_Register& dst);
   void visit(UnaryExprNode& node) override;
 
+  void call_func_name(const std::string& func_name, size_t scope_id,
+                      std::shared_ptr<Type> expr_type);
   void visit(FunctionCallNode& node) override;
   void visit(MemberAccessNode& node) override;
   void visit(ArrayIndexNode& node) override;

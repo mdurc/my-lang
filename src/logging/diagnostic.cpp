@@ -86,8 +86,8 @@ TypeNotFoundError::TypeNotFoundError(const Span& span, const std::string& type)
 
 void TypeNotFoundError::generate_message() {
   std::stringstream ss;
-  ss << format_type() << " " << m_span << ": Type Not Found: identifier '"
-     << m_type << "'";
+  ss << format_type() << " " << m_span << ": Type Not Found: '" << m_type
+     << "'";
   m_formatted_msg = ss.str();
 }
 

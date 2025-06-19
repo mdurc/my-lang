@@ -750,7 +750,6 @@ void TypeChecker::visit(UnaryExprNode& node) {
   node.expr_type = result_type;
 }
 
-// Function Call
 void TypeChecker::visit(FunctionCallNode& node) {
   std::shared_ptr<Type> callee_type = get_expr_type(node.callee);
   if (!callee_type) {
@@ -769,7 +768,7 @@ void TypeChecker::visit(FunctionCallNode& node) {
 
   if (node.arguments.size() != func_type_data.params.size()) {
     m_logger.report(
-        Error(node.token->get_span(),
+        Error(node.callee->token->get_span(),
               "Function '" + node.callee->token->get_lexeme() +
                   "' called with incorrect number of arguments. Expected " +
                   std::to_string(func_type_data.params.size()) + ", got " +
@@ -904,6 +903,7 @@ void TypeChecker::visit(MemberAccessNode& node) {
       node.member->token->get_span(),
       "Struct '" + name + "' has no member named '" + member_name + "'."));
 }
+
 void TypeChecker::visit(ArrayIndexNode& node) {
   std::shared_ptr<Type> object_type = get_expr_type(node.object);
   std::shared_ptr<Type> index_type = get_expr_type(node.index);
@@ -1019,9 +1019,8 @@ void TypeChecker::visit(NewExprNode& node) {
 
   // Find the pointer type in the symbol table (though it may not exist
   // because the parser doesn't declare types that are used/created by new)
-  Type ptr_t =
-      Type(Type::Pointer(node.is_memory_mutable, node.type_to_allocate),
-           node.scope_id);
+  Type ptr_t(Type::Pointer(node.is_memory_mutable, node.type_to_allocate),
+             node.scope_id);
   std::shared_ptr<Type> ptr_type = m_symtab->lookup_type(ptr_t);
   if (!ptr_type) {
     ptr_type = m_symtab->declare_type(ptr_t);

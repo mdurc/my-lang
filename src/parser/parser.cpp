@@ -131,14 +131,14 @@ AstPtr Parser::parse_struct_decl() {
 
   // initially 0 byte type as a placeholder for when the size is resolved
   // in the type checker.
-  Type struct_type =
-      Type(Type::Named(name_tok->get_lexeme()), m_symtab->current_scope(), 0);
+  Type struct_type(Type::Named(name_tok->get_lexeme()),
+                   m_symtab->current_scope(), 0);
 
   // declare it and see if it already exists (in which an error should occur)
   std::shared_ptr<Type> sym_struct_type = m_symtab->declare_type(struct_type);
   if (!sym_struct_type) {
     m_logger.report(DuplicateDeclarationError(name_tok->get_span(),
-                                              name_tok->get_lexeme()));
+                                              struct_type.to_string()));
     throw std::runtime_error("Parser error");
   }
 
@@ -244,9 +244,12 @@ FuncDeclPtr Parser::parse_function_decl() {
     ft_params.push_back(ast_param->type);
   }
 
-  // make the function type
-  Type ft = Type(Type::Function(std::move(ft_params), return_t.second),
-                 m_symtab->current_scope());
+  // make the function type. Lets make this declared at the global scope.
+  // This makes it so that even if we are declaring a function type within a
+  // struct, it can still exist as a type outside of the struct (not possible
+  // anymore). Note that this is the only case where a function type wouldn't be
+  // at the global scope.
+  Type ft(Type::Function(std::move(ft_params), return_t.second), 0);
 
   // see if it already exists in the table, if so we will use that symbol
   // Function types are unique in that they can be "re-defined" without an
@@ -259,9 +262,9 @@ FuncDeclPtr Parser::parse_function_decl() {
     func_type = m_symtab->declare_type(ft);
   }
 
-  // declare it as a var with the associated type
+  // declare it as a var with the associated type (also at global scope)
   Variable func_var(name_tok->get_lexeme(), BorrowState::ImmutableOwned,
-                    func_type, m_symtab->current_scope());
+                    func_type, 0);
   if (!m_symtab->declare_variable(std::move(func_var))) {
     m_logger.report(DuplicateDeclarationError(name_tok->get_span(),
                                               name_tok->get_lexeme()));
@@ -1057,8 +1060,8 @@ std::shared_ptr<Type> Parser::parse_type() {
     // we do not check the symbol table for this because ptrs of any valid
     // pointee types are allowed. We will add it to the symbol table though.
 
-    Type search_type =
-        Type(Type::Pointer(is_mutable, pointee), m_symtab->current_scope());
+    Type search_type(Type::Pointer(is_mutable, pointee),
+                     m_symtab->current_scope());
 
     std::shared_ptr<Type> ptr_type = m_symtab->lookup_type(search_type);
     if (!ptr_type) {
@@ -1084,12 +1087,12 @@ std::shared_ptr<Type> Parser::parse_type() {
 
     std::shared_ptr<Type> ret_type = parse_type();
 
-    std::shared_ptr<Type> t = m_symtab->lookup_type(
-        Type(Type::Function(std::move(param_types), ret_type),
-             m_symtab->current_scope()));
+    // functions are declared at scope 0
+    Type func_type(Type::Function(std::move(param_types), ret_type), 0);
+    std::shared_ptr<Type> t = m_symtab->lookup_type(func_type);
     if (t == nullptr) {
-      m_logger.report(TypeNotFoundError(type_start_tok->get_span(),
-                                        type_start_tok->get_lexeme()));
+      m_logger.report(
+          TypeNotFoundError(type_start_tok->get_span(), func_type.to_string()));
       throw std::runtime_error("Parser error");
     }
     return t;
