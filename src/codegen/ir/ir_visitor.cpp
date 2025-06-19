@@ -491,7 +491,7 @@ void IrVisitor::visit(BlockNode& node) {
 }
 
 void IrVisitor::visit(FunctionDeclNode& node) {
-  std::string original_func_name = node.name->name;
+  const std::string& original_func_name = node.name->name;
   std::string func_ir_name = original_func_name;
 
   if (original_func_name == "main") {
@@ -545,8 +545,7 @@ void IrVisitor::visit(ArgumentNode& node) {
 }
 
 void IrVisitor::visit(ParamNode& node) {
-  const std::string& param_name = node.name->name;
-  add_var(param_name, node.scope_id);
+  add_var(node.name->name, node.scope_id);
 }
 
 void IrVisitor::call_func_name(const std::string& func_name, size_t scope_id,
