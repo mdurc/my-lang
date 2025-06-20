@@ -6,7 +6,7 @@
 #include <sstream>
 #include <stdexcept>
 
-const std::map<std::string, TokenType> Lexer::s_keyword_map = {
+const std::unordered_map<std::string, TokenType> Lexer::s_keyword_map = {
     {"func", TokenType::FUNC},     {"if", TokenType::IF},
     {"else", TokenType::ELSE},     {"for", TokenType::FOR},
     {"while", TokenType::WHILE},   {"read", TokenType::READ},
@@ -29,10 +29,11 @@ const std::map<std::string, TokenType> Lexer::s_keyword_map = {
     {"i64", TokenType::I64},       {"f64", TokenType::F64},
     {"bool", TokenType::BOOL},     {"string", TokenType::STRING}};
 
-void Lexer::setup() {
+void Lexer::setup(const std::string& source) {
   m_logger.clear();
+  m_macros.clear();
 
-  m_source.clear();
+  m_source = source;
   m_lex_start = 0;
   m_lex_pos = 0;
 
@@ -42,9 +43,7 @@ void Lexer::setup() {
   m_start_col = 1;
 }
 
-std::vector<Token> Lexer::tokenize(const std::string& filename) {
-  setup();
-
+std::vector<Token> Lexer::tokenize_file(const std::string& filename) {
   std::ifstream file(filename);
   if (!file.is_open()) {
     throw std::runtime_error("Could not open file: " + filename);
@@ -52,8 +51,11 @@ std::vector<Token> Lexer::tokenize(const std::string& filename) {
 
   std::stringstream buffer;
   buffer << file.rdbuf();
-  m_source = buffer.str();
+  setup(buffer.str());
+  return tokenize();
+}
 
+std::vector<Token> Lexer::tokenize() {
   while (!is_at_end()) {
     skip_whitespace_and_comments();
     if (is_at_end()) break;
@@ -113,6 +115,19 @@ void Lexer::add_token(TokenType type, Token::Lit literal_value) {
             Span(m_row, m_start_col, m_col), std::move(literal_value)));
 }
 
+void Lexer::skip_whitespace() {
+  while (!is_at_end() && isspace(peek())) {
+    advance();
+  }
+}
+
+// Skip everything until a newline (or end of file)
+void Lexer::skip_to_newline() {
+  while (!is_at_end() && peek() != '\n') {
+    advance();
+  }
+}
+
 void Lexer::skip_whitespace_and_comments() {
   while (true) {
     char c = peek();
@@ -120,9 +135,7 @@ void Lexer::skip_whitespace_and_comments() {
       advance();
     } else if (c == '/' && peek_next() == '/') {
       // single line comments
-      while (peek() != '\n' && !is_at_end()) {
-        advance();
-      }
+      skip_to_newline();
     } else if (c == '/' && peek_next() == '*') {
       // block comments
       advance(); // skip '/;
@@ -213,15 +226,80 @@ void Lexer::lex_number() {
   }
 }
 
+void Lexer::lex_preprocessor_directive() {
+  advance(); // consume '#'
+  std::string directive = read_identifier();
+
+  if (directive == "define") {
+    skip_whitespace();
+
+    std::string macro_name = read_identifier();
+    if (macro_name.empty()) {
+      m_logger.report(FatalError("Expected macro name after #define"));
+      skip_to_newline();
+      return;
+    }
+
+    skip_whitespace();
+
+    std::string value;
+    while (!is_at_end() && peek() != '\n') {
+      value += advance();
+    }
+
+    if (!is_at_end() && peek() != '\n') {
+      m_logger.report(FatalError("Macro value should end with a newline"));
+      skip_to_newline();
+      return;
+    }
+
+    m_macros[macro_name] = value;
+
+  } else {
+    m_logger.report(FatalError("Unknown preprocessor directive: " + directive));
+    skip_to_newline();
+  }
+}
+
+void Lexer::lex_macro(size_t macro_name_len, const std::string& value) {
+  m_source.erase(m_lex_start, macro_name_len); // erase the macro name
+  m_source.insert(m_lex_start, value);         // insert the macro value
+
+  // reset lexer state to start of macro value
+  m_lex_pos = m_lex_start;
+  m_col = m_start_col;
+
+  // lex macro value tokens
+  while (m_lex_pos < m_lex_start + macro_name_len) {
+    skip_whitespace_and_comments();
+    if (m_lex_pos >= m_lex_start + macro_name_len) break;
+    m_start_col = m_col;
+    m_lex_start = m_lex_pos;
+    scan_token();
+  }
+}
+
+std::string Lexer::read_identifier() {
+  std::string identifier;
+  while (!is_at_end() && (isalnum(peek()) || peek() == '_')) {
+    identifier += advance();
+  }
+  return identifier;
+}
+
 void Lexer::lex_identifier_or_keyword() {
   // first char is already checked to be isalpha or '_', but not consumed
-  std::string text;
-  text += advance(); // consume the first character
-  while (isalnum(peek()) || peek() == '_') {
-    text += advance();
+  std::string text = read_identifier();
+
+  // check if it is a macro
+  auto macro_itr = m_macros.find(text);
+  if (macro_itr != m_macros.end()) {
+    lex_macro(text.size(), macro_itr->second);
+    return;
   }
 
-  std::map<std::string, TokenType>::const_iterator i = s_keyword_map.find(text);
+  // regular keyword or identifier
+  auto i = s_keyword_map.find(text);
   if (i != s_keyword_map.end()) {
     add_token(i->second);
   } else {
@@ -231,6 +309,11 @@ void Lexer::lex_identifier_or_keyword() {
 
 void Lexer::scan_token() {
   char c = peek();
+
+  if (c == '#') {
+    lex_preprocessor_directive();
+    return;
+  }
 
   if (isalpha(c) || c == '_') {
     lex_identifier_or_keyword();

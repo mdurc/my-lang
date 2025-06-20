@@ -52,7 +52,7 @@ static void assemble_and_link(const std::string& asm_code,
 void compile_tokens(const std::string& filename, std::ostream& out) {
   try {
     Lexer lexer;
-    const std::vector<Token>& tokens = lexer.tokenize(filename);
+    std::vector<Token> tokens = lexer.tokenize_file(filename);
 
     print_tokens(tokens, out);
   } catch (const std::exception& e) {
@@ -66,7 +66,7 @@ void compile_ast(const std::string& filename, std::ostream& out) {
     SymTab symtab;
     Parser parser;
 
-    const std::vector<Token>& tokens = lexer.tokenize(filename);
+    std::vector<Token> tokens = lexer.tokenize_file(filename);
     std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
 
     print_ast(ast, out);
@@ -81,7 +81,7 @@ void compile_symtab(const std::string& filename, std::ostream& out) {
     SymTab symtab;
     Parser parser;
 
-    const std::vector<Token>& tokens = lexer.tokenize(filename);
+    std::vector<Token> tokens = lexer.tokenize_file(filename);
     parser.parse_program(&symtab, tokens);
 
     symtab.print(out);
@@ -98,7 +98,7 @@ void compile_ir(const std::string& filename, std::ostream& out) {
     TypeChecker type_checker;
     IrVisitor ir_visitor(&symtab);
 
-    const std::vector<Token>& tokens = lexer.tokenize(filename);
+    std::vector<Token> tokens = lexer.tokenize_file(filename);
     std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
     type_checker.check_program(&symtab, ast);
     ir_visitor.visit_all(ast);
@@ -119,7 +119,7 @@ void compile_asm(const std::string& filename, std::ostream& out) {
     IrVisitor ir_visitor(&symtab);
     X86_64CodeGenerator gen;
 
-    const std::vector<Token>& tokens = lexer.tokenize(filename);
+    std::vector<Token> tokens = lexer.tokenize_file(filename);
     std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
     type_checker.check_program(&symtab, ast);
     ir_visitor.visit_all(ast);
@@ -142,7 +142,7 @@ void compile_exe(const std::string& filename, const std::string& out_exe) {
     IrVisitor ir_visitor(&symtab);
     X86_64CodeGenerator gen;
 
-    const std::vector<Token>& tokens = lexer.tokenize(filename);
+    std::vector<Token> tokens = lexer.tokenize_file(filename);
     std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
     type_checker.check_program(&symtab, ast);
     ir_visitor.visit_all(ast);
