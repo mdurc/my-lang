@@ -123,6 +123,40 @@ std::shared_ptr<Variable> SymTab::lookup_variable(
   return nullptr;
 }
 
+StructDeclPtr SymTab::lookup_struct(std::shared_ptr<Type> type) const {
+  size_t scope_id = type->get_scope_id();
+  const Scope* scope = &m_scopes[scope_id];
+  while (true) {
+    StructDeclPtr struct_node = scope->lookup_struct(type);
+    if (struct_node != nullptr) {
+      return struct_node;
+    }
+    if (scope_id == 0) {
+      break;
+    }
+    scope_id = scope->get_parent_scope();
+    scope = &m_scopes[scope_id];
+  }
+  return nullptr;
+}
+
+FuncDeclPtr SymTab::lookup_func(std::shared_ptr<Type> type) const {
+  size_t scope_id = type->get_scope_id();
+  const Scope* scope = &m_scopes[scope_id];
+  while (true) {
+    FuncDeclPtr func_node = scope->lookup_func(type);
+    if (func_node != nullptr) {
+      return func_node;
+    }
+    if (scope_id == 0) {
+      break;
+    }
+    scope_id = scope->get_parent_scope();
+    scope = &m_scopes[scope_id];
+  }
+  return nullptr;
+}
+
 std::shared_ptr<Type> SymTab::get_primitive_type(std::string primitive) const {
   return m_scopes[0].lookup_type(
       Type(Type::Named(std::move(primitive)), 0, -1));
@@ -142,6 +176,24 @@ std::shared_ptr<Variable> SymTab::declare_variable(Variable v) {
     return nullptr;
   }
   return m_scopes[scope].add_variable(std::move(v));
+}
+
+std::shared_ptr<Type> SymTab::declare_struct(const Type& tk,
+                                             StructDeclPtr struct_node) {
+  size_t scope = tk.get_scope_id();
+  if (m_scopes[scope].lookup_type(tk)) {
+    return nullptr;
+  }
+  return m_scopes[scope].add_struct(tk, struct_node);
+}
+
+std::shared_ptr<Type> SymTab::declare_func(const Type& tk,
+                                           FuncDeclPtr func_node) {
+  size_t scope = tk.get_scope_id();
+  if (m_scopes[scope].lookup_type(tk)) {
+    return nullptr;
+  }
+  return m_scopes[scope].add_func(tk, func_node);
 }
 
 void SymTab::print(std::ostream& out) const {

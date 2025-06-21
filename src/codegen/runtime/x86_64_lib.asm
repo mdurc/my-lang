@@ -1,7 +1,7 @@
 	global exit, string_length, print_string, print_char, print_newline
 	global print_uint, print_int, read_char, read_word, parse_uint
 	global parse_int, string_equals, string_copy
-  global malloc, free, clrscr
+  global memcpy, malloc, free, clrscr
 
 	section .text
 
@@ -313,6 +313,15 @@ string_copy:
 	ret
 .err:
 	xor rax, rax
+	ret
+
+; rdi <- dst
+; rsi <- src
+; rcx <- size
+; copies 'size' bytes from src to dst. requires dst to be allocated prior
+memcpy:
+	cld           ; clear direction flag
+	rep movsb     ; repeat movsb from [rsi] to [rdi], rcx times, incrementing both each time
 	ret
 
 ; rdi <- size in bytes

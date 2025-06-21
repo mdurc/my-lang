@@ -217,7 +217,7 @@ public:
     print_indent();
     out << "Type:\n";
     indent++;
-    print_type(*node.struct_type);
+    print_type(*node.struct_decl->type);
     indent--;
     out << ",\n";
     print_indent();

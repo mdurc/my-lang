@@ -121,6 +121,7 @@ private:
   void handle_alloc(const IRInstruction& instr);
   void handle_alloc_array(const IRInstruction& instr);
   void handle_free(const IRInstruction& instr);
+  void handle_mem_copy(const IRInstruction& instr);
 };
 
 #endif // CODEGEN_X86_64_ASM_H

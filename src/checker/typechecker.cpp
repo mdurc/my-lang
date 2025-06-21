@@ -512,11 +512,6 @@ void TypeChecker::visit(FunctionDeclNode& node) {
       Type::Function(std::move(param_types), node.return_type), node.scope_id));
   assert(t != nullptr && "Parser should declare the func type");
 
-  // The function type is hashed as its string, which is its method family.
-  // This way, when calling this function, we can find the correct declaration
-  // by simply resolving the func-call type and then hashing it.
-  m_func_definitions[{t->get_scope_id(), t->to_string()}] = &node;
-
   // restore context:
   m_current_function_return_type = prev_return_type;
 }
@@ -530,14 +525,6 @@ void TypeChecker::visit(ParamNode& node) {
 
 // Struct Declaration
 void TypeChecker::visit(StructDeclNode& node) {
-  // struct declaration nodes are defining a type
-  assert(node.type != nullptr &&
-         "Parser should ensure that struct declaration nodes are typed");
-
-  // store it in the map for later field access checking
-  const std::string& struct_name = node.type->as<Type::Named>().identifier;
-  m_struct_definitions[struct_name] = &node;
-
   // resolve fields
   // set the size of the struct based on its fields.
   uint64_t current_struct_size = 0;
@@ -546,8 +533,7 @@ void TypeChecker::visit(StructDeclNode& node) {
     assert(field->type);
     current_struct_size += field->type->get_byte_size();
   }
-  node.type->set_byte_size(Type::PTR_SIZE);
-  node.type->set_struct_size(current_struct_size);
+  node.struct_size = current_struct_size;
 }
 
 // Struct Field Node
@@ -772,6 +758,9 @@ void TypeChecker::visit(FunctionCallNode& node) {
     return;
   }
 
+  FuncDeclPtr func_decl = m_symtab->lookup_func(callee_type);
+  assert(func_decl != nullptr);
+
   for (size_t i = 0; i < node.arguments.size(); ++i) {
     // ensure argument expression itself is typed
     node.arguments[i]->accept(*this);
@@ -798,10 +787,7 @@ void TypeChecker::visit(FunctionCallNode& node) {
 
     // param modifiers are bound to the variable/Node, thus not a part
     // of the function type
-    ParamPtr param_ast_node =
-        m_func_definitions
-            .at({callee_type->get_scope_id(), callee_type->to_string()})
-            ->params[i];
+    ParamPtr param_ast_node = func_decl->params[i];
 
     if (param_ast_node->modifier == BorrowState::MutablyBorrowed &&
         !get_lvalue_type_if_mutable(node.arguments[i]->expression)) {
@@ -862,7 +848,7 @@ void TypeChecker::visit(FieldAccessNode& node) {
   }
 
   const std::string& name = base_object_type->as<Type::Named>().identifier;
-  const StructDeclNode* struct_decl = m_struct_definitions.at(name);
+  StructDeclPtr struct_decl = m_symtab->lookup_struct(base_object_type);
 
   const std::string& field_name = node.field->name;
 
@@ -904,22 +890,18 @@ void TypeChecker::visit(ArrayIndexNode& node) {
 }
 
 void TypeChecker::visit(StructLiteralNode& node) {
-  // The struct type should already be resolved by the parser
-  assert(node.struct_type != nullptr &&
-         "Parser should resolve the type of the struct literal by looking up "
-         "if the identifier exists as a named type in the symbol table");
+  std::shared_ptr<Type> struct_type = node.struct_decl->type;
+  node.expr_type = struct_type;
 
-  node.expr_type = node.struct_type; // just relay the information
-
-  if (!node.struct_type->is<Type::Named>()) {
+  if (!struct_type->is<Type::Named>()) {
     m_logger.report(
         Error(node.token->get_span(),
               "Struct literal type is not a named type. Internal error."));
     return;
   }
 
-  const std::string& name = node.struct_type->as<Type::Named>().identifier;
-  const StructDeclNode* struct_decl = m_struct_definitions.at(name);
+  const std::string& name = struct_type->as<Type::Named>().identifier;
+  StructDeclPtr struct_decl = m_symtab->lookup_struct(struct_type);
 
   // Type check field initializers
   std::set<std::string> declared_field_names;

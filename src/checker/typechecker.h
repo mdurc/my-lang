@@ -71,13 +71,6 @@ private:
   // To check case stmt compatibility
   std::shared_ptr<Type> m_current_switch_expr_type;
 
-  // To resolve struct definitions for field access and literal checking
-  std::unordered_map<std::string, const StructDeclNode*> m_struct_definitions;
-
-  // To resolve correct ownership when passing args to params
-  std::map<std::pair<size_t, std::string>, const FunctionDeclNode*>
-      m_func_definitions;
-
   // calls expr->accept(*this) which will return a resolved type
   std::shared_ptr<Type> get_expr_type(const ExprPtr& expr);
 

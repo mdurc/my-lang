@@ -23,6 +23,7 @@ using CasePtr = ShrdPtr<class CaseNode>;
 using StructFieldPtr = ShrdPtr<class StructFieldNode>;
 using ParamPtr = ShrdPtr<class ParamNode>;
 using FuncDeclPtr = ShrdPtr<class FunctionDeclNode>;
+using StructDeclPtr = ShrdPtr<class StructDeclNode>;
 
 class Visitor;
 
@@ -201,16 +202,13 @@ public:
 
 class StructLiteralNode : public ExpressionNode {
 public:
-  // the parser will resolve this when looking if the current token exists
-  // as a Type in the symbol table, if so, it will be a Type::Named: struct_type
-  std::shared_ptr<Type> struct_type;
+  StructDeclPtr struct_decl;
   std::vector<StructFieldInitPtr> initializers;
 
-  StructLiteralNode(const Token* tok, size_t sc,
-                    std::shared_ptr<Type> struct_type,
+  StructLiteralNode(const Token* tok, size_t sc, StructDeclPtr struct_decl,
                     std::vector<StructFieldInitPtr> inits)
       : ExpressionNode(tok, sc),
-        struct_type(struct_type),
+        struct_decl(struct_decl),
         initializers(std::move(inits)) {}
   void accept(Visitor& v) override;
 };
@@ -405,15 +403,17 @@ public:
 
 class StructDeclNode : public AstNode {
 public:
-  // the custom user defined type that is this struct
+  // this struct's type (to be set after type creation in parser)
   std::shared_ptr<Type> type;
 
   // we have removed the feature of member functions
   std::vector<StructFieldPtr> fields;
 
-  StructDeclNode(const Token* tok, size_t sc, std::shared_ptr<Type> type,
-                 std::vector<StructFieldPtr> f)
-      : AstNode(tok, sc), type(type), fields(std::move(f)) {}
+  // the total struct size (sum of sizes of fields)
+  uint64_t struct_size; // set by the type checker
+
+  StructDeclNode(const Token* tok, size_t sc, std::vector<StructFieldPtr> f)
+      : AstNode(tok, sc), type(nullptr), fields(std::move(f)), struct_size(0) {}
   void accept(Visitor& v) override;
 };
 
@@ -436,19 +436,16 @@ public:
   std::optional<std::string> return_type_name; // optional for u0 return type
   std::shared_ptr<Type> return_type;
   BlockPtr body;
-  std::shared_ptr<Type> type;
 
   FunctionDeclNode(const Token* tok, size_t sc, IdentPtr name,
                    std::vector<ParamPtr> ps, std::optional<std::string> rt_n,
-                   std::shared_ptr<Type> rt, BlockPtr b,
-                   std::shared_ptr<Type> t)
+                   std::shared_ptr<Type> rt, BlockPtr b)
       : AstNode(tok, sc),
         name(name),
         params(std::move(ps)),
         return_type_name(std::move(rt_n)),
         return_type(rt),
-        body(b),
-        type(t) {}
+        body(b) {}
   void accept(Visitor& v) override;
 };
 

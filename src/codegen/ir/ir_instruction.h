@@ -59,6 +59,7 @@ enum class IROpCode {
   ALLOC_ARRAY, // Result: dest_ptr_reg, Operands: [size_el, num_el].
                // instr.size = num_el's type size
   FREE,        // Operands: ptr_op
+  MEM_COPY,    // Result: dst, Operands: [src]. size is total bytes to be copied
 };
 
 // == Operand Types ==

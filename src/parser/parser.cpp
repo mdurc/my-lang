@@ -129,18 +129,8 @@ AstPtr Parser::parse_struct_decl() {
   const Token* name_tok = current();
   _consume(TokenType::IDENTIFIER);
 
-  // initially 0 byte type as a placeholder for when the size is resolved
-  // in the type checker.
   Type struct_type(Type::Named(name_tok->get_lexeme()),
-                   m_symtab->current_scope(), 0);
-
-  // declare it and see if it already exists (in which an error should occur)
-  std::shared_ptr<Type> sym_struct_type = m_symtab->declare_type(struct_type);
-  if (!sym_struct_type) {
-    m_logger.report(DuplicateDeclarationError(name_tok->get_span(),
-                                              struct_type.to_string()));
-    throw std::runtime_error("Parser error");
-  }
+                   m_symtab->current_scope(), Type::PTR_SIZE);
 
   m_symtab->enter_new_scope(); // new scope for the contents
 
@@ -157,10 +147,20 @@ AstPtr Parser::parse_struct_decl() {
 
   m_symtab->exit_scope();
 
-  std::shared_ptr<StructDeclNode> node =
-      _AST(StructDeclNode, struct_tok, m_symtab->current_scope(),
-           sym_struct_type, std::move(fields));
-  sym_struct_type->set_struct_decl(node);
+  StructDeclPtr node = _AST(StructDeclNode, struct_tok,
+                            m_symtab->current_scope(), std::move(fields));
+
+  // declare it and see if it already exists (in which an error should occur)
+  std::shared_ptr<Type> sym_struct_type =
+      m_symtab->declare_struct(struct_type, node);
+  if (!sym_struct_type) {
+    m_logger.report(DuplicateDeclarationError(name_tok->get_span(),
+                                              struct_type.to_string()));
+    throw std::runtime_error("Parser error");
+  }
+
+  node->type = sym_struct_type;
+
   return node;
 }
 
@@ -235,22 +235,19 @@ FuncDeclPtr Parser::parse_function_decl() {
     ft_params.push_back(ast_param->type);
   }
 
-  // make the function type. Lets make this declared at the global scope.
-  // This makes it so that even if we are declaring a function type within a
-  // struct, it can still exist as a type outside of the struct (not possible
-  // anymore). Note that this is the only case where a function type wouldn't be
-  // at the global scope.
+  // make it at the global scope, as we don't allow member functions
   Type ft(Type::Function(std::move(ft_params), return_t.second), 0);
 
-  // see if it already exists in the table, if so we will use that symbol
-  // Function types are unique in that they can be "re-defined" without an
-  // error, as the identifier associated to the func is what matters (and the
-  // method family i.e. the types).
-  // This allows for overloading functions.
+  // do not redeclare function families
+  FuncDeclPtr func_node =
+      _AST(FunctionDeclNode, func_tok, m_symtab->current_scope(), name_ident,
+           std::move(params_vec), std::move(return_t.first), return_t.second,
+           body_block);
+
   std::shared_ptr<Type> func_type = m_symtab->lookup_type(ft);
   if (!func_type) {
     // it doesn't exist, so we can add it as a new func-type
-    func_type = m_symtab->declare_type(ft);
+    func_type = m_symtab->declare_func(ft, func_node);
   }
 
   // declare it as a var with the associated type (also at global scope)
@@ -262,9 +259,7 @@ FuncDeclPtr Parser::parse_function_decl() {
     throw std::runtime_error("Parser error");
   }
 
-  return _AST(FunctionDeclNode, func_tok, m_symtab->current_scope(), name_ident,
-              std::move(params_vec), std::move(return_t.first), return_t.second,
-              body_block, func_type);
+  return func_node;
 }
 
 BorrowState Parser::parse_function_param_prefix() {
@@ -1110,7 +1105,7 @@ ExprPtr Parser::parse_primary() {
     std::shared_ptr<Type> struct_type = m_symtab->lookup_type(
         Type(Type::Named(tok->get_lexeme()), m_symtab->current_scope(), -1));
     if (struct_type) {
-      return parse_struct_literal(struct_type);
+      return parse_struct_literal(m_symtab->lookup_struct(struct_type));
     }
 
     // otherwise it is an identifier
@@ -1164,7 +1159,7 @@ ExprPtr Parser::parse_primitive_literal() {
 
 // <StructLiteral> ::= Identifier '(' ( Identifier '=' <Expr> ( ',' Identifier
 // '=' <Expr> )* )? ')'
-ExprPtr Parser::parse_struct_literal(std::shared_ptr<Type> struct_type) {
+ExprPtr Parser::parse_struct_literal(StructDeclPtr struct_decl) {
   const Token* type_name_tok = current(); // this is the Type that is passed
   _consume(TokenType::IDENTIFIER);
 
@@ -1193,7 +1188,7 @@ ExprPtr Parser::parse_struct_literal(std::shared_ptr<Type> struct_type) {
   _consume(TokenType::RPAREN);
 
   return _AST(StructLiteralNode, type_name_tok, m_symtab->current_scope(),
-              struct_type, std::move(initializers_vec));
+              struct_decl, std::move(initializers_vec));
 }
 
 // <NewExpr> ::= 'new' '<' <TypePrefix>? <Type> '>' ( '[' <Expr> ']' | '('
@@ -1237,7 +1232,7 @@ ExprPtr Parser::parse_new_expr() {
           Type::Named(current()->get_lexeme()), m_symtab->current_scope(), -1));
       if (struct_type) {
         // This must be the start of a struct literal
-        specifier = parse_struct_literal(struct_type);
+        specifier = parse_struct_literal(m_symtab->lookup_struct(struct_type));
       } else {
         // It is a standard constructor type (primitives, literals, and
         // expressions that resolve to those)

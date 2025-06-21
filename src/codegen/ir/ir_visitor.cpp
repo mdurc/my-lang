@@ -263,8 +263,7 @@ IR_Register IrVisitor::compute_struct_field_addr(
 
   assert(struct_type->is<Type::Named>() && "Field access on non-struct");
 
-  std::shared_ptr<StructDeclNode> struct_decl =
-      struct_type->as<Type::Named>().struct_decl;
+  StructDeclPtr struct_decl = m_symtab->lookup_struct(struct_type);
   assert(struct_decl && "Struct definition not found");
 
   // find the field offset and type
@@ -319,8 +318,8 @@ void IrVisitor::visit(FieldAccessNode& node) {
       obj_type->is<Type::Pointer>() ? obj_type->as<Type::Pointer>().pointee
                                     : obj_type;
 
-  std::shared_ptr<StructDeclNode> struct_decl =
-      struct_type->as<Type::Named>().struct_decl;
+  StructDeclPtr struct_decl = m_symtab->lookup_struct(struct_type);
+  assert(struct_type != nullptr);
 
   std::shared_ptr<Type> field_type;
   for (const StructFieldPtr& field : struct_decl->fields) {
@@ -339,7 +338,10 @@ void IrVisitor::visit(FieldAccessNode& node) {
 
 void IrVisitor::visit(AssignmentNode& node) {
   node.rvalue->accept(*this);
-  IROperand rval_op = m_last_expr_operand;
+  // assignment is defaultly a copy, thus rval_op isn't just m_last_expr_operand
+  IROperand rval_op =
+      get_copy_of_operand(m_last_expr_operand, node.rvalue->expr_type);
+
   assert(node.lvalue->expr_type && "Types should be resolved by Typechecker");
   uint64_t size = node.lvalue->expr_type->get_byte_size();
 
@@ -571,22 +573,39 @@ void IrVisitor::call_func_name(const std::string& func_name, size_t scope_id,
 }
 
 void IrVisitor::visit(FunctionCallNode& node) {
-  m_ir_gen.emit_begin_lcall_prep();
-  for (const ArgPtr& arg_node : node.arguments) {
-    arg_node->accept(*this);
-
-    assert(arg_node->expression->expr_type &&
-           "Types should be resolved by Typechecker");
-    m_ir_gen.emit_push_arg(m_last_expr_operand,
-                           arg_node->expression->expr_type->get_byte_size());
-  }
-
   IdentPtr callee_ident =
       std::dynamic_pointer_cast<IdentifierNode>(node.callee);
   if (!callee_ident) {
     unimpl("FunctionCallNode with complex callee expressions (func ptr)");
     return;
   }
+
+  assert(node.callee->expr_type && "Callee must have a type");
+  FuncDeclPtr func_decl = m_symtab->lookup_func(node.callee->expr_type);
+
+  m_ir_gen.emit_begin_lcall_prep();
+  for (size_t i = 0; i < node.arguments.size(); ++i) {
+    ArgPtr arg_node = node.arguments[i];
+    arg_node->accept(*this);
+    IROperand arg_op = m_last_expr_operand;
+
+    assert(arg_node->expression->expr_type &&
+           "Types should be resolved by Typechecker");
+    auto arg_type = arg_node->expression->expr_type;
+
+    ParamPtr param_node = func_decl->params[i];
+    IROperand final_arg_op = arg_op;
+
+    if (param_node->modifier == BorrowState::ImmutableOwned ||
+        param_node->modifier == BorrowState::MutablyOwned) { // take
+      if (!arg_node->is_give) {
+        final_arg_op = get_copy_of_operand(arg_op, arg_type);
+      }
+    }
+
+    m_ir_gen.emit_push_arg(final_arg_op, arg_type->get_byte_size());
+  }
+
   call_func_name(callee_ident->name, node.scope_id, node.expr_type);
 }
 
@@ -857,18 +876,13 @@ void IrVisitor::visit(
 
 void IrVisitor::visit(StructLiteralNode& node) {
   // allocate memory for the struct
-  uint64_t struct_size = node.struct_type->as<Type::Named>().struct_size;
+  uint64_t struct_size = node.struct_decl->struct_size;
   IR_Register struct_addr = m_ir_gen.new_temp_reg();
   m_ir_gen.emit_alloc(struct_addr, struct_size, std::nullopt, 0);
 
   // for each field initializer, store the value at the correct offset
-  assert(node.struct_type->is<Type::Named>() && "Field access on non-struct");
-  std::shared_ptr<StructDeclNode> struct_decl =
-      node.struct_type->as<Type::Named>().struct_decl;
-  assert(struct_decl && "Struct definition not found");
-
   size_t offset = 0;
-  for (const StructFieldPtr& field : struct_decl->fields) {
+  for (const StructFieldPtr& field : node.struct_decl->fields) {
     // find the initializer for this field
     ExprPtr value = nullptr;
     for (const auto& init : node.initializers) {
@@ -889,4 +903,28 @@ void IrVisitor::visit(StructLiteralNode& node) {
   }
   // the result of the struct literal is the address
   m_last_expr_operand = struct_addr;
+}
+
+IROperand IrVisitor::get_copy_of_operand(const IROperand& src,
+                                         std::shared_ptr<Type> type) {
+  if (type->is<Type::Named>()) {
+    const Type::Named& named_type = type->as<Type::Named>();
+    if (named_type.identifier == "string") {
+      IR_Register result_reg = m_ir_gen.new_temp_reg();
+      m_ir_gen.emit_begin_lcall_prep();
+      m_ir_gen.emit_push_arg(src, Type::PTR_SIZE);
+      m_ir_gen.emit_lcall(result_reg, IR_Label("string_copy"), Type::PTR_SIZE);
+      return result_reg;
+    }
+    StructDeclPtr struct_decl = m_symtab->lookup_struct(type);
+    if (struct_decl != nullptr) { // It's a struct
+      uint64_t struct_size = struct_decl->struct_size;
+      IR_Register new_addr_reg = m_ir_gen.new_temp_reg();
+      m_ir_gen.emit_alloc(new_addr_reg, struct_size, std::nullopt, 0);
+      m_ir_gen.emit_mem_copy(new_addr_reg, src, struct_size);
+      return new_addr_reg;
+    }
+  }
+  // default: primitive types, pointers (shallow copy), return src itself
+  return src;
 }

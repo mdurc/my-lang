@@ -91,6 +91,9 @@ private:
                                         const std::string& field_name);
 
   void unimpl(const std::string& nodeName);
+
+  IROperand get_copy_of_operand(const IROperand& src,
+                                std::shared_ptr<Type> type);
 };
 
 #endif // CODEGEN_IR_IR_VISITOR_H

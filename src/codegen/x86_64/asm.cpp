@@ -412,6 +412,7 @@ void X86_64CodeGenerator::handle_instruction(const IRInstruction& instr) {
     case IROpCode::ALLOC: handle_alloc(instr); break;
     case IROpCode::ALLOC_ARRAY: handle_alloc_array(instr); break;
     case IROpCode::FREE: handle_free(instr); break;
+    case IROpCode::MEM_COPY: handle_mem_copy(instr); break;
     default:
       throw std::runtime_error("Unsupported IR opcode for x86_64: " +
                                std::to_string((int)instr.opcode));
@@ -1002,5 +1003,23 @@ void X86_64CodeGenerator::handle_free(const IRInstruction& instr) {
   save_caller_saved_regs();
   emit("mov rdi, " + ptr_str);
   emit("call free");
+  restore_caller_saved_regs();
+}
+
+void X86_64CodeGenerator::handle_mem_copy(const IRInstruction& instr) {
+  // result: dst_addr, operands: [src_addr ], size: size to copy
+  IROperand dst_op = instr.result.value();
+  IROperand src_op = instr.operands[0];
+
+  std::string dst_str = get_sized_component(dst_op, Type::PTR_SIZE);
+  std::string src_str = get_sized_component(src_op, Type::PTR_SIZE);
+
+  save_caller_saved_regs();
+
+  emit("mov rdi, " + dst_str + " ; memcpy dst");
+  emit("mov rsi, " + src_str + " ; memcpy src");
+  emit("mov rcx, " + std::to_string(instr.size) + " ; memcpy size");
+  emit("call memcpy");
+
   restore_caller_saved_regs();
 }

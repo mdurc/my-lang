@@ -211,6 +211,11 @@ void IrGenerator::emit_free(IROperand ptr) {
                               std::vector<IROperand>{ptr}, Type::PTR_SIZE);
 }
 
+void IrGenerator::emit_mem_copy(IROperand dst, IROperand src, uint64_t size) {
+  m_instructions.emplace_back(IROpCode::MEM_COPY, dst,
+                              std::vector<IROperand>{src}, size);
+}
+
 const std::vector<IRInstruction>& IrGenerator::get_instructions() const {
   return m_instructions;
 }
