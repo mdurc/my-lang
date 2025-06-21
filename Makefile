@@ -5,7 +5,8 @@ BUILD_DIR = $(MYLIB)/build
 CFLAGS = -std=c++17 -Wall -Wextra -g
 
 LEXER_SRCS = src/lexer/lexer.cpp \
-						 src/lexer/token.cpp
+						 src/lexer/token.cpp \
+						 src/preprocessor/preprocessor.cpp
 DIAG_SRCS = src/logging/diagnostic.cpp
 PARSER_SRC = src/parser/parser.cpp \
 						 src/parser/symtab.cpp \

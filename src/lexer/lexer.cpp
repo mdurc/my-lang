@@ -1,11 +1,5 @@
 #include "lexer.h"
 
-#include <cctype>
-#include <fstream>
-#include <iostream>
-#include <sstream>
-#include <stdexcept>
-
 const std::unordered_map<std::string, TokenType> Lexer::s_keyword_map = {
     {"func", TokenType::FUNC},     {"if", TokenType::IF},
     {"else", TokenType::ELSE},     {"for", TokenType::FOR},
@@ -31,7 +25,6 @@ const std::unordered_map<std::string, TokenType> Lexer::s_keyword_map = {
 
 void Lexer::setup(const std::string& source) {
   m_logger.clear();
-  m_macros.clear();
 
   m_source = source;
   m_lex_start = 0;
@@ -44,14 +37,9 @@ void Lexer::setup(const std::string& source) {
 }
 
 std::vector<Token> Lexer::tokenize_file(const std::string& filename) {
-  std::ifstream file(filename);
-  if (!file.is_open()) {
-    throw std::runtime_error("Could not open file: " + filename);
-  }
-
-  std::stringstream buffer;
-  buffer << file.rdbuf();
-  setup(buffer.str());
+  PreprocessedFile preprocessed = m_preprocessor.preprocess_file(filename);
+  setup(preprocessed.content);
+  m_row += preprocessed.line_offset;
   return tokenize();
 }
 
@@ -59,7 +47,6 @@ std::vector<Token> Lexer::tokenize() {
   while (!is_at_end()) {
     skip_whitespace_and_comments();
     if (is_at_end()) break;
-
     m_start_col = m_col;
     m_lex_start = m_lex_pos;
     scan_token();
@@ -121,7 +108,6 @@ void Lexer::skip_whitespace() {
   }
 }
 
-// Skip everything until a newline (or end of file)
 void Lexer::skip_to_newline() {
   while (!is_at_end() && peek() != '\n') {
     advance();
@@ -226,59 +212,6 @@ void Lexer::lex_number() {
   }
 }
 
-void Lexer::lex_preprocessor_directive() {
-  advance(); // consume '#'
-  std::string directive = read_identifier();
-
-  if (directive == "define") {
-    skip_whitespace();
-
-    std::string macro_name = read_identifier();
-    if (macro_name.empty()) {
-      m_logger.report(FatalError("Expected macro name after #define"));
-      skip_to_newline();
-      return;
-    }
-
-    skip_whitespace();
-
-    std::string value;
-    while (!is_at_end() && peek() != '\n') {
-      value += advance();
-    }
-
-    if (!is_at_end() && peek() != '\n') {
-      m_logger.report(FatalError("Macro value should end with a newline"));
-      skip_to_newline();
-      return;
-    }
-
-    m_macros[macro_name] = value;
-
-  } else {
-    m_logger.report(FatalError("Unknown preprocessor directive: " + directive));
-    skip_to_newline();
-  }
-}
-
-void Lexer::lex_macro(size_t macro_name_len, const std::string& value) {
-  m_source.erase(m_lex_start, macro_name_len); // erase the macro name
-  m_source.insert(m_lex_start, value);         // insert the macro value
-
-  // reset lexer state to start of macro value
-  m_lex_pos = m_lex_start;
-  m_col = m_start_col;
-
-  // lex macro value tokens
-  while (m_lex_pos < m_lex_start + macro_name_len) {
-    skip_whitespace_and_comments();
-    if (m_lex_pos >= m_lex_start + macro_name_len) break;
-    m_start_col = m_col;
-    m_lex_start = m_lex_pos;
-    scan_token();
-  }
-}
-
 std::string Lexer::read_identifier() {
   std::string identifier;
   while (!is_at_end() && (isalnum(peek()) || peek() == '_')) {
@@ -291,13 +224,6 @@ void Lexer::lex_identifier_or_keyword() {
   // first char is already checked to be isalpha or '_', but not consumed
   std::string text = read_identifier();
 
-  // check if it is a macro
-  auto macro_itr = m_macros.find(text);
-  if (macro_itr != m_macros.end()) {
-    lex_macro(text.size(), macro_itr->second);
-    return;
-  }
-
   // regular keyword or identifier
   auto i = s_keyword_map.find(text);
   if (i != s_keyword_map.end()) {
@@ -309,11 +235,6 @@ void Lexer::lex_identifier_or_keyword() {
 
 void Lexer::scan_token() {
   char c = peek();
-
-  if (c == '#') {
-    lex_preprocessor_directive();
-    return;
-  }
 
   if (isalpha(c) || c == '_') {
     lex_identifier_or_keyword();

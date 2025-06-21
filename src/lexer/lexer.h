@@ -2,10 +2,10 @@
 #define LEXER_LEXER_H
 
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include "../logging/logger.h"
+#include "../preprocessor/preprocessor.h"
 #include "token.h"
 
 class Lexer {
@@ -16,12 +16,12 @@ public:
 
 private:
   Logger m_logger;
+  Preprocessor m_preprocessor;
 
   std::string m_source;
   size_t m_lex_start;
   size_t m_lex_pos;
 
-  std::unordered_map<std::string, std::string> m_macros;
   std::vector<Token> m_tokens;
   int m_row;
   int m_col;
@@ -45,9 +45,6 @@ private:
 
   void lex_string();
   void lex_number();
-  void lex_preprocessor_directive();
-  void lex_macro(size_t macro_name_len, const std::string& value);
-
   std::string read_identifier();
   void lex_identifier_or_keyword();
 

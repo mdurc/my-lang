@@ -50,7 +50,7 @@ std::string X86_64CodeGenerator::get_sized_register_name(
   if (reg64_name == "rsp")
     return (size == 4 ? "esp" : (size == 2 ? "sp" : "spl"));
 
-  if (reg64_name.find('r') == 0 && reg64_name.length() >= 2 &&
+  if (reg64_name.find('r') == 0 && reg64_name.size() >= 2 &&
       isdigit(reg64_name[1])) {
     if (size == 4) return reg64_name + "d"; // r8d, r10d
     if (size == 2) return reg64_name + "w"; // r8w, r10w
