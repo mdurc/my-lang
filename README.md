@@ -1,6 +1,8 @@
-# My compiler
+# My Language and its Compiler
 
-This is a technical overview of the compiler and the language it compiles
+This is a technical overview of the compiler and the language it compiles.
+- [Grammar](info/grammar.txt)
+- [Syntax](info/syntax.md)
 
 ## 1. Overview
 
