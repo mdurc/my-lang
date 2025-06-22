@@ -39,7 +39,6 @@ void Lexer::setup(const std::string& source) {
 std::vector<Token> Lexer::tokenize_file(const std::string& filename) {
   PreprocessedFile preprocessed = m_preprocessor.preprocess_file(filename);
   setup(preprocessed.content);
-  m_row += preprocessed.line_offset;
   return tokenize();
 }
 

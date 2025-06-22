@@ -16,8 +16,7 @@ PreprocessedFile Preprocessor::preprocess_file(const std::string& filename) {
   PreprocessedFile result;
 
   std::string content = read_file_content(filename);
-  result.line_offset = 0;
-  result.content = process_file_content(filename, content, &result.line_offset);
+  result.content = process_file_content(filename, content);
   result.filename = filename;
 
   std::string diags = m_logger.get_diagnostic_str();
@@ -32,8 +31,7 @@ PreprocessedFile Preprocessor::preprocess_file(const std::string& filename) {
 }
 
 std::string Preprocessor::process_file_content(const std::string& filename,
-                                               const std::string& content,
-                                               size_t* line_offset) {
+                                               const std::string& content) {
   if (m_processing_files.find(filename) != m_processing_files.end()) {
     m_logger.report(FatalError("Circular include detected: " + filename));
     throw std::runtime_error("Circular include detected");
@@ -47,7 +45,10 @@ std::string Preprocessor::process_file_content(const std::string& filename,
   for (size_t i = 0; i < lines.size(); ++i) {
     const std::string& line = lines[i];
     std::string trimmed = trim_whitespace(line);
-    if (trimmed.empty()) continue;
+    if (trimmed.empty()) {
+      output << "\n";
+      continue;
+    }
 
     if (trimmed[0] != '#') {
       output << expand_macros(line) << "\n";
@@ -56,8 +57,7 @@ std::string Preprocessor::process_file_content(const std::string& filename,
 
     // else it is a directive that should be processed
     if (trimmed.substr(0, 7) == "#define") {
-      // only increment line offset for defines
-      if (line_offset) ++(*line_offset);
+      output << "\n"; // output a newline as a line placeholder for lexer
       handle_define_directive(trimmed);
     } else if (trimmed.substr(0, 8) == "#include") {
       handle_include_directive(trimmed, output);
@@ -121,8 +121,7 @@ void Preprocessor::handle_include_directive(const std::string& line,
 
   // recursively process the included file
   std::string included_content = read_file_content(include_file);
-  output << process_file_content(include_file, included_content, nullptr)
-         << "\n";
+  output << process_file_content(include_file, included_content);
 }
 
 std::string Preprocessor::expand_macros(const std::string& content) {

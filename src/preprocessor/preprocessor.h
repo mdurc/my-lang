@@ -11,7 +11,6 @@
 #include "../logging/logger.h"
 
 struct PreprocessedFile {
-  size_t line_offset; // from top, the number of macros
   std::string content;
   std::string filename;
   std::vector<std::string> included_files;
@@ -35,8 +34,7 @@ private:
 
   // process a single file
   std::string process_file_content(const std::string& filename,
-                                   const std::string& content,
-                                   size_t* line_offset);
+                                   const std::string& content);
 
   // handle different preprocessor directives
   void handle_define_directive(const std::string& line);
