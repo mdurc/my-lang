@@ -10,12 +10,10 @@ section .text
 _start:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 48
+	sub rsp, 80
 	push rbx ; saving callee-saved register
 	push r12 ; saving callee-saved register
 	push r13 ; saving callee-saved register
-	push r14 ; saving callee-saved register
-	push r15 ; saving callee-saved register
 	push r10 ; saving caller-saved register r10
 	mov rdi, 16
 	call malloc
@@ -35,27 +33,28 @@ _start:
 	mov QWORD[rbp - 8], r10 ; spilling register r10 to stack
 	lea r10, [global_vars + 8]
 	mov QWORD[rbp - 16], r11 ; spilling register r11 to stack
-	mov r11, r10
-	mov r11, [r11]
 	mov QWORD[rbp - 24], r12 ; spilling register r12 to stack
-	mov r12, r11
-	add r12, 0
-	mov r13, r12
-	mov r13, [r13]
-	mov QWORD[global_vars + 16], r13
+	mov r12, r10
+	mov r11, [r12]
+	mov r13, r11
+	add r13, 0
 	mov QWORD[rbp - 32], r14 ; spilling register r14 to stack
-	lea r14, [global_vars + 8]
 	mov QWORD[rbp - 40], r15 ; spilling register r15 to stack
-	mov r15, r14
-	mov r15, [r15]
-	mov rbx, r15
-	add rbx, 8
+	mov r15, r13
+	mov r14, [r15]
+	mov QWORD[global_vars + 16], r14
+	lea rbx, [global_vars + 8]
 	mov QWORD[rbp - 48], r10 ; spilling register r10 to stack
-	mov r10, rbx
-	mov r10, [r10]
-	mov QWORD[global_vars + 24], r10
-	pop r15 ; restoring callee-saved register
-	pop r14 ; restoring callee-saved register
+	mov QWORD[rbp - 56], r11 ; spilling register r11 to stack
+	mov r11, rbx
+	mov r10, [r11]
+	mov r12, r10
+	add r12, 8
+	mov QWORD[rbp - 64], r13 ; spilling register r13 to stack
+	mov QWORD[rbp - 72], r14 ; spilling register r14 to stack
+	mov r14, r12
+	mov r13, [r14]
+	mov QWORD[global_vars + 24], r13
 	pop r13 ; restoring callee-saved register
 	pop r12 ; restoring callee-saved register
 	pop rbx ; restoring callee-saved register
