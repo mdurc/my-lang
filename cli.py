@@ -75,7 +75,13 @@ class fmt(click.RichCommand):
     default=None,
     help="Export LSP data (symbols, AST, diagnostics) to JSON file",
 )
-def main(source, tokens, ast, symtab, ir, asm, exe, json):
+@click.option(
+    "--mute",
+    is_flag=True,
+    default=False,
+    help="Suppress CLI output messages.",
+)
+def main(source, tokens, ast, symtab, ir, asm, exe, json, mute):
 
     options = {
         "--tokens": tokens,
@@ -99,9 +105,11 @@ def main(source, tokens, ast, symtab, ir, asm, exe, json):
         args.extend(["--exe", EXE_DEFAULT])
 
     try:
-        click.secho(f"Compiling '{' '.join(args)}'...", fg="cyan")
+        if not mute:
+            click.secho(f"Compiling '{' '.join(args)}'...", fg="cyan")
         subprocess.run(args, check=True)
-        click.secho("Compilation succeeded.", fg="green")
+        if not mute:
+            click.secho("Compilation succeeded.", fg="green")
     except subprocess.CalledProcessError as e:
         click.secho(
             f"Compilation failed with return code {e.returncode}.", fg="red", err=True

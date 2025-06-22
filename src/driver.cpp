@@ -62,8 +62,8 @@ static void assemble_and_link(const std::string& asm_code,
 
 void compile_tokens(const std::string& filename, std::ostream& out) {
   Logger logger;
+  Lexer lexer(&logger);
   try {
-    Lexer lexer(&logger);
     std::vector<Token> tokens = lexer.tokenize_file(filename);
     _check_diags();
     print_tokens(tokens, out);
@@ -74,10 +74,10 @@ void compile_tokens(const std::string& filename, std::ostream& out) {
 
 void compile_ast(const std::string& filename, std::ostream& out) {
   Logger logger;
+  Lexer lexer(&logger);
+  SymTab symtab;
+  Parser parser(&logger);
   try {
-    Lexer lexer(&logger);
-    SymTab symtab;
-    Parser parser(&logger);
     std::vector<Token> tokens = lexer.tokenize_file(filename);
     std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
     _check_diags();
@@ -89,10 +89,10 @@ void compile_ast(const std::string& filename, std::ostream& out) {
 
 void compile_symtab(const std::string& filename, std::ostream& out) {
   Logger logger;
+  Lexer lexer(&logger);
+  SymTab symtab;
+  Parser parser(&logger);
   try {
-    Lexer lexer(&logger);
-    SymTab symtab;
-    Parser parser(&logger);
     std::vector<Token> tokens = lexer.tokenize_file(filename);
     parser.parse_program(&symtab, tokens);
     _check_diags();
@@ -104,12 +104,12 @@ void compile_symtab(const std::string& filename, std::ostream& out) {
 
 void compile_ir(const std::string& filename, std::ostream& out) {
   Logger logger;
+  Lexer lexer(&logger);
+  SymTab symtab;
+  Parser parser(&logger);
+  TypeChecker type_checker(&logger);
+  IrVisitor ir_visitor(&symtab);
   try {
-    Lexer lexer(&logger);
-    SymTab symtab;
-    Parser parser(&logger);
-    TypeChecker type_checker(&logger);
-    IrVisitor ir_visitor(&symtab);
     std::vector<Token> tokens = lexer.tokenize_file(filename);
     std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
     type_checker.check_program(&symtab, ast);
@@ -124,13 +124,13 @@ void compile_ir(const std::string& filename, std::ostream& out) {
 
 void compile_asm(const std::string& filename, std::ostream& out) {
   Logger logger;
+  Lexer lexer(&logger);
+  SymTab symtab;
+  Parser parser(&logger);
+  TypeChecker type_checker(&logger);
+  IrVisitor ir_visitor(&symtab);
+  X86_64CodeGenerator gen;
   try {
-    Lexer lexer(&logger);
-    SymTab symtab;
-    Parser parser(&logger);
-    TypeChecker type_checker(&logger);
-    IrVisitor ir_visitor(&symtab);
-    X86_64CodeGenerator gen;
     std::vector<Token> tokens = lexer.tokenize_file(filename);
     std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
     type_checker.check_program(&symtab, ast);
@@ -146,13 +146,13 @@ void compile_asm(const std::string& filename, std::ostream& out) {
 
 void compile_exe(const std::string& filename, const std::string& out_exe) {
   Logger logger;
+  Lexer lexer(&logger);
+  SymTab symtab;
+  Parser parser(&logger);
+  TypeChecker type_checker(&logger);
+  IrVisitor ir_visitor(&symtab);
+  X86_64CodeGenerator gen;
   try {
-    Lexer lexer(&logger);
-    SymTab symtab;
-    Parser parser(&logger);
-    TypeChecker type_checker(&logger);
-    IrVisitor ir_visitor(&symtab);
-    X86_64CodeGenerator gen;
     std::vector<Token> tokens = lexer.tokenize_file(filename);
     std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
     type_checker.check_program(&symtab, ast);
@@ -168,17 +168,17 @@ void compile_exe(const std::string& filename, const std::string& out_exe) {
 
 void compile_json(const std::string& filename, std::ostream& out) {
   Logger logger;
+  Lexer lexer(&logger);
   SymTab symtab;
+  Parser parser(&logger);
+  TypeChecker type_checker(&logger);
+  std::vector<Token> tokens;
   std::vector<AstPtr> ast;
   try {
-    Lexer lexer(&logger);
-    Parser parser(&logger);
-    TypeChecker type_checker(&logger);
-    std::vector<Token> tokens = lexer.tokenize_file(filename);
+    tokens = lexer.tokenize_file(filename);
     ast = parser.parse_program(&symtab, tokens);
     type_checker.check_program(&symtab, ast);
-
-    _check_diags();
+    // don't check the diags, leave it to the json output
   } catch (const FatalError&) {
     // do nothing, let the json output the diagnostics
   }

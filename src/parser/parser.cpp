@@ -19,7 +19,8 @@ const Token* Parser::current() {
     return &m_tokens[m_pos];
   }
   m_logger->report(
-      Error("Attempting to access current position when out of bounds"));
+      Error(m_tokens.back().get_span(),
+            "Attempting to access current position when out of bounds"));
   _panic_mode();
 }
 
@@ -29,6 +30,7 @@ const Token* Parser::advance() {
     return &m_tokens[m_pos++];
   }
   m_logger->report(Error(
+      m_tokens.back().get_span(),
       "Attempting to access current position and advance when out of bounds"));
   _panic_mode();
 }
@@ -123,7 +125,6 @@ AstPtr Parser::parse_toplevel_declaration() {
 // Structs
 // <StructDecl> ::= 'struct' Identifier '{' <StructFields>? '}'
 AstPtr Parser::parse_struct_decl() {
-  const Token* struct_tok = current();
   _consume(TokenType::STRUCT);
 
   const Token* name_tok = current();
@@ -145,8 +146,8 @@ AstPtr Parser::parse_struct_decl() {
 
   // now link the struct declaration node to the symbol table for the IR
   StructDeclPtr struct_node =
-      _AST(StructDeclNode, struct_tok, m_symtab->current_scope(),
-           sym_struct_type, std::vector<StructFieldPtr>{});
+      _AST(StructDeclNode, name_tok, m_symtab->current_scope(), sym_struct_type,
+           std::vector<StructFieldPtr>{});
   if (!m_symtab->declare_struct(type_name, struct_node, scope_id)) {
     m_logger->report(
         DuplicateDeclarationError(name_tok->get_span(), "struct " + type_name));
@@ -182,7 +183,8 @@ StructFieldPtr Parser::parse_struct_field() {
   std::shared_ptr<Type> type = parse_type();
 
   // declare it as a variable within the current scope which is struct decl
-  Variable field_var(name_tok->get_lexeme(), BorrowState::MutablyOwned, type,
+  Variable field_var(name_tok->get_lexeme(), name_tok->get_span(),
+                     BorrowState::MutablyOwned, type,
                      m_symtab->current_scope());
 
   // check if the field is a duplicate to another field
@@ -254,7 +256,8 @@ FuncDeclPtr Parser::parse_function_decl() {
   }
 
   // declare it as a var with the associated type (also at global scope)
-  Variable var(name_tok->get_lexeme(), BorrowState::ImmutablyOwned, fn_type, 0);
+  Variable var(name_tok->get_lexeme(), name_tok->get_span(),
+               BorrowState::ImmutablyOwned, fn_type, 0);
   if (!m_symtab->declare<Variable>(var.name, Symbol::Variable, var, 0)) {
     m_logger->report(DuplicateDeclarationError(name_tok->get_span(),
                                                name_tok->get_lexeme()));
@@ -303,8 +306,8 @@ ParamPtr Parser::parse_function_param() {
   std::shared_ptr<Type> type_val = parse_type();
 
   // declare the parameter as a variable in current scope
-  Variable param_var(name_tok->get_lexeme(), modifier, type_val,
-                     m_symtab->current_scope());
+  Variable param_var(name_tok->get_lexeme(), name_tok->get_span(), modifier,
+                     type_val, m_symtab->current_scope());
   if (!m_symtab->declare<Variable>(param_var.name, Symbol::Variable, param_var,
                                    param_var.scope_id)) {
     m_logger->report(DuplicateDeclarationError(name_tok->get_span(),
@@ -333,8 +336,9 @@ Parser::parse_function_return_type() {
   _consume(TokenType::RPAREN);
 
   // MutablyOwned is required
-  Variable return_var(ident_tok->get_lexeme(), BorrowState::MutablyOwned,
-                      type_val, m_symtab->current_scope(), true);
+  Variable return_var(ident_tok->get_lexeme(), ident_tok->get_span(),
+                      BorrowState::MutablyOwned, type_val,
+                      m_symtab->current_scope(), true);
   if (!m_symtab->declare<Variable>(return_var.name, Symbol::Variable,
                                    return_var, return_var.scope_id)) {
     m_logger->report(DuplicateDeclarationError(ident_tok->get_span(),
@@ -414,6 +418,7 @@ StmtPtr Parser::parse_var_decl() {
 
   const Token* name_tok = current();
   _consume(TokenType::IDENTIFIER);
+
   IdentPtr var_name = _AST(IdentifierNode, name_tok, m_symtab->current_scope(),
                            name_tok->get_lexeme());
 
@@ -444,7 +449,7 @@ StmtPtr Parser::parse_var_decl() {
   BorrowState bs =
       is_mutable ? BorrowState::MutablyOwned : BorrowState::ImmutablyOwned;
 
-  Variable var_sym(name_tok->get_lexeme(), bs, type_val,
+  Variable var_sym(name_tok->get_lexeme(), name_tok->get_span(), bs, type_val,
                    m_symtab->current_scope());
 
   // check if it is a duplicate variable

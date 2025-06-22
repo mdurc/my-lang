@@ -7,8 +7,11 @@
 using json = nlohmann::json;
 
 static json span_to_range(const Span& span) {
-  return {{"start", {{"line", span.row}, {"character", span.start_col}}},
-          {"end", {{"line", span.row}, {"character", span.end_col}}}};
+  int row = std::max(0, (int)span.row - 1);
+  int s_col = std::max(0, (int)span.start_col - 1);
+  int e_col = std::max(0, (int)span.end_col - 1);
+  return {{"start", {{"line", row}, {"character", s_col}}},
+          {"end", {{"line", row}, {"character", e_col}}}};
 }
 
 static void collect_hover(const AstPtr& node, json& hover) {

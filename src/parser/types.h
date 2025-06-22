@@ -9,6 +9,8 @@
 #include <variant>
 #include <vector>
 
+#include "../lexer/token.h"
+
 // == Type System ==
 
 enum BorrowState {
@@ -106,14 +108,16 @@ private:
 class Variable {
 public:
   std::string name;
+  Span span;
   BorrowState modifier;
   std::shared_ptr<Type> type; // nullptr means it must be inferred
   size_t scope_id;
   bool is_return_var;
 
-  Variable(std::string name, BorrowState mod, std::shared_ptr<Type> tk,
-           size_t sc, bool ret_var = false)
+  Variable(std::string name, const Span& span, BorrowState mod,
+           std::shared_ptr<Type> tk, size_t sc, bool ret_var = false)
       : name(std::move(name)),
+        span(span),
         modifier(mod),
         type(tk),
         scope_id(sc),
