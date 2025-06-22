@@ -19,8 +19,9 @@ VariableDecl(Mutable: false,
   Name:
     Ident(p_foo),
   Type:
-    {func(i32)->u0} Type::Function(
+    {func(imm: i32)->u0} Type::Function(
       Params: [
+        Modifier: ImmutablyBorrowed
         Type:
           {i32} Type::Named(i32)
         )

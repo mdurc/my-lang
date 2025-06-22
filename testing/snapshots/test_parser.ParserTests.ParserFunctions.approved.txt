@@ -47,7 +47,7 @@ FunctionDecl(
       Type:
         {i32} Type::Named(i32)
     ),
-    Param(Modifier: ImmutableOwned,
+    Param(Modifier: ImmutablyOwned,
       Name:
         Ident(z),
       Type:
@@ -67,14 +67,17 @@ VariableDecl(Mutable: false,
   Name:
     Ident(x),
   Type:
-    {func(i32, i32, i32)->u0} Type::Function(
+    {func(mut: i32, imm: i32, take imm: i32)->u0} Type::Function(
       Params: [
+        Modifier: MutablyBorrowed
         Type:
           {i32} Type::Named(i32)
         ),
+        Modifier: ImmutablyBorrowed
         Type:
           {i32} Type::Named(i32)
         ),
+        Modifier: ImmutablyOwned
         Type:
           {i32} Type::Named(i32)
         )

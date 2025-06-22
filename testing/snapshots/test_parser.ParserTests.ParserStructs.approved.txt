@@ -1,7 +1,7 @@
 StructDecl(
   Type:
     {Point} Type::Named(Point),
-  Members: [
+  Fields: [
     StructField(
       Name:
         Ident(x),
@@ -46,10 +46,10 @@ VariableDecl(Mutable: true,
   Type:
     {i64} Type::Named(i64)
   Initializer:
-    MemberAccess(
+    FieldAccess(
       Object:
         Ident(origin),
-      Member:
+      Field:
         Ident(x)
     )
 )
@@ -59,10 +59,10 @@ VariableDecl(Mutable: true,
   Type:
     {i64} Type::Named(i64)
   Initializer:
-    MemberAccess(
+    FieldAccess(
       Object:
         Ident(origin),
-      Member:
+      Field:
         Ident(y)
     )
 )

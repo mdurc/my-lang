@@ -36,6 +36,7 @@ set(PARSER_SOURCES
 set(LEXER_SOURCES
     ../src/lexer/lexer.cpp
     ../src/lexer/token.cpp
+    ../src/preprocessor/preprocessor.cpp
 )
 
 set(LOGGING_SOURCES

@@ -3,18 +3,17 @@ Current Scope ID: 0
 Total Scopes: 1
 
 Scope ID: 0
-  Parent Scope ID: 0
-  Declared Types (12):
-    - u0 (declared in scope 0)
-    - u8 (declared in scope 0)
-    - u16 (declared in scope 0)
-    - u32 (declared in scope 0)
-    - u64 (declared in scope 0)
-    - i8 (declared in scope 0)
-    - i16 (declared in scope 0)
-    - i32 (declared in scope 0)
-    - i64 (declared in scope 0)
-    - f64 (declared in scope 0)
-    - bool (declared in scope 0)
-    - string (declared in scope 0)
-  Declared Variables (0):
+  Scope (parent: 0)
+  Symbols:
+    bool: type bool
+    f64: type f64
+    i16: type i16
+    i32: type i32
+    i64: type i64
+    i8: type i8
+    string: type string
+    u0: type u0
+    u16: type u16
+    u32: type u32
+    u64: type u64
+    u8: type u8
