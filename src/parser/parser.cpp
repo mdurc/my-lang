@@ -225,7 +225,7 @@ FuncDeclPtr Parser::parse_function_decl() {
 
   _consume(TokenType::RPAREN);
 
-  std::pair<std::optional<std::string>, std::shared_ptr<Type>> return_t =
+  std::pair<std::optional<IdentPtr>, std::shared_ptr<Type>> return_t =
       std::make_pair(std::nullopt, nullptr);
   if (match(TokenType::RETURNS)) {
     return_t = parse_function_return_type();
@@ -320,7 +320,7 @@ ParamPtr Parser::parse_function_param() {
 }
 
 // <ReturnType> ::= 'returns' '(' Identifier ':' <Type> ')'
-std::pair<std::string, std::shared_ptr<Type>>
+std::pair<IdentPtr, std::shared_ptr<Type>>
 Parser::parse_function_return_type() {
   _consume(TokenType::RETURNS);
 
@@ -336,9 +336,9 @@ Parser::parse_function_return_type() {
   _consume(TokenType::RPAREN);
 
   // MutablyOwned is required
+  size_t scope = m_symtab->current_scope();
   Variable return_var(ident_tok->get_lexeme(), ident_tok->get_span(),
-                      BorrowState::MutablyOwned, type_val,
-                      m_symtab->current_scope(), true);
+                      BorrowState::MutablyOwned, type_val, scope, true);
   if (!m_symtab->declare<Variable>(return_var.name, Symbol::Variable,
                                    return_var, return_var.scope_id)) {
     m_logger->report(DuplicateDeclarationError(ident_tok->get_span(),
@@ -346,7 +346,9 @@ Parser::parse_function_return_type() {
     _panic_mode();
   }
 
-  return std::make_pair(ident_tok->get_lexeme(), type_val);
+  IdentPtr ident = std::make_shared<IdentifierNode>(ident_tok, scope,
+                                                    ident_tok->get_lexeme());
+  return std::make_pair(std::move(ident), type_val);
 }
 
 bool Parser::is_next_var_decl() {

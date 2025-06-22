@@ -41,7 +41,7 @@ private:
   FuncDeclPtr parse_function_decl();
   BorrowState parse_function_param_prefix();
   ParamPtr parse_function_param();
-  std::pair<std::string, std::shared_ptr<Type>> parse_function_return_type();
+  std::pair<IdentPtr, std::shared_ptr<Type>> parse_function_return_type();
 
   // Statements
   StmtPtr parse_statement();

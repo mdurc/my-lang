@@ -434,12 +434,12 @@ class FunctionDeclNode : public AstNode {
 public:
   IdentPtr name;
   std::vector<ParamPtr> params;
-  std::optional<std::string> return_type_name; // optional for u0 return type
+  std::optional<IdentPtr> return_type_name; // optional for u0 return type
   std::shared_ptr<Type> return_type;
   BlockPtr body;
 
   FunctionDeclNode(const Token* tok, size_t sc, IdentPtr name,
-                   std::vector<ParamPtr> ps, std::optional<std::string> rt_n,
+                   std::vector<ParamPtr> ps, std::optional<IdentPtr> rt_n,
                    std::shared_ptr<Type> rt, BlockPtr b)
       : AstNode(tok, sc),
         name(name),

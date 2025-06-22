@@ -698,7 +698,7 @@ public:
     print_indent();
     out << "ReturnType:";
     if (node.return_type_name != std::nullopt) {
-      out << " (NamedVar:" << *node.return_type_name << ")";
+      out << " (NamedVar:" << (*node.return_type_name)->name << ")";
     }
     out << '\n';
     indent++;

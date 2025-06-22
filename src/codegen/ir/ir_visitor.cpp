@@ -535,7 +535,7 @@ void IrVisitor::visit(FunctionDeclNode& node) {
   }
 
   if (node.return_type_name.has_value()) {
-    const std::string& ret_name = node.return_type_name.value();
+    const std::string& ret_name = node.return_type_name.value()->name;
     add_var(ret_name, node.body->scope_id);
   }
 
