@@ -12,7 +12,8 @@
 class JsonExporter {
 public:
   JsonExporter(const SymTab* symtab, const Logger* logger,
-               const std::vector<AstPtr>* ast_nodes);
+               const std::vector<AstPtr>* ast_nodes)
+      : m_symtab(symtab), m_logger(logger), m_ast_nodes(ast_nodes) {}
 
   std::string export_to_json();
 

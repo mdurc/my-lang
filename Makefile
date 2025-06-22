@@ -20,7 +20,8 @@ CODEGEN = src/codegen/ir/ir_generator.cpp \
 					src/codegen/x86_64/asm.cpp
 
 SOURCE = $(LEXER_SRCS) $(DIAG_SRCS) $(PARSER_SRC) $(CHECKER_SRC) $(CODEGEN)
-PROGRAM_SRCS = src/driver.cpp src/main.cpp $(SOURCE)
+LSP = src/json_export/json_exporter.cpp
+PROGRAM_SRCS = src/driver.cpp src/main.cpp $(SOURCE) $(LSP)
 
 PROGRAM_OBJS = $(patsubst src/%.cpp,$(BUILD_DIR)/%.o,$(PROGRAM_SRCS))
 

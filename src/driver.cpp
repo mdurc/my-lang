@@ -10,13 +10,15 @@
 #include <string>
 #include <vector>
 
-#define _check_diags()                          \
-  do {                                          \
-    if (logger.num_fatals()) {                  \
-      throw FatalError("");                     \
-    } else if (logger.has_diags()) {            \
-      std::cerr << logger.get_diagnostic_str(); \
-    }                                           \
+#include "json_export/json_exporter.h"
+
+#define _check_diags()                                \
+  do {                                                \
+    if (logger.num_fatals() || logger.num_errors()) { \
+      throw FatalError("");                           \
+    } else if (logger.num_warnings()) {               \
+      std::cerr << logger.get_diagnostic_str();       \
+    }                                                 \
   } while (0)
 
 namespace fs = std::filesystem;
@@ -137,8 +139,8 @@ void compile_asm(const std::string& filename, std::ostream& out) {
     std::string asm_code = gen.generate(instrs, ir_visitor.is_main_defined());
     _check_diags();
     out << asm_code;
-  } catch (const FatalError& err) {
-    std::cerr << err.what() << std::endl;
+  } catch (const FatalError&) {
+    std::cerr << logger.get_diagnostic_str();
   }
 }
 
@@ -166,19 +168,20 @@ void compile_exe(const std::string& filename, const std::string& out_exe) {
 
 void compile_json(const std::string& filename, std::ostream& out) {
   Logger logger;
+  SymTab symtab;
+  std::vector<AstPtr> ast;
   try {
     Lexer lexer(&logger);
-    SymTab symtab;
     Parser parser(&logger);
     TypeChecker type_checker(&logger);
     std::vector<Token> tokens = lexer.tokenize_file(filename);
-    std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
+    ast = parser.parse_program(&symtab, tokens);
     type_checker.check_program(&symtab, ast);
+
     _check_diags();
-    // JsonExporter json_exporter(&symtab, &logger, &ast);
-    // std::string json_output = json_exporter.export_to_json();
-    // out << json_output << std::endl;
   } catch (const FatalError&) {
-    std::cerr << logger.get_diagnostic_str();
+    // do nothing, let the json output the diagnostics
   }
+  JsonExporter json_exporter(&symtab, &logger, &ast);
+  out << json_exporter.export_to_json() << std::endl;
 }

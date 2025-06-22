@@ -40,7 +40,7 @@ static void drive(const std::string& arg, const std::string& input,
   } else if (arg == "--exe") {
     if (output.empty()) throw std::runtime_error("Exe output file must exist");
     compile_exe(input, output);
-  } else if (arg == "--json-export") {
+  } else if (arg == "--json") {
     drive_print(compile_json, input, output);
   }
 }
@@ -50,8 +50,9 @@ int main(int argc, char** argv) {
     usage();
   }
   std::string input = argv[1];
-  std::unordered_set<std::string> opts = {"--tokens", "--ast", "--symtab",
-                                          "--ir",     "--asm", "--exe"};
+  std::unordered_set<std::string> opts = {
+      "--tokens", "--ast", "--symtab", "--ir", "--asm", "--exe", "--json"};
+
   for (int i = 2; i < argc;) {
     std::string arg = argv[i];
     if (opts.find(arg) != opts.end()) {

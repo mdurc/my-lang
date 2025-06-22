@@ -24,10 +24,6 @@ public:
   size_t num_warnings() const { return m_warnings.size(); }
   size_t num_fatals() const { return m_fatals.size(); }
 
-  bool has_diags() const {
-    return m_warnings.size() > 0 || m_errors.size() > 0 || m_fatals.size() > 0;
-  }
-
   void clear() {
     m_errors.clear();
     m_warnings.clear();

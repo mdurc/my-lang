@@ -100,8 +100,8 @@ std::vector<AstPtr> Parser::parse_program(SymTab* symtab,
       if (node) {
         m_root.push_back(node);
       }
-    } catch (const FatalError& assert_error) {
-      throw assert_error; // exit
+    } catch (const FatalError& internal_error) {
+      throw internal_error; // exit
     } catch (const std::runtime_error&) {
       synchronize();
     }
