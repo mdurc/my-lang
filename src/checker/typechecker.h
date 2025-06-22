@@ -10,7 +10,7 @@
 
 class TypeChecker : public Visitor {
 public:
-  TypeChecker();
+  TypeChecker(Logger* logger);
 
   void check_program(SymTab* symtab, const std::vector<AstPtr>& program_nodes);
 
@@ -59,7 +59,7 @@ public:
   void visit(StructDeclNode& node) override;
 
 private:
-  Logger m_logger;
+  Logger* m_logger;
   SymTab* m_symtab;
 
   // for return types

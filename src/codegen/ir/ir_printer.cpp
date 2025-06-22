@@ -2,6 +2,8 @@
 
 #include <variant>
 
+#include "../../util.h"
+
 void print_ir_register(const IR_Register& reg, std::ostream& out) {
   out << "_t" << reg.id;
 }
@@ -41,14 +43,15 @@ void print_ir_operand(const IROperand& operand, std::ostream& out) {
 void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
   // Labels are not indented
   if (instr.opcode == IROpCode::LABEL) {
-    assert(instr.result.has_value());
+    _assert(instr.result.has_value(),
+            "label instruction must have a result value");
     print_ir_operand(instr.result.value(), out);
     out << ":" << std::endl;
     return;
   }
 
   if (instr.opcode == IROpCode::BEGIN_FUNC) {
-    assert(instr.result.has_value());
+    _assert(instr.result.has_value(), "begin func must have a result value");
     print_ir_operand(instr.result.value(), out);
     out << std::endl;
   }
@@ -66,20 +69,23 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
       break;
     case IROpCode::EXIT: out << "Exit"; break;
     case IROpCode::ASSIGN:
-      assert(instr.result.has_value() && instr.operands.size() == 1);
+      _assert(instr.result.has_value() && instr.operands.size() == 1,
+              "assign operation must have a value and 1 operand");
       print_ir_operand(instr.result.value(), out);
       out << " = ";
       print_ir_operand(instr.operands[0], out);
       break;
     case IROpCode::LOAD: // dest = *addr
-      assert(instr.result.has_value() && instr.operands.size() == 1);
+      _assert(instr.result.has_value() && instr.operands.size() == 1,
+              "load operation must have a value and 1 operand");
       print_ir_operand(instr.result.value(), out);
       out << " = *(";
       print_ir_operand(instr.operands[0], out);
       out << ")";
       break;
     case IROpCode::STORE: // *addr = val
-      assert(instr.result.has_value() && instr.operands.size() == 1);
+      _assert(instr.result.has_value() && instr.operands.size() == 1,
+              "store operation must have a value and 1 operand");
       out << "*(";
       print_ir_operand(instr.result.value(), out);
       out << ") = ";
@@ -99,7 +105,8 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
     case IROpCode::CMP_GT:
     case IROpCode::CMP_GE:
     case IROpCode::CMP_STR_EQ:
-      assert(instr.result.has_value() && instr.operands.size() == 2);
+      _assert(instr.result.has_value() && instr.operands.size() == 2,
+              "cmp operation must have a value and 2 operands");
       print_ir_operand(instr.result.value(), out);
       out << " = ";
       print_ir_operand(instr.operands[0], out);
@@ -124,7 +131,8 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
       break;
     case IROpCode::NEG:
     case IROpCode::NOT:
-      assert(instr.result.has_value() && instr.operands.size() == 1);
+      _assert(instr.result.has_value() && instr.operands.size() == 1,
+              "NOT must have a result value and 1 operand");
       print_ir_operand(instr.result.value(), out);
       out << " = ";
       if (instr.opcode == IROpCode::NEG) out << "-";
@@ -132,12 +140,14 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
       print_ir_operand(instr.operands[0], out);
       break;
     case IROpCode::GOTO:
-      assert(!instr.result.has_value() && instr.operands.size() == 1);
+      _assert(!instr.result.has_value() && instr.operands.size() == 1,
+              "GOTO must have just 1 operand");
       out << "Goto ";
       print_ir_operand(instr.operands[0], out);
       break;
     case IROpCode::IF_Z: // IfZ cond Goto Lbl
-      assert(!instr.result.has_value() && instr.operands.size() == 2);
+      _assert(!instr.result.has_value() && instr.operands.size() == 2,
+              "IF_Z must have just 2 operands");
       out << "IfZ ";
       print_ir_operand(instr.operands[0], out);
       out << " Goto ";
@@ -145,12 +155,13 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
       break;
     case IROpCode::BEGIN_LCALL_PREP: out << "BeginLCallPrep"; break;
     case IROpCode::PUSH_ARG:
-      assert(!instr.result.has_value() && instr.operands.size() == 1);
+      _assert(!instr.result.has_value() && instr.operands.size() == 1,
+              "PushArg must have just 1 operand");
       out << "PushArg ";
       print_ir_operand(instr.operands[0], out);
       break;
     case IROpCode::LCALL: // opt_dest = LCall func_label
-      assert(instr.operands.size() == 1);
+      _assert(instr.operands.size() == 1, "LCALL must have 1 operand");
       if (instr.result.has_value()) {
         print_ir_operand(instr.result.value(), out);
         out << " = ";
@@ -159,20 +170,24 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
       print_ir_operand(instr.operands[0], out);
       break;
     case IROpCode::ASM_BLOCK:
-      assert(!instr.result.has_value() && instr.operands.size() == 1 &&
-             std::holds_alternative<std::string>(instr.operands[0]));
+      _assert(
+          !instr.result.has_value() && instr.operands.size() == 1 &&
+              std::holds_alternative<std::string>(instr.operands[0]),
+          "ASM_BLOCK must have just 1 operand and it must be an std::string");
       out << "Asm ";
       print_ir_operand(instr.operands[0], out);
       break;
     case IROpCode::LABEL: break;
     case IROpCode::ADDR_OF:
-      assert(instr.result.has_value() && instr.operands.size() == 1);
+      _assert(instr.result.has_value() && instr.operands.size() == 1,
+              "AddrOf must have a result value and 1 operand");
       print_ir_operand(instr.result.value(), out);
       out << " = AddrOf ";
       print_ir_operand(instr.operands[0], out);
       break;
     case IROpCode::ALLOC:
-      assert(instr.result.has_value() && !instr.operands.empty());
+      _assert(instr.result.has_value() && !instr.operands.empty(),
+              "Alloc must have a result value and >0 operands");
       print_ir_operand(instr.result.value(), out);
       out << " = Alloc ";
       print_ir_operand(instr.operands[0], out); // size_imm
@@ -182,7 +197,8 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
       }
       break;
     case IROpCode::ALLOC_ARRAY:
-      assert(instr.result.has_value() && instr.operands.size() == 2);
+      _assert(instr.result.has_value() && instr.operands.size() == 2,
+              "AllocArray must have a result value and 2 operands");
       print_ir_operand(instr.result.value(), out);
       out << " = AllocArray ";
       print_ir_operand(instr.operands[0], out); // elem_size_imm
@@ -190,7 +206,8 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
       print_ir_operand(instr.operands[1], out); // num_elements_op
       break;
     case IROpCode::FREE:
-      assert(!instr.result.has_value() && instr.operands.size() == 1);
+      _assert(!instr.result.has_value() && instr.operands.size() == 1,
+              "FREE must have 1 operand");
       out << "Free ";
       print_ir_operand(instr.operands[0], out);
       break;

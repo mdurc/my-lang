@@ -10,12 +10,12 @@
 
 class Lexer {
 public:
-  Lexer() = default;
+  Lexer(Logger* logger) : m_logger(logger), m_preprocessor(logger) {}
 
   std::vector<Token> tokenize_file(const std::string& filename);
 
 private:
-  Logger m_logger;
+  Logger* m_logger;
   Preprocessor m_preprocessor;
 
   std::string m_source;

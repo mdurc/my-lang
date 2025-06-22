@@ -18,12 +18,12 @@ struct PreprocessedFile {
 
 class Preprocessor {
 public:
-  Preprocessor() = default;
+  Preprocessor(Logger* logger) : m_logger(logger) {}
 
   PreprocessedFile preprocess_file(const std::string& filename);
 
 private:
-  Logger m_logger;
+  Logger* m_logger;
 
   std::unordered_map<std::string, std::string> m_macros;
 

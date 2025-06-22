@@ -40,6 +40,8 @@ static void drive(const std::string& arg, const std::string& input,
   } else if (arg == "--exe") {
     if (output.empty()) throw std::runtime_error("Exe output file must exist");
     compile_exe(input, output);
+  } else if (arg == "--json-export") {
+    drive_print(compile_json, input, output);
   }
 }
 

@@ -10,6 +10,15 @@
 #include <string>
 #include <vector>
 
+#define _check_diags()                          \
+  do {                                          \
+    if (logger.num_fatals()) {                  \
+      throw FatalError("");                     \
+    } else if (logger.has_diags()) {            \
+      std::cerr << logger.get_diagnostic_str(); \
+    }                                           \
+  } while (0)
+
 namespace fs = std::filesystem;
 
 static void assemble_and_link(const std::string& asm_code,
@@ -50,107 +59,126 @@ static void assemble_and_link(const std::string& asm_code,
 }
 
 void compile_tokens(const std::string& filename, std::ostream& out) {
+  Logger logger;
   try {
-    Lexer lexer;
+    Lexer lexer(&logger);
     std::vector<Token> tokens = lexer.tokenize_file(filename);
-
+    _check_diags();
     print_tokens(tokens, out);
-  } catch (const std::exception& e) {
-    std::cerr << "Tokenization error: " << e.what() << std::endl;
+  } catch (const FatalError&) {
+    std::cerr << logger.get_diagnostic_str();
   }
 }
 
 void compile_ast(const std::string& filename, std::ostream& out) {
+  Logger logger;
   try {
-    Lexer lexer;
+    Lexer lexer(&logger);
     SymTab symtab;
-    Parser parser;
-
+    Parser parser(&logger);
     std::vector<Token> tokens = lexer.tokenize_file(filename);
     std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
-
+    _check_diags();
     print_ast(ast, out);
-  } catch (const std::exception& e) {
-    std::cerr << "AST generation error: " << e.what() << std::endl;
+  } catch (const FatalError&) {
+    std::cerr << logger.get_diagnostic_str();
   }
 }
 
 void compile_symtab(const std::string& filename, std::ostream& out) {
+  Logger logger;
   try {
-    Lexer lexer;
+    Lexer lexer(&logger);
     SymTab symtab;
-    Parser parser;
-
+    Parser parser(&logger);
     std::vector<Token> tokens = lexer.tokenize_file(filename);
     parser.parse_program(&symtab, tokens);
-
+    _check_diags();
     symtab.print(out);
-  } catch (const std::exception& e) {
-    std::cerr << "Symbol table error: " << e.what() << std::endl;
+  } catch (const FatalError&) {
+    std::cerr << logger.get_diagnostic_str();
   }
 }
 
 void compile_ir(const std::string& filename, std::ostream& out) {
+  Logger logger;
   try {
-    Lexer lexer;
+    Lexer lexer(&logger);
     SymTab symtab;
-    Parser parser;
-    TypeChecker type_checker;
+    Parser parser(&logger);
+    TypeChecker type_checker(&logger);
     IrVisitor ir_visitor(&symtab);
-
     std::vector<Token> tokens = lexer.tokenize_file(filename);
     std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
     type_checker.check_program(&symtab, ast);
     ir_visitor.visit_all(ast);
+    _check_diags();
     const std::vector<IRInstruction>& instrs = ir_visitor.get_instructions();
-
     print_ir_instructions(instrs, out);
-  } catch (const std::exception& e) {
-    std::cerr << "IR generation error: " << e.what() << std::endl;
+  } catch (const FatalError&) {
+    std::cerr << logger.get_diagnostic_str();
   }
 }
 
 void compile_asm(const std::string& filename, std::ostream& out) {
+  Logger logger;
   try {
-    Lexer lexer;
+    Lexer lexer(&logger);
     SymTab symtab;
-    Parser parser;
-    TypeChecker type_checker;
+    Parser parser(&logger);
+    TypeChecker type_checker(&logger);
     IrVisitor ir_visitor(&symtab);
     X86_64CodeGenerator gen;
-
     std::vector<Token> tokens = lexer.tokenize_file(filename);
     std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
     type_checker.check_program(&symtab, ast);
     ir_visitor.visit_all(ast);
     const std::vector<IRInstruction>& instrs = ir_visitor.get_instructions();
-
     std::string asm_code = gen.generate(instrs, ir_visitor.is_main_defined());
-
+    _check_diags();
     out << asm_code;
-  } catch (const std::exception& e) {
-    std::cerr << "Assembly generation error: " << e.what() << std::endl;
+  } catch (const FatalError& err) {
+    std::cerr << err.what() << std::endl;
   }
 }
 
 void compile_exe(const std::string& filename, const std::string& out_exe) {
+  Logger logger;
   try {
-    Lexer lexer;
+    Lexer lexer(&logger);
     SymTab symtab;
-    Parser parser;
-    TypeChecker type_checker;
+    Parser parser(&logger);
+    TypeChecker type_checker(&logger);
     IrVisitor ir_visitor(&symtab);
     X86_64CodeGenerator gen;
-
     std::vector<Token> tokens = lexer.tokenize_file(filename);
     std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
     type_checker.check_program(&symtab, ast);
     ir_visitor.visit_all(ast);
     const std::vector<IRInstruction>& instrs = ir_visitor.get_instructions();
-
     std::string asm_code = gen.generate(instrs, ir_visitor.is_main_defined());
+    _check_diags();
     assemble_and_link(asm_code, out_exe);
-  } catch (const std::exception& e) {
-    std::cerr << e.what() << std::endl;
+  } catch (const FatalError&) {
+    std::cerr << logger.get_diagnostic_str();
+  }
+}
+
+void compile_json(const std::string& filename, std::ostream& out) {
+  Logger logger;
+  try {
+    Lexer lexer(&logger);
+    SymTab symtab;
+    Parser parser(&logger);
+    TypeChecker type_checker(&logger);
+    std::vector<Token> tokens = lexer.tokenize_file(filename);
+    std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
+    type_checker.check_program(&symtab, ast);
+    _check_diags();
+    // JsonExporter json_exporter(&symtab, &logger, &ast);
+    // std::string json_output = json_exporter.export_to_json();
+    // out << json_output << std::endl;
+  } catch (const FatalError&) {
+    std::cerr << logger.get_diagnostic_str();
   }
 }

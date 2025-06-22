@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "../../logging/logger.h"
 #include "../ir/ir_instruction.h"
 
 class X86_64CodeGenerator {

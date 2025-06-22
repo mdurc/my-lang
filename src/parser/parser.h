@@ -8,12 +8,12 @@
 
 class Parser {
 public:
-  Parser() = default;
+  Parser(Logger* logger) : m_logger(logger) {}
 
   std::vector<AstPtr> parse_program(SymTab* symtab, std::vector<Token> tokens);
 
 private:
-  Logger m_logger;
+  Logger* m_logger;
 
   SymTab* m_symtab;
 

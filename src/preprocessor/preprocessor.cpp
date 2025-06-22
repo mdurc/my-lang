@@ -9,22 +9,21 @@ namespace fs = std::filesystem;
 PreprocessedFile Preprocessor::preprocess_file(const std::string& filename) {
   m_processing_files.clear();
   m_macros.clear();
-  m_logger.clear();
 
   m_include_paths = {"."};
 
   PreprocessedFile result;
 
   std::string content = read_file_content(filename);
+  if (m_logger->num_fatals() > 0) {
+    return result;
+  }
   result.content = process_file_content(filename, content);
   result.filename = filename;
 
-  std::string diags = m_logger.get_diagnostic_str();
-  if (m_logger.num_errors() > 0 || m_logger.num_warnings() > 0) {
-    throw std::runtime_error(
-        diags + "Preprocessing failed with " +
-        std::to_string(m_logger.num_errors()) + " errors and " +
-        std::to_string(m_logger.num_warnings()) + " warnings.");
+  // if errors/warnings were logged, return empty result
+  if (m_logger->num_fatals() > 0) {
+    return PreprocessedFile{};
   }
 
   return result;
@@ -33,8 +32,8 @@ PreprocessedFile Preprocessor::preprocess_file(const std::string& filename) {
 std::string Preprocessor::process_file_content(const std::string& filename,
                                                const std::string& content) {
   if (m_processing_files.find(filename) != m_processing_files.end()) {
-    m_logger.report(FatalError("Circular include detected: " + filename));
-    throw std::runtime_error("Circular include detected");
+    m_logger->report(FatalError("Circular include detected: " + filename));
+    return "";
   }
 
   m_processing_files.insert(filename);
@@ -63,7 +62,7 @@ std::string Preprocessor::process_file_content(const std::string& filename,
       handle_include_directive(trimmed, output);
     } else {
       // skip other preprocessor directives for now
-      m_logger.report(
+      m_logger->report(
           Warning("Unsupported preprocessor directive: " + trimmed));
     }
   }
@@ -79,7 +78,7 @@ void Preprocessor::handle_define_directive(const std::string& line) {
 
   iss >> macro_name;
   if (macro_name.empty()) {
-    m_logger.report(FatalError("Expected macro name after #define"));
+    m_logger->report(FatalError("Expected macro name after #define"));
     return;
   }
 
@@ -109,13 +108,14 @@ void Preprocessor::handle_include_directive(const std::string& line,
   }
 
   if (include_name.empty()) {
-    m_logger.report(FatalError("Invalid include directive: " + line));
+    m_logger->report(FatalError("Invalid include directive: " + line));
     return;
   }
 
   std::string include_file = find_include_file(include_name);
   if (include_file.empty()) {
-    m_logger.report(FatalError("Could not find include file: " + include_name));
+    m_logger->report(
+        FatalError("Could not find include file: " + include_name));
     return;
   }
 
@@ -161,8 +161,8 @@ std::string Preprocessor::find_include_file(const std::string& include_name) {
 std::string Preprocessor::read_file_content(const std::string& filename) {
   std::ifstream file(filename);
   if (!file.is_open()) {
-    m_logger.report(FatalError("Could not open file: " + filename));
-    throw std::runtime_error("Could not open file: " + filename);
+    m_logger->report(FatalError("Could not open file: " + filename));
+    return "";
   }
 
   std::stringstream buffer;

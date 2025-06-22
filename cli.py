@@ -67,7 +67,15 @@ class fmt(click.RichCommand):
     default=None,
     help="Output executable to file",
 )
-def main(source, tokens, ast, symtab, ir, asm, exe):
+@click.option(
+    "--json-export",
+    type=click.Path(),
+    is_flag=False,
+    flag_value="",
+    default=None,
+    help="Export LSP data (symbols, AST, diagnostics) to JSON file",
+)
+def main(source, tokens, ast, symtab, ir, asm, exe, json_export):
 
     options = {
         "--tokens": tokens,
@@ -76,6 +84,7 @@ def main(source, tokens, ast, symtab, ir, asm, exe):
         "--ir": ir,
         "--asm": asm,
         "--exe": exe,
+        "--json-export": json_export,
     }
 
     args = [EXECUTABLE_PATH, source]

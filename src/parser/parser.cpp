@@ -1,22 +1,26 @@
 #include "parser.h"
 
-#include <cassert>
+#define _panic_mode() throw std::runtime_error("Parser error");
 
-#define _consume(_type)                                            \
-  do {                                                             \
-    if (!consume(_type)) throw std::runtime_error("Parser error"); \
+#define _consume(_type)    \
+  do {                     \
+    if (!consume(_type)) { \
+      _panic_mode()        \
+    }                      \
   } while (0)
 
 #define _AST(_type, ...) std::make_shared<_type>(__VA_ARGS__)
+
+#include "../util.h"
 
 // == Movement Operations through Tokens ==
 const Token* Parser::current() {
   if (m_pos < m_tokens.size()) {
     return &m_tokens[m_pos];
   }
-  m_logger.report(
+  m_logger->report(
       Error("Attempting to access current position when out of bounds"));
-  throw std::runtime_error("Parser error");
+  _panic_mode();
 }
 
 // return token at the m_pos in the parser and then increment pos
@@ -24,9 +28,9 @@ const Token* Parser::advance() {
   if (m_pos < m_tokens.size()) {
     return &m_tokens[m_pos++];
   }
-  m_logger.report(Error(
+  m_logger->report(Error(
       "Attempting to access current position and advance when out of bounds"));
-  throw std::runtime_error("Parser error");
+  _panic_mode();
 }
 
 // consume an expected type character at current position and increment position
@@ -36,7 +40,7 @@ bool Parser::consume(TokenType type) {
     return true;
   }
   const Token* curr = current();
-  m_logger.report(ExpectedToken(curr->get_span(), type, curr->get_type()));
+  m_logger->report(ExpectedToken(curr->get_span(), type, curr->get_type()));
   return false;
 }
 
@@ -84,7 +88,6 @@ void Parser::synchronize() {
 
 std::vector<AstPtr> Parser::parse_program(SymTab* symtab,
                                           std::vector<Token> tokens) {
-  m_logger.clear();
   m_symtab = symtab;
   m_tokens = std::move(tokens);
   m_pos = 0;
@@ -93,18 +96,15 @@ std::vector<AstPtr> Parser::parse_program(SymTab* symtab,
   while (m_pos < m_tokens.size()) {
     try {
       AstPtr node = parse_toplevel_declaration();
-      m_root.push_back(node);
+      // a nullptr will be returned upon any error, if not thrown for panic-mode
+      if (node) {
+        m_root.push_back(node);
+      }
+    } catch (const FatalError& assert_error) {
+      throw assert_error; // exit
     } catch (const std::runtime_error&) {
       synchronize();
     }
-  }
-
-  std::string diags = m_logger.get_diagnostic_str();
-  if (m_logger.num_errors() > 0 || m_logger.num_warnings() > 0) {
-    throw std::runtime_error(
-        diags + "Parsing failed with " + std::to_string(m_logger.num_errors()) +
-        " errors and " + std::to_string(m_logger.num_warnings()) +
-        " warnings.");
   }
 
   return m_root;
@@ -138,9 +138,9 @@ AstPtr Parser::parse_struct_decl() {
   std::shared_ptr<Type> sym_struct_type =
       m_symtab->declare<Type>(type_name, Symbol::Type, struct_type, scope_id);
   if (!sym_struct_type) {
-    m_logger.report(DuplicateDeclarationError(name_tok->get_span(),
-                                              struct_type.to_string()));
-    throw std::runtime_error("Parser error");
+    m_logger->report(DuplicateDeclarationError(name_tok->get_span(),
+                                               struct_type.to_string()));
+    return nullptr;
   }
 
   // now link the struct declaration node to the symbol table for the IR
@@ -148,9 +148,9 @@ AstPtr Parser::parse_struct_decl() {
       _AST(StructDeclNode, struct_tok, m_symtab->current_scope(),
            sym_struct_type, std::vector<StructFieldPtr>{});
   if (!m_symtab->declare_struct(type_name, struct_node, scope_id)) {
-    m_logger.report(
+    m_logger->report(
         DuplicateDeclarationError(name_tok->get_span(), "struct " + type_name));
-    throw std::runtime_error("Parser error");
+    _panic_mode();
   }
 
   m_symtab->enter_scope(); // new scope for the contents
@@ -188,9 +188,9 @@ StructFieldPtr Parser::parse_struct_field() {
   // check if the field is a duplicate to another field
   if (!m_symtab->declare<Variable>(field_var.name, Symbol::Variable, field_var,
                                    field_var.scope_id)) {
-    m_logger.report(DuplicateDeclarationError(name_tok->get_span(),
-                                              name_tok->get_lexeme()));
-    throw std::runtime_error("Parser error");
+    m_logger->report(DuplicateDeclarationError(name_tok->get_span(),
+                                               name_tok->get_lexeme()));
+    _panic_mode();
   }
 
   return _AST(StructFieldNode, name_tok, m_symtab->current_scope(), name_ident,
@@ -230,7 +230,7 @@ FuncDeclPtr Parser::parse_function_decl() {
   } else {
     return_t.second = m_symtab->lookup<Type>("u0", 0);
   }
-  assert(return_t.second != nullptr);
+  _assert(return_t.second != nullptr, "func return type should be non-null");
 
   BlockPtr body_block = parse_block(false);
 
@@ -256,9 +256,9 @@ FuncDeclPtr Parser::parse_function_decl() {
   // declare it as a var with the associated type (also at global scope)
   Variable var(name_tok->get_lexeme(), BorrowState::ImmutablyOwned, fn_type, 0);
   if (!m_symtab->declare<Variable>(var.name, Symbol::Variable, var, 0)) {
-    m_logger.report(DuplicateDeclarationError(name_tok->get_span(),
-                                              name_tok->get_lexeme()));
-    throw std::runtime_error("Parser error");
+    m_logger->report(DuplicateDeclarationError(name_tok->get_span(),
+                                               name_tok->get_lexeme()));
+    _panic_mode();
   }
 
   return _AST(FunctionDeclNode, func_tok, m_symtab->current_scope(), name_ident,
@@ -307,9 +307,9 @@ ParamPtr Parser::parse_function_param() {
                      m_symtab->current_scope());
   if (!m_symtab->declare<Variable>(param_var.name, Symbol::Variable, param_var,
                                    param_var.scope_id)) {
-    m_logger.report(DuplicateDeclarationError(name_tok->get_span(),
-                                              name_tok->get_lexeme()));
-    throw std::runtime_error("Parser error");
+    m_logger->report(DuplicateDeclarationError(name_tok->get_span(),
+                                               name_tok->get_lexeme()));
+    _panic_mode();
   }
 
   return _AST(ParamNode, first_tok, m_symtab->current_scope(), modifier,
@@ -337,9 +337,9 @@ Parser::parse_function_return_type() {
                       type_val, m_symtab->current_scope(), true);
   if (!m_symtab->declare<Variable>(return_var.name, Symbol::Variable,
                                    return_var, return_var.scope_id)) {
-    m_logger.report(DuplicateDeclarationError(ident_tok->get_span(),
-                                              ident_tok->get_lexeme()));
-    throw std::runtime_error("Parser error");
+    m_logger->report(DuplicateDeclarationError(ident_tok->get_span(),
+                                               ident_tok->get_lexeme()));
+    _panic_mode();
   }
 
   return std::make_pair(ident_tok->get_lexeme(), type_val);
@@ -434,9 +434,9 @@ StmtPtr Parser::parse_var_decl() {
     advance();
     initializer = parse_expression();
   } else {
-    m_logger.report(
+    m_logger->report(
         ExpectedToken(current()->get_span(), ": | :=", current()->get_type()));
-    throw std::runtime_error("Parser error");
+    _panic_mode();
   }
 
   _consume(TokenType::SEMICOLON);
@@ -450,9 +450,9 @@ StmtPtr Parser::parse_var_decl() {
   // check if it is a duplicate variable
   if (!m_symtab->declare<Variable>(var_sym.name, Symbol::Variable, var_sym,
                                    var_sym.scope_id)) {
-    m_logger.report(DuplicateDeclarationError(name_tok->get_span(),
-                                              name_tok->get_lexeme()));
-    throw std::runtime_error("Parser error");
+    m_logger->report(DuplicateDeclarationError(name_tok->get_span(),
+                                               name_tok->get_lexeme()));
+    _panic_mode();
   }
 
   return _AST(VariableDeclNode, start_tok, m_symtab->current_scope(),
@@ -567,9 +567,9 @@ StmtPtr Parser::parse_switch_stmt() {
     } else if (match(TokenType::DEFAULT)) {
       advance(); // value remains nullptr for default
     } else {
-      m_logger.report(ExpectedToken(current()->get_span(), "case | default",
-                                    current()->get_type()));
-      throw std::runtime_error("Parser error");
+      m_logger->report(ExpectedToken(current()->get_span(), "case | default",
+                                     current()->get_type()));
+      _panic_mode();
     }
 
     _consume(TokenType::COLON);
@@ -663,10 +663,10 @@ StmtPtr Parser::parse_error_stmt() {
   _consume(TokenType::STRING_LITERAL);
 
   if (!str_tok->is_literal()) {
-    m_logger.report(Error(
+    m_logger->report(Error(
         str_tok->get_span(),
         "Internal Error: Expected string literal token to have string data"));
-    throw std::runtime_error("Parser error");
+    return nullptr;
   }
   const std::string& msg = str_tok->get_string_val();
 
@@ -680,14 +680,14 @@ StmtPtr Parser::parse_exit_stmt() {
   const Token* exit_tok = current();
   _consume(TokenType::EXIT_KW);
 
-  const Token* str_tok = current();
+  const Token* int_tok = current();
   _consume(TokenType::INT_LITERAL);
   _consume(TokenType::SEMICOLON);
 
-  assert(str_tok->is_literal());
+  _assert(int_tok->is_literal(), "exit stmt token should be an integer");
 
   return _AST(ExitStmtNode, exit_tok, m_symtab->current_scope(),
-              str_tok->get_int_val());
+              int_tok->get_int_val());
 }
 
 // <Block> ::= '{' <Stmt>* '}'
@@ -761,8 +761,8 @@ StmtPtr Parser::parse_asm_block() {
   }
 
   if (brace_level != 0 || m_pos >= m_tokens.size()) {
-    m_logger.report(ExpectedToken(current()->get_span(), "}", "<none>"));
-    throw std::runtime_error("Parser error");
+    m_logger->report(ExpectedToken(current()->get_span(), "}", "<none>"));
+    _panic_mode();
   }
 
   _consume(TokenType::RBRACE);
@@ -838,9 +838,9 @@ ExprPtr Parser::parse_relational() {
       case TokenType::LESS_EQUAL: op = BinOperator::LessEqual; break;
       case TokenType::GREATER_EQUAL: op = BinOperator::GreaterEqual; break;
       default: {
-        m_logger.report(
+        m_logger->report(
             Error(op_tok->get_span(), "Unknown binary operator type"));
-        throw std::runtime_error("Parser error");
+        _panic_mode();
       }
     }
 
@@ -881,9 +881,9 @@ ExprPtr Parser::parse_multiplicative() {
       case TokenType::SLASH: op = BinOperator::Divide; break;
       case TokenType::MODULO: op = BinOperator::Modulo; break;
       default: {
-        m_logger.report(Error(op_tok->get_span(),
-                              "Unknown multiplicative binary operator type"));
-        throw std::runtime_error("Parser error");
+        m_logger->report(Error(op_tok->get_span(),
+                               "Unknown multiplicative binary operator type"));
+        _panic_mode();
       }
     }
 
@@ -1018,7 +1018,7 @@ std::shared_ptr<Type> Parser::parse_type() {
     advance();
     std::shared_ptr<Type> t =
         m_symtab->lookup<Type>(type_start_tok->get_lexeme(), 0);
-    assert(t != nullptr);
+    _assert(t != nullptr, "basic primitive type should be found in the symtab");
     return t;
   }
   if (match(TokenType::IDENTIFIER)) {
@@ -1028,9 +1028,9 @@ std::shared_ptr<Type> Parser::parse_type() {
     size_t scope = m_symtab->current_scope();
     std::shared_ptr<Type> t = m_symtab->lookup<Type>(name, scope);
     if (t == nullptr) {
-      m_logger.report(TypeNotFoundError(type_start_tok->get_span(),
-                                        type_start_tok->get_lexeme()));
-      throw std::runtime_error("Parser error");
+      m_logger->report(TypeNotFoundError(type_start_tok->get_span(),
+                                         type_start_tok->get_lexeme()));
+      _panic_mode();
     }
     return t;
   } else if (match(TokenType::PTR)) {
@@ -1093,16 +1093,16 @@ std::shared_ptr<Type> Parser::parse_type() {
     std::shared_ptr<Type> t = m_symtab->lookup<Type>(name, 0);
     if (t == nullptr) {
       // the function type should already have been declared
-      m_logger.report(
+      m_logger->report(
           TypeNotFoundError(type_start_tok->get_span(), func_type.to_string()));
-      throw std::runtime_error("Parser error");
+      _panic_mode();
     }
     return t;
   }
 
-  m_logger.report(ExpectedToken(type_start_tok->get_span(), "<type>",
-                                type_start_tok->get_type()));
-  throw std::runtime_error("Parser error");
+  m_logger->report(ExpectedToken(type_start_tok->get_span(), "<type>",
+                                 type_start_tok->get_type()));
+  _panic_mode();
 }
 
 // Primary Expressions
@@ -1141,8 +1141,9 @@ ExprPtr Parser::parse_primary() {
   }
 
   // Otherwise it is invalid
-  m_logger.report(ExpectedToken(tok->get_span(), "<primary>", tok->get_type()));
-  throw std::runtime_error("Parser error");
+  m_logger->report(
+      ExpectedToken(tok->get_span(), "<primary>", tok->get_type()));
+  _panic_mode();
 }
 
 // <PrimitiveLiteral> ::= Integer | Float | String | Bool | 'null'
@@ -1170,8 +1171,9 @@ ExprPtr Parser::parse_primitive_literal() {
     default: break;
   }
 
-  m_logger.report(ExpectedToken(tok->get_span(), "<literal>", tok->get_type()));
-  throw std::runtime_error("Parser error");
+  m_logger->report(
+      ExpectedToken(tok->get_span(), "<literal>", tok->get_type()));
+  _panic_mode();
 }
 
 // <StructLiteral> ::= Identifier '(' ( Identifier '=' <Expr> ( ',' Identifier
@@ -1256,9 +1258,9 @@ ExprPtr Parser::parse_new_expr() {
     }
     _consume(TokenType::RPAREN);
   } else {
-    m_logger.report(ExpectedToken(current()->get_span(), "[ | < | (",
-                                  current()->get_type()));
-    throw std::runtime_error("Parser error");
+    m_logger->report(ExpectedToken(current()->get_span(), "[ | < | (",
+                                   current()->get_type()));
+    _panic_mode();
   }
   return _AST(NewExprNode, new_tok, m_symtab->current_scope(),
               is_memory_mutable, is_array, allocated_type, specifier);

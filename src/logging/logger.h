@@ -10,7 +10,7 @@ public:
   Logger() = default;
   void report(Diagnostic err) {
     switch (err.get_type()) {
-      case DiagType::FATAL_ERROR:
+      case DiagType::FATAL_ERROR: m_fatals.push_back(std::move(err)); break;
       case DiagType::ERROR: m_errors.push_back(std::move(err)); break;
       case DiagType::WARNING:
       case DiagType::HINT: m_warnings.push_back(std::move(err)); break;
@@ -19,8 +19,14 @@ public:
 
   const std::vector<Diagnostic>& get_errors() const { return m_errors; }
   const std::vector<Diagnostic>& get_warnings() const { return m_warnings; }
+  const std::vector<Diagnostic>& get_fatals() const { return m_fatals; }
   size_t num_errors() const { return m_errors.size(); }
   size_t num_warnings() const { return m_warnings.size(); }
+  size_t num_fatals() const { return m_fatals.size(); }
+
+  bool has_diags() const {
+    return m_warnings.size() > 0 || m_errors.size() > 0 || m_fatals.size() > 0;
+  }
 
   void clear() {
     m_errors.clear();
@@ -29,8 +35,16 @@ public:
 
   std::string get_diagnostic_str() const {
     std::string out;
-    if (num_errors() == 0) {
+    if (num_fatals() == 0 && num_errors() == 0) {
       for (const Diagnostic& d : m_warnings) {
+        out += d.what();
+        out += "\n";
+      }
+      return out;
+    }
+
+    if (num_fatals() != 0) {
+      for (const Diagnostic& d : m_fatals) {
         out += d.what();
         out += "\n";
       }
@@ -51,7 +65,8 @@ public:
   }
 
 private:
-  std::vector<Diagnostic> m_errors;   // fatal errors and errors
+  std::vector<Diagnostic> m_errors; // errors
+  std::vector<Diagnostic> m_fatals; // fatal errors (assertions, often internal)
   std::vector<Diagnostic> m_warnings; // warnings and hints
 };
 

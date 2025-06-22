@@ -7,6 +7,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "../../logging/logger.h"
 #include "../../parser/ast.h"
 #include "../../parser/symtab.h"
 #include "../../parser/visitor.h"

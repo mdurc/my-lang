@@ -34,7 +34,11 @@ protected:
   std::string format_type() const;
   virtual void generate_message() {
     std::stringstream ss;
-    ss << format_type() << " " << m_span << ": " << m_msg;
+    if (m_span.row == 0 && m_span.len() == 0) {
+      ss << format_type() << ": " << m_msg;
+    } else {
+      ss << format_type() << " " << m_span << ": " << m_msg;
+    }
     m_formatted_msg = ss.str();
   }
 };

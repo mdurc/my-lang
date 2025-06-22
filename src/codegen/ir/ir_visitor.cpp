@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include "../../parser/visitor.h"
+#include "../../util.h"
 
 static bool is_str_cmp(std::shared_ptr<Type> a, std::shared_ptr<Type> b) {
   return a->is<Type::Named>() && a->as<Type::Named>().identifier == "string" &&
@@ -21,12 +22,17 @@ const std::vector<IRInstruction>& IrVisitor::get_instructions() const {
 
 void IrVisitor::visit_all(const std::vector<AstPtr>& ast) {
   for (const AstPtr& ast_node : ast) {
-    ast_node->accept(*this);
+    try {
+      ast_node->accept(*this);
+    } catch (const FatalError& internal_error) {
+      // they either come from a throws from unimpl or something, or _assert
+      throw internal_error; // exit
+    }
   }
 }
 
 IR_Label IrVisitor::get_runtime_print_call(const std::shared_ptr<Type>& type) {
-  assert(type && "Type must be known for print function selection");
+  _assert(type, "Type must be known for print function selection");
   if (type->is<Type::Named>()) {
     const std::string& name = type->as<Type::Named>().identifier;
     if (name == "string") return IR_Label("print_string");
@@ -41,7 +47,7 @@ IR_Label IrVisitor::get_runtime_print_call(const std::shared_ptr<Type>& type) {
 
 bool IrVisitor::var_exists(const std::string& name, size_t scope_id) {
   std::shared_ptr<Variable> var = m_symtab->lookup<Variable>(name, scope_id);
-  assert(var != nullptr && "var should exist within symbol table");
+  _assert(var != nullptr, "var should exist within symbol table");
   uint64_t size = var->type->get_byte_size();
   return m_vars.find(IR_Variable(name + "_" + std::to_string(var->scope_id),
                                  size)) != m_vars.end();
@@ -50,18 +56,18 @@ bool IrVisitor::var_exists(const std::string& name, size_t scope_id) {
 const IR_Variable& IrVisitor::get_var(const std::string& name,
                                       size_t scope_id) {
   std::shared_ptr<Variable> var = m_symtab->lookup<Variable>(name, scope_id);
-  assert(var != nullptr && "var should exist within symbol table");
+  _assert(var != nullptr, "var should exist within symbol table");
   uint64_t size = var->type->get_byte_size();
   auto itr = m_vars.find(
       IR_Variable(name + "_" + std::to_string(var->scope_id), size));
-  assert(itr != m_vars.end());
+  _assert(itr != m_vars.end(), "variable must be found in get_var");
   return *itr;
 }
 
 const IR_Variable* IrVisitor::add_var(const std::string& name, size_t scope_id,
                                       bool is_func_decl = false) {
   std::shared_ptr<Variable> var = m_symtab->lookup<Variable>(name, scope_id);
-  assert(var != nullptr && "var should exist within symbol table");
+  _assert(var != nullptr, "var should exist within symbol table");
   uint64_t size = var->type->get_byte_size();
   auto itr = m_vars.insert(IR_Variable(
       name + "_" + std::to_string(var->scope_id), size, is_func_decl));
@@ -69,7 +75,7 @@ const IR_Variable* IrVisitor::add_var(const std::string& name, size_t scope_id,
 }
 
 void IrVisitor::unimpl(const std::string& note) {
-  throw std::runtime_error("Unimplemented IR feature: " + note);
+  throw FatalError("Unimplemented IR feature: " + note);
 }
 
 // Expression Nodes
@@ -104,8 +110,8 @@ void IrVisitor::visit(StringLiteralNode& node) {
 }
 
 void IrVisitor::visit(IdentifierNode& node) {
-  assert(var_exists(node.name, node.scope_id) &&
-         "Type checker should identify use of undeclared identifiers");
+  _assert(var_exists(node.name, node.scope_id),
+          "Type checker should identify use of undeclared identifiers");
   m_last_expr_operand = get_var(node.name, node.scope_id);
 }
 
@@ -119,8 +125,8 @@ void IrVisitor::visit(BinaryOpExprNode& node) {
   IR_Register dest_reg = m_ir_gen.new_temp_reg();
 
   // the only case that these should/can be different sizes is if they are nums
-  assert(node.left->expr_type && node.right->expr_type &&
-         "Types should be resolved by Typechecker");
+  _assert(node.left->expr_type && node.right->expr_type,
+          "Types should be resolved by Typechecker");
   uint64_t l_size = node.left->expr_type->get_byte_size();
   uint64_t r_size = node.right->expr_type->get_byte_size();
   uint64_t size = std::min(l_size, r_size);
@@ -192,8 +198,9 @@ void IrVisitor::visit_addrof(const ExprPtr& op, const IR_Register& dst) {
     array_idx_node->index->accept(*this);
     IROperand index_op = m_last_expr_operand;
 
-    assert(array_idx_node->expr_type && array_idx_node->index->expr_type &&
-           "node and index should have a resolved type so that we can size it");
+    _assert(
+        array_idx_node->expr_type && array_idx_node->index->expr_type,
+        "node and index should have a resolved type so that we can size it");
     uint64_t pointee_type_size = array_idx_node->expr_type->get_byte_size();
     uint64_t idx_type_size = array_idx_node->index->expr_type->get_byte_size();
     IR_Immediate elem_size_imm(pointee_type_size, idx_type_size);
@@ -223,7 +230,7 @@ void IrVisitor::visit(UnaryExprNode& node) {
 
   IR_Register dest_reg = m_ir_gen.new_temp_reg();
 
-  assert(node.operand->expr_type && "Types should be resolved by Typechecker");
+  _assert(node.operand->expr_type, "Types should be resolved by Typechecker");
   uint64_t size = node.operand->expr_type->get_byte_size();
   switch (node.op_type) {
     case UnaryOperator::Negate:
@@ -261,12 +268,12 @@ IR_Register IrVisitor::compute_struct_field_addr(
     struct_type = obj_type;
   }
 
-  assert(struct_type->is<Type::Named>() && "Field access on non-struct");
+  _assert(struct_type->is<Type::Named>(), "Field access on non-struct");
 
   std::string name = struct_type->to_string();
   size_t scope_id = struct_type->get_scope_id();
   StructDeclPtr struct_decl = m_symtab->lookup_struct(name, scope_id);
-  assert(struct_decl && "Struct definition not found");
+  _assert(struct_decl, "Struct definition not found");
 
   // find the field offset and type
   size_t offset = 0;
@@ -280,7 +287,7 @@ IR_Register IrVisitor::compute_struct_field_addr(
     }
     offset += field->type->get_byte_size();
   }
-  assert(found && "Struct field not found");
+  _assert(found, "Struct field not found");
 
   // compute address of the field
   IR_Register addr_reg = m_ir_gen.new_temp_reg();
@@ -323,7 +330,7 @@ void IrVisitor::visit(FieldAccessNode& node) {
   std::string name = struct_type->to_string();
   size_t scope_id = struct_type->get_scope_id();
   StructDeclPtr struct_decl = m_symtab->lookup_struct(name, scope_id);
-  assert(struct_type != nullptr);
+  _assert(struct_type != nullptr, "struct type must be found for field access");
 
   std::shared_ptr<Type> field_type;
   for (const StructFieldPtr& field : struct_decl->fields) {
@@ -332,7 +339,7 @@ void IrVisitor::visit(FieldAccessNode& node) {
       break;
     }
   }
-  assert(field_type && "Field type not found");
+  _assert(field_type, "Field type not found");
 
   // load the value from the computed address
   IR_Register result_reg = m_ir_gen.new_temp_reg();
@@ -346,14 +353,14 @@ void IrVisitor::visit(AssignmentNode& node) {
   IROperand rval_op =
       get_copy_of_operand(m_last_expr_operand, node.rvalue->expr_type);
 
-  assert(node.lvalue->expr_type && "Types should be resolved by Typechecker");
+  _assert(node.lvalue->expr_type, "Types should be resolved by Typechecker");
   uint64_t size = node.lvalue->expr_type->get_byte_size();
 
   // Handle all possible L-values
   if (auto lval_ident =
           std::dynamic_pointer_cast<IdentifierNode>(node.lvalue)) {
-    assert(var_exists(lval_ident->name, lval_ident->scope_id) &&
-           "Type checker should identify use of undeclared variable");
+    _assert(var_exists(lval_ident->name, lval_ident->scope_id),
+            "Type checker should identify use of undeclared variable");
     IR_Variable lval_var = get_var(lval_ident->name, lval_ident->scope_id);
     m_ir_gen.emit_assign(lval_var, rval_op, size);
   } else if (auto array_idx_node =
@@ -382,7 +389,7 @@ void IrVisitor::visit(AssignmentNode& node) {
       IROperand ptr_addr_op = m_last_expr_operand;
       m_ir_gen.emit_store(ptr_addr_op, rval_op, size);
     } else {
-      throw std::runtime_error(
+      throw FatalError(
           "IR Error: AssignmentNode to non-dereference UnaryExpr LValue");
     }
   } else if (auto field_access =
@@ -402,9 +409,10 @@ void IrVisitor::visit(GroupedExprNode& node) { node.expression->accept(*this); }
 
 // Statement Nodes
 void IrVisitor::visit(VariableDeclNode& node) {
-  assert(node.scope_id == node.var_name->scope_id);
-  assert(!var_exists(node.var_name->name, node.scope_id) &&
-         "Type checker should identify variable re-declaration");
+  _assert(node.scope_id == node.var_name->scope_id,
+          "variable scope id should be the same as variable name scope id");
+  _assert(!var_exists(node.var_name->name, node.scope_id),
+          "Type checker should identify variable re-declaration");
 
   const std::string& var_name = node.var_name->name;
   const IR_Variable* var_operand = add_var(var_name, node.scope_id);
@@ -430,8 +438,7 @@ void IrVisitor::visit(IfStmtNode& node) {
   IR_Label else_label = m_ir_gen.new_label();
   IR_Label end_label = m_ir_gen.new_label();
 
-  assert(node.condition->expr_type &&
-         "Types should be resolved by Typechecker");
+  _assert(node.condition->expr_type, "Types should be resolved by Typechecker");
   m_ir_gen.emit_if_z(cond_op, else_label,
                      node.condition->expr_type->get_byte_size());
 
@@ -461,8 +468,7 @@ void IrVisitor::visit(WhileStmtNode& node) {
   node.condition->accept(*this);
   IROperand cond_op = m_last_expr_operand;
 
-  assert(node.condition->expr_type &&
-         "Types should be resolved by Typechecker");
+  _assert(node.condition->expr_type, "Types should be resolved by Typechecker");
   m_ir_gen.emit_if_z(cond_op, end_loop_label,
                      node.condition->expr_type->get_byte_size());
 
@@ -476,15 +482,14 @@ void IrVisitor::visit(WhileStmtNode& node) {
 
 void IrVisitor::visit(BreakStmtNode&) {
   if (m_loop_contexts.empty()) {
-    throw std::runtime_error("IR Gen: Break statement outside of loop context");
+    throw FatalError("IR Gen: Break statement outside of loop context");
   }
   m_ir_gen.emit_goto(m_loop_contexts.top().second); // break_target
 }
 
 void IrVisitor::visit(ContinueStmtNode&) {
   if (m_loop_contexts.empty()) {
-    throw std::runtime_error(
-        "IR Gen: Continue statement outside of loop context");
+    throw FatalError("IR Gen: Continue statement outside of loop context");
   }
   m_ir_gen.emit_goto(m_loop_contexts.top().first); // continue_target
 }
@@ -555,9 +560,9 @@ void IrVisitor::visit(ParamNode& node) {
 }
 
 void IrVisitor::visit(FunctionCallNode& node) {
-  assert(node.callee->expr_type && "Callee must have a type");
-  assert(node.callee->expr_type->is<Type::Function>() &&
-         "Callee in a function call must have a function type");
+  _assert(node.callee->expr_type, "Callee must have a type");
+  _assert(node.callee->expr_type->is<Type::Function>(),
+          "Callee in a function call must have a function type");
   const Type::Function& func_type =
       node.callee->expr_type->as<Type::Function>();
 
@@ -567,8 +572,8 @@ void IrVisitor::visit(FunctionCallNode& node) {
     arg_node->accept(*this);
     IROperand arg_op = m_last_expr_operand;
 
-    assert(arg_node->expression->expr_type &&
-           "Types should be resolved by Typechecker");
+    _assert(arg_node->expression->expr_type,
+            "Types should be resolved by Typechecker");
     auto arg_type = arg_node->expression->expr_type;
 
     const Type::ParamInfo& param_info = func_type.params[i];
@@ -589,7 +594,7 @@ void IrVisitor::visit(FunctionCallNode& node) {
   std::optional<IR_Register> result_reg_opt = std::nullopt;
 
   // if it is not void, prepare a temp register for return value
-  assert(node.expr_type && "Type checker should resolve function call");
+  _assert(node.expr_type, "Type checker should resolve function call");
   if (!(node.expr_type->is<Type::Named>() &&
         node.expr_type->as<Type::Named>().identifier == "u0")) {
     IR_Register call_result_reg = m_ir_gen.new_temp_reg();
@@ -608,7 +613,7 @@ void IrVisitor::visit(ReturnStmtNode& node) {
   m_emitted_return = true;
   if (node.value) {
     node.value->accept(*this);
-    assert(node.value->expr_type && "Types should be resolved by Typechecker");
+    _assert(node.value->expr_type, "Types should be resolved by Typechecker");
     m_ir_gen.emit_end_func(m_last_expr_operand,
                            node.value->expr_type->get_byte_size());
   } else {
@@ -639,8 +644,8 @@ void IrVisitor::visit(ForStmtNode& node) {
   m_ir_gen.emit_label(condition_label);
   if (node.condition) {
     node.condition->accept(*this);
-    assert(node.condition->expr_type &&
-           "Types should be resolved by Typechecker");
+    _assert(node.condition->expr_type,
+            "Types should be resolved by Typechecker");
     m_ir_gen.emit_if_z(m_last_expr_operand, end_loop_label,
                        node.condition->expr_type->get_byte_size());
   }
@@ -672,7 +677,7 @@ static bool is_signed_int(std::shared_ptr<Type> type) {
 
 void IrVisitor::visit(ReadStmtNode& node) {
   std::shared_ptr<Type> expr_type = node.expression->expr_type;
-  assert(expr_type && "Read expression must have a type from typechecker");
+  _assert(expr_type, "Read expression must have a type from typechecker");
 
   IR_Register temp_val_reg = m_ir_gen.new_temp_reg();
   m_ir_gen.emit_lcall(temp_val_reg, IR_Label("read_word"), Type::PTR_SIZE);
@@ -699,7 +704,7 @@ void IrVisitor::visit(PrintStmtNode& node) {
     IROperand val_op = m_last_expr_operand;
 
     std::shared_ptr<Type> expr_type = node.expressions[i]->expr_type;
-    assert(expr_type && "Print expression must have a type from typechecker");
+    _assert(expr_type, "Print expression must have a type from typechecker");
 
     IR_Label print_func_lbl = get_runtime_print_call(expr_type);
 
@@ -719,8 +724,7 @@ void IrVisitor::visit(ArrayIndexNode& node) { // R-value access: x = arr[i]
   node.index->accept(*this);
   IROperand index_op = m_last_expr_operand;
 
-  assert(node.expr_type &&
-         "ArrayIndexNode must have its element type resolved");
+  _assert(node.expr_type, "ArrayIndexNode must have its element type resolved");
   uint64_t size = node.expr_type->get_byte_size();
   IR_Immediate size_op(size, size);
 
@@ -742,7 +746,7 @@ void IrVisitor::visit(ExitStmtNode& node) {
 void IrVisitor::visit(SwitchStmtNode& node) {
   node.expression->accept(*this);
   IROperand switch_op = m_last_expr_operand;
-  assert(node.expression->expr_type && "Switch expression must have a type");
+  _assert(node.expression->expr_type, "Switch expression must have a type");
   uint64_t expr_size = node.expression->expr_type->get_byte_size();
 
   CasePtr default_case_node = nullptr;
@@ -797,21 +801,21 @@ void IrVisitor::visit(SwitchStmtNode& node) {
   m_ir_gen.emit_label(end_switch_label);
 }
 void IrVisitor::visit(NewExprNode& node) {
-  assert(node.type_to_allocate && "NewExprNode must have a type to allocate");
-  assert(node.expr_type && node.expr_type->is<Type::Pointer>() &&
-         "NewExprNode result must be a pointer type");
+  _assert(node.type_to_allocate, "NewExprNode must have a type to allocate");
+  _assert(node.expr_type && node.expr_type->is<Type::Pointer>(),
+          "NewExprNode result must be a pointer type");
 
   IR_Register result_ptr_reg = m_ir_gen.new_temp_reg();
 
   if (node.is_array_allocation) {
     // new <T>[size_expr]
-    assert(node.allocation_specifier &&
-           "Array allocation must have a size specifier");
+    _assert(node.allocation_specifier,
+            "Array allocation must have a size specifier");
     node.allocation_specifier->accept(*this);
     IROperand size_op = m_last_expr_operand;
 
-    assert(node.allocation_specifier->expr_type &&
-           "Array size specifier must have a type");
+    _assert(node.allocation_specifier->expr_type,
+            "Array size specifier must have a type");
     uint64_t size_op_type_size =
         node.allocation_specifier->expr_type->get_byte_size();
 
@@ -826,8 +830,8 @@ void IrVisitor::visit(NewExprNode& node) {
     if (node.allocation_specifier) {
       node.allocation_specifier->accept(*this);
       init_op_opt = m_last_expr_operand;
-      assert(node.allocation_specifier->expr_type &&
-             "Initializer for new must have a type");
+      _assert(node.allocation_specifier->expr_type,
+              "Initializer for new must have a type");
       initializer_type_size =
           node.allocation_specifier->expr_type->get_byte_size();
     }
@@ -886,7 +890,7 @@ void IrVisitor::visit(StructLiteralNode& node) {
         break;
       }
     }
-    assert(value && "Missing struct field initializer");
+    _assert(value, "Missing struct field initializer");
     value->accept(*this);
     IROperand val = m_last_expr_operand;
     // store at struct_addr + offset

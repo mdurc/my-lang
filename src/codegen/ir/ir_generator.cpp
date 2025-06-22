@@ -1,5 +1,7 @@
 #include "ir_generator.h"
 
+#include "../../util.h"
+
 IrGenerator::IrGenerator() : m_next_reg_id(0), m_next_label_id(0) {}
 
 IR_Register IrGenerator::new_temp_reg() { return IR_Register(m_next_reg_id++); }
@@ -29,9 +31,9 @@ void IrGenerator::emit_exit(int exit_code) {
 }
 
 void IrGenerator::emit_assign(IROperand dst, IROperand src, uint64_t size) {
-  // Dest for ASSIGN must be IR_Register or IR_Variable
-  assert(std::holds_alternative<IR_Register>(dst) ||
-         std::holds_alternative<IR_Variable>(dst));
+  _assert(std::holds_alternative<IR_Register>(dst) ||
+              std::holds_alternative<IR_Variable>(dst),
+          "dest for assign instr must be a register or variable");
   m_instructions.emplace_back(IROpCode::ASSIGN, dst,
                               std::vector<IROperand>{src}, size);
 }

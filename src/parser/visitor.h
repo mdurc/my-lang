@@ -1,7 +1,6 @@
 #ifndef PARSER_VISITOR_H
 #define PARSER_VISITOR_H
 
-#include <cassert>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -386,10 +385,10 @@ public:
       indent++;
       if (std::holds_alternative<ExprPtr>(*node.initializer)) {
         std::get<ExprPtr>(*node.initializer)->accept(*this);
-      } else {
-        // it must be a variable declaration StmtPtr
-        assert(std::holds_alternative<StmtPtr>(*node.initializer));
+      } else if (std::holds_alternative<StmtPtr>(*node.initializer)) {
         std::get<StmtPtr>(*node.initializer)->accept(*this);
+      } else {
+        out << " null"; // it should be either an ExprPtr or StmtPtr
       }
       indent--;
     } else {

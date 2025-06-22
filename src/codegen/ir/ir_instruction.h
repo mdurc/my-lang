@@ -1,7 +1,6 @@
 #ifndef CODEGEN_IR_IR_INSTRUCTION_H
 #define CODEGEN_IR_IR_INSTRUCTION_H
 
-#include <cassert>
 #include <cstdint>
 #include <optional>
 #include <string>

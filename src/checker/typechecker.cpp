@@ -1,11 +1,11 @@
 #include "typechecker.h"
 
 #include <algorithm>
-#include <cassert>
 #include <set>
 
 #include "../logging/diagnostic.h"
 #include "../parser/types.h"
+#include "../util.h"
 
 // Note: Assertions are used when an error occurs that should have already been
 // handled/reported by a previous stage. This can be changed in the future but
@@ -35,8 +35,9 @@ bool TypeChecker::is_primitive_type(const std::shared_ptr<Type>& type) const {
          type->as<Type::Named>().identifier == "bool";
 }
 
-TypeChecker::TypeChecker()
-    : m_symtab(nullptr),
+TypeChecker::TypeChecker(Logger* logger)
+    : m_logger(logger),
+      m_symtab(nullptr),
       m_current_function_return_type(nullptr),
       m_in_loop(false) {}
 
@@ -48,22 +49,18 @@ void TypeChecker::check_program(SymTab* symtab,
 
   for (const AstPtr& node : program_nodes) {
     if (node) {
-      node->accept(*this);
+      try {
+        node->accept(*this);
+      } catch (const FatalError& assert_error) {
+        throw assert_error; // exit
+      }
     }
-  }
-
-  std::string diags = m_logger.get_diagnostic_str();
-  if (m_logger.num_errors() > 0 || m_logger.num_warnings() > 0) {
-    throw std::runtime_error(
-        diags + "TypeChecker failed with " +
-        std::to_string(m_logger.num_errors()) + " errors and " +
-        std::to_string(m_logger.num_warnings()) + " warnings.");
   }
 }
 
 std::shared_ptr<Type> TypeChecker::get_expr_type(const ExprPtr& expr) {
   if (!expr) {
-    m_logger.report(Error("Internal Error: Expression pointer is null"));
+    m_logger->report(Error("Internal Error: Expression pointer is null"));
     return nullptr;
   }
   expr->accept(*this); // should resolve its type
@@ -73,9 +70,9 @@ std::shared_ptr<Type> TypeChecker::get_expr_type(const ExprPtr& expr) {
 bool TypeChecker::check_type_assignable(std::shared_ptr<Type> target_type,
                                         std::shared_ptr<Type> value_type,
                                         const Span& span) {
-  assert(target_type && value_type &&
-         "Both types when checking assignability should be non-null from the "
-         "parser or have already been inferred by the checker");
+  _assert(target_type && value_type,
+          "Both types when checking assignability should be non-null from the "
+          "parser or have already been inferred by the checker");
 
   // Check for exact type match, with number casting allowed
   if (*target_type == *value_type ||
@@ -107,8 +104,8 @@ bool TypeChecker::check_type_assignable(std::shared_ptr<Type> target_type,
   }
 
   // Otherwise we have found a type error on assignemnet
-  m_logger.report(TypeMismatchError(span, target_type->to_string(),
-                                    value_type->to_string()));
+  m_logger->report(TypeMismatchError(span, target_type->to_string(),
+                                     value_type->to_string()));
   return false;
 }
 
@@ -123,42 +120,42 @@ bool TypeChecker::expect_specific_type(const ExprPtr& expr,
     return true;
   }
 
-  m_logger.report(TypeMismatchError(expr->token->get_span(),
-                                    expected_type_val.to_string(),
-                                    actual_type->to_string()));
+  m_logger->report(TypeMismatchError(expr->token->get_span(),
+                                     expected_type_val.to_string(),
+                                     actual_type->to_string()));
   return false;
 }
 
 bool TypeChecker::expect_boolean_type(const ExprPtr& expr) {
   std::shared_ptr<Type> bool_type = m_symtab->lookup<Type>("bool", 0);
-  assert(bool_type && "Bool type not found in symbol table");
+  _assert(bool_type, "Bool type not found in symbol table");
   return expect_specific_type(expr, *bool_type);
 }
 
 // Literal visitors
 void TypeChecker::visit(IntegerLiteralNode& node) {
   node.expr_type = m_symtab->lookup<Type>("i64", 0);
-  assert(node.expr_type != nullptr && "i64 type not found for IntLiteral");
+  _assert(node.expr_type != nullptr, "i64 type not found for IntLiteral");
 }
 
 void TypeChecker::visit(FloatLiteralNode& node) {
   node.expr_type = m_symtab->lookup<Type>("f64", 0);
-  assert(node.expr_type != nullptr && "f64 type not found for FloatLiteral");
+  _assert(node.expr_type != nullptr, "f64 type not found for FloatLiteral");
 }
 
 void TypeChecker::visit(StringLiteralNode& node) {
   node.expr_type = m_symtab->lookup<Type>("string", 0);
-  assert(node.expr_type != nullptr && "string type not found for StringLit");
+  _assert(node.expr_type != nullptr, "string type not found for StringLit");
 }
 
 void TypeChecker::visit(BoolLiteralNode& node) {
   node.expr_type = m_symtab->lookup<Type>("bool", 0);
-  assert(node.expr_type != nullptr && "bool type not found for BoolLiteral");
+  _assert(node.expr_type != nullptr, "bool type not found for BoolLiteral");
 }
 
 void TypeChecker::visit(NullLiteralNode& node) {
   node.expr_type = m_symtab->lookup<Type>("u0", 0);
-  assert(node.expr_type != nullptr && "u0 type not found for NullLiteral");
+  _assert(node.expr_type != nullptr, "u0 type not found for NullLiteral");
 }
 
 // Identifier
@@ -168,13 +165,13 @@ void TypeChecker::visit(IdentifierNode& node) {
       m_symtab->lookup<Variable>(node.name, node.scope_id);
 
   if (!var_symbol) {
-    m_logger.report(VariableNotFoundError(node.token->get_span(), node.name));
+    m_logger->report(VariableNotFoundError(node.token->get_span(), node.name));
     return;
   }
 
   if (!var_symbol->type) {
     // This can happen if type inference failed for this variable earlier.
-    m_logger.report(
+    m_logger->report(
         Error(node.token->get_span(),
               "Type of variable '" + node.name + "' could not be determined."));
     return;
@@ -200,7 +197,7 @@ void TypeChecker::visit(VariableDeclNode& node) {
 
   std::shared_ptr<Variable> sym =
       m_symtab->lookup<Variable>(node.var_name->name, node.scope_id);
-  assert(sym && "Variable should've been declared in symtab by Parser.");
+  _assert(sym, "Variable should've been declared in symtab by Parser.");
 
   if (var_declared_type) {
     // Explicit type declaration
@@ -218,8 +215,8 @@ void TypeChecker::visit(VariableDeclNode& node) {
 
   } else {
     // Type inference
-    assert(initializer_expr_type != nullptr &&
-           "Parser should require initializer expression after `:=`");
+    _assert(initializer_expr_type != nullptr,
+            "Parser should require initializer expression after `:=`");
 
     // infer the type from the initializer and resolve with that type
     sym->type = initializer_expr_type;
@@ -298,15 +295,16 @@ void TypeChecker::visit(AssignmentNode& node) {
       get_lvalue_type_if_mutable(node.lvalue);
 
   if (!mutable_lvalue_type) {
-    m_logger.report(Error(node.lvalue->token->get_span(),
-                          "L-value is not assignable (e.g., not mutable or not "
-                          "a valid target)."));
+    m_logger->report(
+        Error(node.lvalue->token->get_span(),
+              "L-value is not assignable (e.g., not mutable or not "
+              "a valid target)."));
     return;
   }
 
   // Re-check type consistency, though lvalue_type should be mutable_lvalue_type
   if (!lvalue_type || !(*lvalue_type == *mutable_lvalue_type)) {
-    m_logger.report(Error(
+    m_logger->report(Error(
         node.lvalue->token->get_span(),
         "Internal error: L-value type mismatch during assignment check."));
     return;
@@ -344,7 +342,7 @@ void TypeChecker::visit(ReadStmtNode& node) {
   }
 
   auto log_error = [&](const std::string& message) {
-    m_logger.report(Error(node.expression->token->get_span(), message));
+    m_logger->report(Error(node.expression->token->get_span(), message));
   };
 
   std::shared_ptr<Type> mutable_lvalue_type =
@@ -378,8 +376,8 @@ void TypeChecker::visit(PrintStmtNode& node) {
     // Anything except u0 can be printed for now
     if (expr_type->is<Type::Named>() &&
         expr_type->as<Type::Named>().identifier == "u0") {
-      m_logger.report(Warning(node.expressions[i]->token->get_span(),
-                              "Printing a 'u0' (void) value is not allowed."));
+      m_logger->report(Warning(node.expressions[i]->token->get_span(),
+                               "Printing a 'u0' (void) value is not allowed."));
     }
   }
 }
@@ -442,33 +440,34 @@ void TypeChecker::visit(ForStmtNode& node) {
 // Break and Continue Statements
 void TypeChecker::visit(BreakStmtNode& node) {
   if (!m_in_loop) {
-    m_logger.report(
+    m_logger->report(
         Error(node.token->get_span(), "'break' statement not within a loop."));
   }
 }
 
 void TypeChecker::visit(ContinueStmtNode& node) {
   if (!m_in_loop) {
-    m_logger.report(Error(node.token->get_span(),
-                          "'continue' statement not within a loop."));
+    m_logger->report(Error(node.token->get_span(),
+                           "'continue' statement not within a loop."));
   }
 }
 
 // Return Statement
 void TypeChecker::visit(ReturnStmtNode& node) {
   if (!m_current_function_return_type) {
-    m_logger.report(Error(node.token->get_span(),
-                          "'return' statement outside of a function context."));
+    m_logger->report(
+        Error(node.token->get_span(),
+              "'return' statement outside of a function context."));
     return;
   }
 
   std::shared_ptr<Type> u0_type = m_symtab->lookup<Type>("u0", 0);
-  assert(u0_type && "u0 type not found in symbol table");
+  _assert(u0_type, "u0 type not found in symbol table");
 
   if (node.value) {
     // Return with a value: return <expr>;
     if (*m_current_function_return_type == *u0_type) {
-      m_logger.report(Error(
+      m_logger->report(Error(
           node.value->token->get_span(),
           "Function declared to return 'u0' (void) cannot return a value."));
       return;
@@ -486,7 +485,7 @@ void TypeChecker::visit(ReturnStmtNode& node) {
   } else {
     // Return without a value must be a part of a void function, else err
     if (!(*m_current_function_return_type == *u0_type)) {
-      m_logger.report(
+      m_logger->report(
           Error(node.token->get_span(),
                 "Non-u0 (non-void) function must return a value. Expected '" +
                     m_current_function_return_type->to_string() + "'."));
@@ -498,7 +497,7 @@ void TypeChecker::visit(ReturnStmtNode& node) {
 void TypeChecker::visit(FunctionDeclNode& node) {
   std::shared_ptr<Type> prev_return_type = m_current_function_return_type;
   m_current_function_return_type = node.return_type;
-  assert(m_current_function_return_type && "Parser should set func return_t");
+  _assert(m_current_function_return_type, "Parser should set func return_t");
 
   // Parameters are declared by the parser. Their types are not optional.
   std::vector<Type::ParamInfo> param_infos;
@@ -513,7 +512,7 @@ void TypeChecker::visit(FunctionDeclNode& node) {
   size_t scope = node.scope_id;
   Type fn_type(Type::Function(std::move(param_infos), node.return_type), scope);
   std::shared_ptr<Type> t = m_symtab->lookup<Type>(fn_type.to_string(), scope);
-  assert(t != nullptr && "Parser should declare the func type");
+  _assert(t != nullptr, "Parser should declare the func type");
 
   // restore context:
   m_current_function_return_type = prev_return_type;
@@ -521,8 +520,8 @@ void TypeChecker::visit(FunctionDeclNode& node) {
 
 // ParamNode
 void TypeChecker::visit(ParamNode& node) {
-  assert(node.type != nullptr &&
-         "Parser should enforce that params are explicitly typed");
+  _assert(node.type != nullptr,
+          "Parser should enforce that params are explicitly typed");
   node.name->expr_type = node.type; // just resolve the identifier expr within
 }
 
@@ -533,7 +532,7 @@ void TypeChecker::visit(StructDeclNode& node) {
   uint64_t current_struct_size = 0;
   for (const StructFieldPtr& field : node.fields) {
     field->accept(*this);
-    assert(field->type);
+    _assert(field->type, "field type should be non-null");
     current_struct_size += field->type->get_byte_size();
   }
   node.struct_size = current_struct_size;
@@ -541,8 +540,8 @@ void TypeChecker::visit(StructDeclNode& node) {
 
 // Struct Field Node
 void TypeChecker::visit(StructFieldNode& node) {
-  assert(node.type != nullptr &&
-         "Parser should enforce that struct fields must be explicitly typed");
+  _assert(node.type != nullptr,
+          "Parser should enforce that struct fields must be explicitly typed");
 
   node.name->expr_type = node.type; // just resolve the identifier expr within
 }
@@ -640,14 +639,14 @@ void TypeChecker::visit(BinaryOpExprNode& node) {
         result_type = bool_type;
       break;
     default:
-      m_logger.report(Error(node.token->get_span(),
-                            "Internal Error: Unsupported binary operator '" +
-                                node.token->get_lexeme() + "'."));
+      m_logger->report(Error(node.token->get_span(),
+                             "Internal Error: Unsupported binary operator '" +
+                                 node.token->get_lexeme() + "'."));
       break;
   }
 
   if (!result_type) {
-    m_logger.report(TypeMismatchError(
+    m_logger->report(TypeMismatchError(
         node.token->get_span(), "compatible types",
         left_type->to_string() + " and " + right_type->to_string() +
             ". binary operator '" + node.token->get_lexeme() + "'"));
@@ -673,7 +672,7 @@ void TypeChecker::visit(UnaryExprNode& node) {
       if (is_numeric_type(operand_type)) {
         result_type = operand_type;
       } else {
-        m_logger.report(TypeMismatchError(
+        m_logger->report(TypeMismatchError(
             node.token->get_span(), "numeric type",
             operand_type->to_string() + ". unary negation '-'"));
       }
@@ -682,7 +681,7 @@ void TypeChecker::visit(UnaryExprNode& node) {
       if (*operand_type == *bool_type) {
         result_type = bool_type;
       } else {
-        m_logger.report(
+        m_logger->report(
             TypeMismatchError(node.token->get_span(), "boolean",
                               operand_type->to_string() + ". logical not '!'"));
       }
@@ -700,13 +699,13 @@ void TypeChecker::visit(UnaryExprNode& node) {
           result_type = m_symtab->declare<Type>(type_name, Symbol::Type,
                                                 storage, node.scope_id);
         }
-        assert(result_type &&
-               (is_mut ? "Failed to get/declare pointer type for AddressOfMut"
-                       : "Failed to get/declare pointer type for AddressOf"));
+        _assert(result_type,
+                (is_mut ? "Failed to get/declare pointer type for AddressOfMut"
+                        : "Failed to get/declare pointer type for AddressOf"));
       } else {
-        m_logger.report(Error(node.operand->token->get_span(),
-                              "Cannot take a mutable reference to a "
-                              "non-mutable l-value or r-value."));
+        m_logger->report(Error(node.operand->token->get_span(),
+                               "Cannot take a mutable reference to a "
+                               "non-mutable l-value or r-value."));
       }
     } break;
     case UnaryOperator::Dereference: // '*expr'
@@ -714,19 +713,19 @@ void TypeChecker::visit(UnaryExprNode& node) {
         result_type = operand_type->as<Type::Pointer>().pointee;
         if (!result_type) { // Should not happen if pointer types are always
                             // valid
-          m_logger.report(Error(
+          m_logger->report(Error(
               node.token->get_span(),
               "Cannot dereference pointer to an unresolved or void type."));
         }
       } else {
-        m_logger.report(
+        m_logger->report(
             TypeMismatchError(node.token->get_span(), "pointer type",
                               operand_type->to_string() + ". dereference '*'"));
       }
       break;
     default:
-      m_logger.report(Error(node.token->get_span(),
-                            "Internal Error: Unsupported unary operator."));
+      m_logger->report(Error(node.token->get_span(),
+                             "Internal Error: Unsupported unary operator."));
       break;
   }
   node.expr_type = result_type;
@@ -740,16 +739,16 @@ void TypeChecker::visit(FunctionCallNode& node) {
   }
 
   if (!callee_type->is<Type::Function>()) {
-    m_logger.report(Error(node.callee->token->get_span(),
-                          "'" + node.callee->token->get_lexeme() +
-                              "' is not callable as a function."));
+    m_logger->report(Error(node.callee->token->get_span(),
+                           "'" + node.callee->token->get_lexeme() +
+                               "' is not callable as a function."));
     return;
   }
 
   const Type::Function& func_type_data = callee_type->as<Type::Function>();
 
   if (node.arguments.size() != func_type_data.params.size()) {
-    m_logger.report(
+    m_logger->report(
         Error(node.callee->token->get_span(),
               "Function '" + node.callee->token->get_lexeme() +
                   "' called with incorrect number of arguments. Expected " +
@@ -773,9 +772,10 @@ void TypeChecker::visit(FunctionCallNode& node) {
     const Type::ParamInfo& param_info = func_type_data.params[i];
     std::shared_ptr<Type> param_type = param_info.type;
 
-    assert(param_type != nullptr &&
-           "Param should be resolved with explicit type before a function call "
-           "can occur for it");
+    _assert(
+        param_type != nullptr,
+        "Param should be resolved with explicit type before a function call "
+        "can occur for it");
 
     const Span& span = node.arguments[i]->expression->token->get_span();
     if (!check_type_assignable(param_type, arg_t, span)) {
@@ -785,7 +785,7 @@ void TypeChecker::visit(FunctionCallNode& node) {
 
     if (param_info.modifier == BorrowState::MutablyBorrowed &&
         !get_lvalue_type_if_mutable(node.arguments[i]->expression)) {
-      m_logger.report(Error(
+      m_logger->report(Error(
           span, "Argument for 'mut' parameter must be a mutable l-value."));
       return;
     }
@@ -794,9 +794,9 @@ void TypeChecker::visit(FunctionCallNode& node) {
       // the parameter must be either mutably owned or imm owned (take keyword)
       if (param_info.modifier != BorrowState::MutablyOwned &&
           param_info.modifier != BorrowState::ImmutablyOwned) {
-        m_logger.report(Error(span,
-                              "Argument passed with 'give' must be associated "
-                              "with a parameter that has the 'take' keyword"));
+        m_logger->report(Error(span,
+                               "Argument passed with 'give' must be associated "
+                               "with a parameter that has the 'take' keyword"));
         return;
       }
     }
@@ -825,15 +825,15 @@ void TypeChecker::visit(FieldAccessNode& node) {
     // is_obj_ptr_to_mut =
     // object_type->as<Type::Pointer>().is_pointee_mutable;
     if (!base_object_type) {
-      m_logger.report(Error(node.object->token->get_span(),
-                            "Cannot access field of a pointer to an "
-                            "unresolved or void type."));
+      m_logger->report(Error(node.object->token->get_span(),
+                             "Cannot access field of a pointer to an "
+                             "unresolved or void type."));
       return;
     }
   }
 
   if (!base_object_type->is<Type::Named>()) {
-    m_logger.report(Error(
+    m_logger->report(Error(
         node.object->token->get_span(),
         "Left side of '.' must be a struct or a pointer to a struct. Got: " +
             base_object_type->to_string()));
@@ -854,7 +854,7 @@ void TypeChecker::visit(FieldAccessNode& node) {
     }
   }
 
-  m_logger.report(
+  m_logger->report(
       Error(node.field->token->get_span(),
             "Struct '" + name + "' has no field named '" + field_name + "'."));
 }
@@ -867,16 +867,16 @@ void TypeChecker::visit(ArrayIndexNode& node) {
 
   // Pointers are used as arrays right now, we do not have Array types.
   if (!object_type->is<Type::Pointer>()) {
-    m_logger.report(TypeMismatchError(node.object->token->get_span(),
-                                      "pointer type (for array access)",
-                                      object_type->to_string()));
+    m_logger->report(TypeMismatchError(node.object->token->get_span(),
+                                       "pointer type (for array access)",
+                                       object_type->to_string()));
     return;
   }
 
   if (!is_integer_type(index_type)) {
-    m_logger.report(TypeMismatchError(node.index->token->get_span(),
-                                      "integer type (for array index)",
-                                      index_type->to_string() + " found"));
+    m_logger->report(TypeMismatchError(node.index->token->get_span(),
+                                       "integer type (for array index)",
+                                       index_type->to_string() + " found"));
     return;
   }
 
@@ -888,7 +888,7 @@ void TypeChecker::visit(StructLiteralNode& node) {
   node.expr_type = struct_type;
 
   if (!struct_type->is<Type::Named>()) {
-    m_logger.report(
+    m_logger->report(
         Error(node.token->get_span(),
               "Struct literal type is not a named type. Internal error."));
     return;
@@ -921,9 +921,9 @@ void TypeChecker::visit(StructLiteralNode& node) {
                      });
 
     if (itr == struct_decl->fields.end()) {
-      m_logger.report(Error(initializer->field->token->get_span(),
-                            "Struct '" + name + "' has no field named '" +
-                                field_name_str + "'."));
+      m_logger->report(Error(initializer->field->token->get_span(),
+                             "Struct '" + name + "' has no field named '" +
+                                 field_name_str + "'."));
       continue;
     }
 
@@ -934,9 +934,9 @@ void TypeChecker::visit(StructLiteralNode& node) {
 }
 
 void TypeChecker::visit(NewExprNode& node) {
-  assert(node.type_to_allocate != nullptr &&
-         "Parser should enforce NewExprNode's to be explicitly typed with the "
-         "type to be allocated");
+  _assert(node.type_to_allocate != nullptr,
+          "Parser should enforce NewExprNode's to be explicitly typed with the "
+          "type to be allocated");
 
   /*
      Result is `ptr<[mut] type_to_allocate>`
@@ -960,7 +960,7 @@ void TypeChecker::visit(NewExprNode& node) {
 
   bool is_prim_alloc = is_primitive_type(node.type_to_allocate);
   if (!is_prim_alloc && !node.type_to_allocate->is<Type::Named>()) {
-    m_logger.report(Error("Allocation type must be a named type"));
+    m_logger->report(Error("Allocation type must be a named type"));
     return;
   }
 
@@ -974,7 +974,7 @@ void TypeChecker::visit(NewExprNode& node) {
   if (!ptr_type) {
     ptr_type = m_symtab->declare<Type>(name, Symbol::Type, ptr_t, scope);
   }
-  assert(ptr_type);
+  _assert(ptr_type, "ptr type should be non-null after lookup/declaration");
 
   node.expr_type = ptr_type;
 
@@ -987,7 +987,7 @@ void TypeChecker::visit(NewExprNode& node) {
       // new <T>[size], size must be an integer type
 
       if (!is_integer_type(spec_type)) {
-        m_logger.report(TypeMismatchError(
+        m_logger->report(TypeMismatchError(
             node.allocation_specifier->token->get_span(), "i64",
             spec_type->to_string() + ". array size in new expression"));
       }
@@ -1000,7 +1000,7 @@ void TypeChecker::visit(NewExprNode& node) {
   } else {
     // No allocation specifier, new <T>() or new <T>[]
     if (node.is_array_allocation) {
-      m_logger.report(
+      m_logger->report(
           Error(node.token->get_span(),
                 "Array allocation 'new <T>[]' must have a size expression."));
       return;
@@ -1008,7 +1008,7 @@ void TypeChecker::visit(NewExprNode& node) {
 
     // else it is the default () constructor, which is only valid for structs
     if (is_prim_alloc) {
-      m_logger.report(
+      m_logger->report(
           Error(node.token->get_span(),
                 "Primitive type '" + node.type_to_allocate->to_string() +
                     "' cannot be default constructed with 'new()'. Provide "
@@ -1031,11 +1031,12 @@ void TypeChecker::visit(SwitchStmtNode& node) {
       (switch_expr_type->is<Type::Named>() &&
        switch_expr_type->as<Type::Named>().identifier == "f64")) {
     // Disallow switching on functions or floats for now due to complexity
-    m_logger.report(Error(node.expression->token->get_span(),
-                          "Switch expression cannot be of type '" +
-                              switch_expr_type->to_string() +
-                              "'. Only equatable types like integers, strings, "
-                              "pointers, bools allowed."));
+    m_logger->report(
+        Error(node.expression->token->get_span(),
+              "Switch expression cannot be of type '" +
+                  switch_expr_type->to_string() +
+                  "'. Only equatable types like integers, strings, "
+                  "pointers, bools allowed."));
     return;
   }
   std::shared_ptr<Type> prev_switch_expr_type = m_current_switch_expr_type;
@@ -1047,8 +1048,8 @@ void TypeChecker::visit(SwitchStmtNode& node) {
     if (!case_node->value) {
       // default
       if (has_default) {
-        m_logger.report(Error(case_node->token->get_span(),
-                              "Multiple default cases in switch statement."));
+        m_logger->report(Error(case_node->token->get_span(),
+                               "Multiple default cases in switch statement."));
       }
       has_default = true;
     }
@@ -1074,7 +1075,7 @@ void TypeChecker::visit(CaseNode& node) {
 void TypeChecker::visit(FreeStmtNode& node) {
   std::shared_ptr<Type> expr_type = get_expr_type(node.expression);
   if (expr_type && !expr_type->is<Type::Pointer>()) {
-    m_logger.report(TypeMismatchError(
+    m_logger->report(TypeMismatchError(
         node.expression->token->get_span(), "pointer type",
         expr_type->to_string() + ". 'free' statement operand"));
   }
@@ -1083,7 +1084,7 @@ void TypeChecker::visit(FreeStmtNode& node) {
 
 void TypeChecker::visit(ExitStmtNode& node) {
   if (node.exit_code < 0) {
-    m_logger.report(Error("Expected error code of positive integer literal"));
+    m_logger->report(Error("Expected error code of positive integer literal"));
   }
 }
 

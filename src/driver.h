@@ -18,4 +18,6 @@ void compile_ir(const std::string& filename, std::ostream& out);
 void compile_asm(const std::string& filename, std::ostream& out);
 void compile_exe(const std::string& filename, const std::string& out_exe);
 
+void compile_json(const std::string& filename, std::ostream& out);
+
 #endif // SRC_DRIVER_H
