@@ -133,3 +133,4 @@ Each type has an associated scope id and data
 ## Other
 - Tree sitter highlighting
 - LSP: Diagnostic, Goto-Definition, Hovering over identifiers and literals
+- [CLI](cli.py) can be installed to local bin with `make install` where you can then use it as `mcompiler_cli --help`
