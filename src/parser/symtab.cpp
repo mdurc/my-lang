@@ -2,7 +2,7 @@
 
 #include <map>
 
-static std::string variable_borrowed_state_to_string(BorrowState bs) {
+std::string variable_borrowed_state_to_string(BorrowState bs) {
   switch (bs) {
     case BorrowState::MutablyOwned:
     case BorrowState::MutablyBorrowed: return "mut";

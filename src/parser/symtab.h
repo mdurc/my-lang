@@ -33,6 +33,8 @@
     return nullptr;                                                      \
   }
 
+std::string variable_borrowed_state_to_string(BorrowState bs);
+
 struct Symbol {
   enum Kind { Variable, Type };
   Kind kind;
@@ -48,6 +50,9 @@ class Scope {
 public:
   Scope(size_t parent) : m_parent_scope(parent) {}
   size_t get_parent_scope() const { return m_parent_scope; }
+  const std::unordered_map<std::string, Symbol>& get_symbols() const {
+    return m_symbols;
+  }
 
   template <typename T>
   std::shared_ptr<T> add(const std::string& name, Symbol::Kind kind,
@@ -75,6 +80,7 @@ public:
   SymTab();
   void enter_scope();
   void exit_scope();
+  const std::vector<Scope>& get_scopes() const { return m_scopes; }
 
   template <typename T>
   std::shared_ptr<T> lookup(const std::string& name, size_t start_scope) const {

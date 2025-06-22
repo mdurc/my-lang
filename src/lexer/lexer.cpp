@@ -1,5 +1,10 @@
 #include "lexer.h"
 
+#define _report_error(msg)                                           \
+  do {                                                               \
+    m_logger->report(Error(Span(m_row, m_start_col, m_col), (msg))); \
+  } while (0);
+
 const std::unordered_map<std::string, TokenType> Lexer::s_keyword_map = {
     {"func", TokenType::FUNC},     {"if", TokenType::IF},
     {"else", TokenType::ELSE},     {"for", TokenType::FOR},
@@ -133,14 +138,19 @@ void Lexer::skip_whitespace_and_comments() {
 
 void Lexer::lex_string() {
   // Opening '"' was consumed by scan_token calling advance()
+  int starting_row = m_row;
+  int curr_col = m_col;
   std::string value;
   while (peek() != '"' && !is_at_end()) {
     char c = peek();
     if (c == '\\') {
       // handle escaped characters
       advance();
+
+      // newlines should not be in strings, if they are, it is not terminated
+      curr_col = m_col > curr_col ? m_col : curr_col;
+
       if (is_at_end()) {
-        m_logger->report(FatalError("Unterminated string escape sequence."));
         break;
       }
       char escaped_char = advance();
@@ -150,8 +160,9 @@ void Lexer::lex_string() {
         case '"': value += '"'; break;
         case '\\': value += '\\'; break;
         default:
-          m_logger->report(Warning("Unterminated string escape sequence: \\" +
-                                   std::string(1, escaped_char)));
+          std::string msg = "Unterminated string escape sequence: \\" +
+                            std::string(1, escaped_char);
+          m_logger->report(Warning(Span(m_row, m_start_col, m_col), msg));
           value += escaped_char;
           break;
       }
@@ -161,7 +172,8 @@ void Lexer::lex_string() {
   }
 
   if (is_at_end() || peek() != '"') {
-    m_logger->report(FatalError("Unterminated string."));
+    m_logger->report(Error(Span(starting_row, m_start_col, curr_col),
+                           "Unterminated string."));
     add_token(TokenType::UNKNOWN);
     return;
   }
@@ -189,14 +201,14 @@ void Lexer::lex_number() {
     try {
       add_token(TokenType::FLOAT_LITERAL, std::stod(num_str));
     } catch (const std::out_of_range&) {
-      m_logger->report(FatalError("Float literal out of range: " + num_str));
+      _report_error("Float literal out of range: " + num_str);
       add_token(TokenType::UNKNOWN);
     }
   } else {
     try {
       add_token(TokenType::INT_LITERAL, std::stoull(num_str));
     } catch (const std::out_of_range&) {
-      m_logger->report(FatalError("Integer literal out of range: " + num_str));
+      _report_error("Integer literal out of range: " + num_str);
       add_token(TokenType::UNKNOWN);
     }
   }
@@ -277,8 +289,7 @@ void Lexer::scan_token() {
     case '"': lex_string(); break;
 
     default:
-      m_logger->report(
-          FatalError("Unexpected character: " + std::string(1, c)));
+      _report_error("Unexpected character: " + std::string(1, c));
       add_token(TokenType::UNKNOWN);
       break;
   }
