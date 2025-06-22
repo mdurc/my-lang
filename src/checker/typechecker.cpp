@@ -130,34 +130,34 @@ bool TypeChecker::expect_specific_type(const ExprPtr& expr,
 }
 
 bool TypeChecker::expect_boolean_type(const ExprPtr& expr) {
-  std::shared_ptr<Type> bool_type = m_symtab->get_primitive_type("bool");
+  std::shared_ptr<Type> bool_type = m_symtab->lookup<Type>("bool", 0);
   assert(bool_type && "Bool type not found in symbol table");
   return expect_specific_type(expr, *bool_type);
 }
 
 // Literal visitors
 void TypeChecker::visit(IntegerLiteralNode& node) {
-  node.expr_type = m_symtab->get_primitive_type("i64");
+  node.expr_type = m_symtab->lookup<Type>("i64", 0);
   assert(node.expr_type != nullptr && "i64 type not found for IntLiteral");
 }
 
 void TypeChecker::visit(FloatLiteralNode& node) {
-  node.expr_type = m_symtab->get_primitive_type("f64");
+  node.expr_type = m_symtab->lookup<Type>("f64", 0);
   assert(node.expr_type != nullptr && "f64 type not found for FloatLiteral");
 }
 
 void TypeChecker::visit(StringLiteralNode& node) {
-  node.expr_type = m_symtab->get_primitive_type("string");
+  node.expr_type = m_symtab->lookup<Type>("string", 0);
   assert(node.expr_type != nullptr && "string type not found for StringLit");
 }
 
 void TypeChecker::visit(BoolLiteralNode& node) {
-  node.expr_type = m_symtab->get_primitive_type("bool");
+  node.expr_type = m_symtab->lookup<Type>("bool", 0);
   assert(node.expr_type != nullptr && "bool type not found for BoolLiteral");
 }
 
 void TypeChecker::visit(NullLiteralNode& node) {
-  node.expr_type = m_symtab->get_primitive_type("u0");
+  node.expr_type = m_symtab->lookup<Type>("u0", 0);
   assert(node.expr_type != nullptr && "u0 type not found for NullLiteral");
 }
 
@@ -165,7 +165,7 @@ void TypeChecker::visit(NullLiteralNode& node) {
 void TypeChecker::visit(IdentifierNode& node) {
   // The parser handles declaring all identifiers, so we just have to search it
   std::shared_ptr<Variable> var_symbol =
-      m_symtab->lookup_variable(node.name, node.scope_id);
+      m_symtab->lookup<Variable>(node.name, node.scope_id);
 
   if (!var_symbol) {
     m_logger.report(VariableNotFoundError(node.token->get_span(), node.name));
@@ -199,7 +199,7 @@ void TypeChecker::visit(VariableDeclNode& node) {
   }
 
   std::shared_ptr<Variable> sym =
-      m_symtab->lookup_variable(node.var_name->name, node.scope_id);
+      m_symtab->lookup<Variable>(node.var_name->name, node.scope_id);
   assert(sym && "Variable should've been declared in symtab by Parser.");
 
   if (var_declared_type) {
@@ -241,9 +241,12 @@ std::shared_ptr<Type> TypeChecker::get_lvalue_type_if_mutable(
   if (!expr) {
     return nullptr;
   }
-  if (auto ident_node = std::dynamic_pointer_cast<IdentifierNode>(expr)) {
+  if (auto grouped_node = std::dynamic_pointer_cast<GroupedExprNode>(expr)) {
+    return get_lvalue_type_if_mutable(grouped_node->expression);
+  } else if (auto ident_node =
+                 std::dynamic_pointer_cast<IdentifierNode>(expr)) {
     std::shared_ptr<Variable> var_sym =
-        m_symtab->lookup_variable(ident_node->name, ident_node->scope_id);
+        m_symtab->lookup<Variable>(ident_node->name, ident_node->scope_id);
     if (var_sym && var_sym->type &&
         (var_sym->modifier == BorrowState::MutablyOwned ||
          var_sym->modifier == BorrowState::MutablyBorrowed ||
@@ -252,8 +255,7 @@ std::shared_ptr<Type> TypeChecker::get_lvalue_type_if_mutable(
     }
   } else if (auto deref_node = std::dynamic_pointer_cast<UnaryExprNode>(expr)) {
     if (deref_node->op_type == UnaryOperator::Dereference) {
-      // For *p = ..., p must be ptr<mut T>.
-      // The type of *p (lvalue_type) is T.
+      // For *p = ..., p must be ptr<mut T> for it to be mutable
       // The type of p (deref_lvalue->operand) must be ptr<mut T>.
       std::shared_ptr<Type> operand_type = get_expr_type(deref_node->operand);
       if (operand_type && operand_type->is<Type::Pointer>() &&
@@ -460,7 +462,7 @@ void TypeChecker::visit(ReturnStmtNode& node) {
     return;
   }
 
-  std::shared_ptr<Type> u0_type = m_symtab->get_primitive_type("u0");
+  std::shared_ptr<Type> u0_type = m_symtab->lookup<Type>("u0", 0);
   assert(u0_type && "u0 type not found in symbol table");
 
   if (node.value) {
@@ -499,17 +501,18 @@ void TypeChecker::visit(FunctionDeclNode& node) {
   assert(m_current_function_return_type && "Parser should set func return_t");
 
   // Parameters are declared by the parser. Their types are not optional.
-  std::vector<std::shared_ptr<Type>> param_types;
+  std::vector<Type::ParamInfo> param_infos;
   for (const std::shared_ptr<ParamNode>& param : node.params) {
     param->accept(*this);
-    param_types.push_back(param->type);
+    param_infos.push_back({param->type, param->modifier});
   }
 
   // Type check the function body
   node.body->accept(*this);
 
-  std::shared_ptr<Type> t = m_symtab->lookup_type(Type(
-      Type::Function(std::move(param_types), node.return_type), node.scope_id));
+  size_t scope = node.scope_id;
+  Type fn_type(Type::Function(std::move(param_infos), node.return_type), scope);
+  std::shared_ptr<Type> t = m_symtab->lookup<Type>(fn_type.to_string(), scope);
   assert(t != nullptr && "Parser should declare the func type");
 
   // restore context:
@@ -556,11 +559,11 @@ void TypeChecker::visit(BinaryOpExprNode& node) {
 
   std::shared_ptr<Type> result_type = nullptr;
 
-  std::shared_ptr<Type> bool_type = m_symtab->get_primitive_type("bool");
-  std::shared_ptr<Type> i64_type = m_symtab->get_primitive_type("i64");
-  std::shared_ptr<Type> f64_type = m_symtab->get_primitive_type("f64");
-  std::shared_ptr<Type> string_type = m_symtab->get_primitive_type("string");
-  std::shared_ptr<Type> null_type = m_symtab->get_primitive_type("u0");
+  std::shared_ptr<Type> bool_type = m_symtab->lookup<Type>("bool", 0);
+  std::shared_ptr<Type> i64_type = m_symtab->lookup<Type>("i64", 0);
+  std::shared_ptr<Type> f64_type = m_symtab->lookup<Type>("f64", 0);
+  std::shared_ptr<Type> string_type = m_symtab->lookup<Type>("string", 0);
+  std::shared_ptr<Type> null_type = m_symtab->lookup<Type>("u0", 0);
 
   switch (node.op_type) {
     case BinOperator::Plus:
@@ -661,9 +664,9 @@ void TypeChecker::visit(UnaryExprNode& node) {
   }
 
   std::shared_ptr<Type> result_type = nullptr;
-  std::shared_ptr<Type> bool_type = m_symtab->get_primitive_type("bool");
-  std::shared_ptr<Type> i64_type = m_symtab->get_primitive_type("i64");
-  std::shared_ptr<Type> f64_type = m_symtab->get_primitive_type("f64");
+  std::shared_ptr<Type> bool_type = m_symtab->lookup<Type>("bool", 0);
+  std::shared_ptr<Type> i64_type = m_symtab->lookup<Type>("i64", 0);
+  std::shared_ptr<Type> f64_type = m_symtab->lookup<Type>("f64", 0);
 
   switch (node.op_type) {
     case UnaryOperator::Negate: // '-'
@@ -684,31 +687,28 @@ void TypeChecker::visit(UnaryExprNode& node) {
                               operand_type->to_string() + ". logical not '!'"));
       }
       break;
-    case UnaryOperator::AddressOf: // '&expr' -> ptr<imm typeof(expr)>
-    {
-      Type storage(Type::Pointer(false, operand_type), node.scope_id);
-      result_type = m_symtab->lookup_type(storage);
-      if (!result_type) {
-        // this is not done by the parser
-        result_type = m_symtab->declare_type(storage);
-      }
-      assert(result_type && "Failed to get/declare pointer type for AddressOf");
-    } break;
+    case UnaryOperator::AddressOf:    // '&expr' -> ptr<imm typeof(expr)>
     case UnaryOperator::AddressOfMut: // '&mut expr' -> ptr<mut typeof(expr)>
-      if (get_lvalue_type_if_mutable(node.operand)) {
-        Type storage(Type::Pointer(true, operand_type), node.scope_id);
-        result_type = m_symtab->lookup_type(storage);
+    {
+      bool is_mut = (node.op_type == UnaryOperator::AddressOfMut);
+
+      if (!is_mut || get_lvalue_type_if_mutable(node.operand)) {
+        Type storage(Type::Pointer(is_mut, operand_type), node.scope_id);
+        std::string type_name = storage.to_string();
+        result_type = m_symtab->lookup<Type>(type_name, node.scope_id);
         if (!result_type) {
-          result_type = m_symtab->declare_type(storage);
+          result_type = m_symtab->declare<Type>(type_name, Symbol::Type,
+                                                storage, node.scope_id);
         }
         assert(result_type &&
-               "Failed to get/declare pointer type for AddressOfMut");
+               (is_mut ? "Failed to get/declare pointer type for AddressOfMut"
+                       : "Failed to get/declare pointer type for AddressOf"));
       } else {
         m_logger.report(Error(node.operand->token->get_span(),
                               "Cannot take a mutable reference to a "
                               "non-mutable l-value or r-value."));
       }
-      break;
+    } break;
     case UnaryOperator::Dereference: // '*expr'
       if (operand_type->is<Type::Pointer>()) {
         result_type = operand_type->as<Type::Pointer>().pointee;
@@ -758,9 +758,6 @@ void TypeChecker::visit(FunctionCallNode& node) {
     return;
   }
 
-  FuncDeclPtr func_decl = m_symtab->lookup_func(callee_type);
-  assert(func_decl != nullptr);
-
   for (size_t i = 0; i < node.arguments.size(); ++i) {
     // ensure argument expression itself is typed
     node.arguments[i]->accept(*this);
@@ -773,7 +770,8 @@ void TypeChecker::visit(FunctionCallNode& node) {
       return;
     }
 
-    std::shared_ptr<Type> param_type = func_type_data.params[i];
+    const Type::ParamInfo& param_info = func_type_data.params[i];
+    std::shared_ptr<Type> param_type = param_info.type;
 
     assert(param_type != nullptr &&
            "Param should be resolved with explicit type before a function call "
@@ -785,11 +783,7 @@ void TypeChecker::visit(FunctionCallNode& node) {
       return;
     }
 
-    // param modifiers are bound to the variable/Node, thus not a part
-    // of the function type
-    ParamPtr param_ast_node = func_decl->params[i];
-
-    if (param_ast_node->modifier == BorrowState::MutablyBorrowed &&
+    if (param_info.modifier == BorrowState::MutablyBorrowed &&
         !get_lvalue_type_if_mutable(node.arguments[i]->expression)) {
       m_logger.report(Error(
           span, "Argument for 'mut' parameter must be a mutable l-value."));
@@ -797,10 +791,9 @@ void TypeChecker::visit(FunctionCallNode& node) {
     }
 
     if (arg->is_give) {
-      // the parameter must be either mutably owned or immutably owned (take
-      // kw)
-      if (param_ast_node->modifier != BorrowState::MutablyOwned &&
-          param_ast_node->modifier != BorrowState::ImmutableOwned) {
+      // the parameter must be either mutably owned or imm owned (take keyword)
+      if (param_info.modifier != BorrowState::MutablyOwned &&
+          param_info.modifier != BorrowState::ImmutablyOwned) {
         m_logger.report(Error(span,
                               "Argument passed with 'give' must be associated "
                               "with a parameter that has the 'take' keyword"));
@@ -848,7 +841,8 @@ void TypeChecker::visit(FieldAccessNode& node) {
   }
 
   const std::string& name = base_object_type->as<Type::Named>().identifier;
-  StructDeclPtr struct_decl = m_symtab->lookup_struct(base_object_type);
+  size_t scope_id = base_object_type->get_scope_id();
+  StructDeclPtr struct_decl = m_symtab->lookup_struct(name, scope_id);
 
   const std::string& field_name = node.field->name;
 
@@ -901,7 +895,8 @@ void TypeChecker::visit(StructLiteralNode& node) {
   }
 
   const std::string& name = struct_type->as<Type::Named>().identifier;
-  StructDeclPtr struct_decl = m_symtab->lookup_struct(struct_type);
+  size_t scope_id = struct_type->get_scope_id();
+  StructDeclPtr struct_decl = m_symtab->lookup_struct(name, scope_id);
 
   // Type check field initializers
   std::set<std::string> declared_field_names;
@@ -973,9 +968,11 @@ void TypeChecker::visit(NewExprNode& node) {
   // because the parser doesn't declare types that are used/created by new)
   Type ptr_t(Type::Pointer(node.is_memory_mutable, node.type_to_allocate),
              node.scope_id);
-  std::shared_ptr<Type> ptr_type = m_symtab->lookup_type(ptr_t);
+  std::string name = ptr_t.to_string();
+  size_t scope = ptr_t.get_scope_id();
+  std::shared_ptr<Type> ptr_type = m_symtab->lookup<Type>(name, scope);
   if (!ptr_type) {
-    ptr_type = m_symtab->declare_type(ptr_t);
+    ptr_type = m_symtab->declare<Type>(name, Symbol::Type, ptr_t, scope);
   }
   assert(ptr_type);
 

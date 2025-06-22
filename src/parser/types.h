@@ -13,7 +13,7 @@
 
 enum BorrowState {
   MutablyOwned,      // as param: take mut
-  ImmutableOwned,    // as param: take | take imm
+  ImmutablyOwned,    // as param: take | take imm
   MutablyBorrowed,   // as param: mut
   ImmutablyBorrowed, // as param: imm
 };
@@ -29,16 +29,25 @@ public:
     }
   };
 
+  struct ParamInfo {
+    std::shared_ptr<Type> type;
+    BorrowState modifier;
+
+    friend bool operator==(const ParamInfo& a, const ParamInfo& b) {
+      if (!a.type || !b.type) return a.type == b.type;
+      return a.type == b.type && a.modifier == b.modifier;
+    }
+  };
+
   struct Function {
-    std::vector<std::shared_ptr<Type>> params;
+    std::vector<ParamInfo> params;
     std::shared_ptr<Type> return_type;
 
-    Function(std::vector<std::shared_ptr<Type>> params,
-             std::shared_ptr<Type> ret_type)
+    Function(std::vector<ParamInfo> params, std::shared_ptr<Type> ret_type)
         : params(std::move(params)), return_type(ret_type) {}
 
     friend bool operator==(const Function& a, const Function& b) {
-      return a.params == b.params && a.return_type == b.return_type;
+      return a.return_type == b.return_type && a.params == b.params;
     }
   };
 

@@ -37,7 +37,7 @@ std::string AstPrinter::unary_op_to_string(UnaryOperator op) {
 std::string AstPrinter::borrow_state_to_string(BorrowState bs) {
   switch (bs) {
     case BorrowState::MutablyOwned: return "MutablyOwned";
-    case BorrowState::ImmutableOwned: return "ImmutableOwned";
+    case BorrowState::ImmutablyOwned: return "ImmutablyOwned";
     case BorrowState::MutablyBorrowed: return "MutablyBorrowed";
     case BorrowState::ImmutablyBorrowed: return "ImmutablyBorrowed";
     default: return "UnknownBorrowState";
@@ -62,9 +62,12 @@ void AstPrinter::print_type(const Type& type) {
     const Type::Function& func = type.as<Type::Function>();
     for (size_t i = 0; i < func.params.size(); ++i) {
       print_indent();
+      out << "Modifier: " << borrow_state_to_string(func.params[i].modifier)
+          << "\n";
+      print_indent();
       out << "Type:\n";
       indent++;
-      print_type(*func.params[i]);
+      print_type(*func.params[i].type);
       indent--;
       out << "\n";
       print_indent();

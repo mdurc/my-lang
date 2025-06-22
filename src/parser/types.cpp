@@ -1,5 +1,14 @@
 #include "types.h"
 
+static std::string modifier_to_string_prefix(BorrowState modifier) {
+  switch (modifier) {
+    case BorrowState::MutablyOwned: return "take mut: ";
+    case BorrowState::ImmutablyOwned: return "take imm: ";
+    case BorrowState::MutablyBorrowed: return "mut: ";
+    case BorrowState::ImmutablyBorrowed: return "imm: ";
+  }
+}
+
 std::string Type::to_string_recursive(std::vector<const Type*>& visited) const {
   for (const Type* t : visited) {
     if (t == this) {
@@ -20,8 +29,9 @@ std::string Type::to_string_recursive(std::vector<const Type*>& visited) const {
     const Function& func = this->as<Function>();
     str = "func(";
     for (size_t i = 0; i < func.params.size(); ++i) {
-      if (func.params[i]) {
-        str += func.params[i]->to_string_recursive(visited);
+      str += modifier_to_string_prefix(func.params[i].modifier);
+      if (func.params[i].type) {
+        str += func.params[i].type->to_string_recursive(visited);
       } else {
         str += "uninitialized_param_type";
       }

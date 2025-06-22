@@ -1,79 +1,75 @@
 #include "symtab.h"
 
-// Helper for type output
-static std::string borrowed_state_to_string(BorrowState bs) {
+#include <map>
+
+static std::string variable_borrowed_state_to_string(BorrowState bs) {
   switch (bs) {
     case BorrowState::MutablyOwned:
     case BorrowState::MutablyBorrowed: return "mut";
-    case BorrowState::ImmutableOwned:
+    case BorrowState::ImmutablyOwned:
     case BorrowState::ImmutablyBorrowed: return "imm";
     default: return "";
   }
 }
 
-// == Scope Implementations ==
-std::shared_ptr<Type> Scope::lookup_type(const Type& target) const {
-  for (std::shared_ptr<Type> type : m_types) {
-    if (*type == target) {
-      return type;
-    }
-  }
-  return nullptr;
+const Symbol* Scope::lookup(const std::string& name) const {
+  auto it = m_symbols.find(name);
+  return it != m_symbols.end() ? &it->second : nullptr;
 }
 
-std::shared_ptr<Variable> Scope::lookup_variable(
-    const std::string& name) const {
-  for (std::shared_ptr<Variable> var : m_variables) {
-    if (var->name == name) {
-      return var;
-    }
-  }
-  return nullptr;
+StructDeclPtr Scope::lookup_struct(const std::string& name) const {
+  auto it = m_structs.find(name);
+  return it != m_structs.end() ? it->second : nullptr;
 }
 
 void Scope::print(std::ostream& out, const std::string& indent) const {
-  out << indent << "Parent Scope ID: " << m_parent_scope << "\n";
-  out << indent << "Declared Types (" << m_types.size() << "):\n";
-  for (const std::shared_ptr<Type>& type : m_types) {
-    out << indent << "  - "
-        << (type ? type->to_string() : "err:null_type_was_found")
-        << " (declared in scope "
-        << (type ? std::to_string(type->get_scope_id()) : "?err?") << ")\n";
+  out << indent << "Scope (parent: " << m_parent_scope << ")\n";
+  if (m_symbols.empty()) {
+    return;
   }
-
-  out << indent << "Declared Variables (" << m_variables.size() << "):\n";
-  for (const std::shared_ptr<Variable>& var : m_variables) {
-    out << indent << "  - Name: " << var->name << "\n";
-    out << indent
-        << "      Modifier: " << borrowed_state_to_string(var->modifier)
-        << "\n";
-    out << indent << "      Type: "
-        << (var->type ? var->type->to_string() : "nullptr/inferred") << "\n";
-    out << indent << "      Scope ID: " << var->scope_id << "\n";
+  out << indent << "Symbols:\n";
+  // sort the symbols for the snapshot testing
+  std::map<std::string, Symbol> sorted_syms(m_symbols.begin(), m_symbols.end());
+  for (const auto& [name, symbol] : sorted_syms) {
+    out << indent << "  " << name << ": ";
+    switch (symbol.kind) {
+      case Symbol::Variable: {
+        auto var = symbol.as<Variable>();
+        out << "var " << var->name
+            << " (type: " << (var->type ? var->type->to_string() : "?")
+            << ", scope: " << var->scope_id << ", modifier: "
+            << variable_borrowed_state_to_string(var->modifier) << ")";
+        break;
+      }
+      case Symbol::Type: {
+        auto type = symbol.as<Type>();
+        out << "type " << type->to_string();
+        break;
+      }
+    }
+    out << "\n";
   }
 }
 
-// == Symbol Table Implementations ==
-SymTab::SymTab() {
-  m_current_scope = 0;
+SymTab::SymTab() : m_current_scope(0) {
   m_scopes.emplace_back(0); // global scope
 
   // define the primitives in the language
-  m_scopes[0].add_type(Type(Type::Named("u0"), 0, 8));
-  m_scopes[0].add_type(Type(Type::Named("u8"), 0, 1));
-  m_scopes[0].add_type(Type(Type::Named("u16"), 0, 2));
-  m_scopes[0].add_type(Type(Type::Named("u32"), 0, 4));
-  m_scopes[0].add_type(Type(Type::Named("u64"), 0, 8));
-  m_scopes[0].add_type(Type(Type::Named("i8"), 0, 1));
-  m_scopes[0].add_type(Type(Type::Named("i16"), 0, 2));
-  m_scopes[0].add_type(Type(Type::Named("i32"), 0, 4));
-  m_scopes[0].add_type(Type(Type::Named("i64"), 0, 8));
-  m_scopes[0].add_type(Type(Type::Named("f64"), 0, 8));
-  m_scopes[0].add_type(Type(Type::Named("bool"), 0, 1));
-  m_scopes[0].add_type(Type(Type::Named("string"), 0)); // bytes is ptr size
+  declare("u0", Symbol::Type, Type(Type::Named("u0"), 0, 8), 0);
+  declare("u8", Symbol::Type, Type(Type::Named("u8"), 0, 1), 0);
+  declare("u16", Symbol::Type, Type(Type::Named("u16"), 0, 2), 0);
+  declare("u32", Symbol::Type, Type(Type::Named("u32"), 0, 4), 0);
+  declare("u64", Symbol::Type, Type(Type::Named("u64"), 0, 8), 0);
+  declare("i8", Symbol::Type, Type(Type::Named("i8"), 0, 1), 0);
+  declare("i16", Symbol::Type, Type(Type::Named("i16"), 0, 2), 0);
+  declare("i32", Symbol::Type, Type(Type::Named("i32"), 0, 4), 0);
+  declare("i64", Symbol::Type, Type(Type::Named("i64"), 0, 8), 0);
+  declare("f64", Symbol::Type, Type(Type::Named("f64"), 0, 8), 0);
+  declare("bool", Symbol::Type, Type(Type::Named("bool"), 0, 1), 0);
+  declare("string", Symbol::Type, Type(Type::Named("string"), 0), 0);
 }
 
-void SymTab::enter_new_scope() {
+void SymTab::enter_scope() {
   m_scopes.emplace_back(m_current_scope);
   m_current_scope = m_scopes.size() - 1;
 }
@@ -82,118 +78,6 @@ void SymTab::exit_scope() {
   if (m_current_scope != 0) {
     m_current_scope = m_scopes[m_current_scope].get_parent_scope();
   }
-}
-
-std::shared_ptr<Type> SymTab::lookup_type(const Type& target) const {
-  size_t scope_id = target.get_scope_id();
-  const Scope* scope = &m_scopes[scope_id];
-  while (true) {
-    std::shared_ptr<Type> tk = scope->lookup_type(target);
-    if (tk != nullptr) {
-      return tk;
-    }
-    if (scope_id == 0) {
-      break;
-    }
-    scope_id = scope->get_parent_scope();
-    scope = &m_scopes[scope_id];
-  }
-  return nullptr;
-}
-
-std::shared_ptr<Variable> SymTab::lookup_variable(
-    const std::string& target_name, int starting_scope) const {
-  if (starting_scope == -1) {
-    starting_scope = m_current_scope;
-  } else if (starting_scope < 0 || starting_scope >= (int)m_scopes.size()) {
-    return nullptr;
-  }
-  const Scope* scope = &m_scopes[starting_scope];
-  while (true) {
-    std::shared_ptr<Variable> v = scope->lookup_variable(target_name);
-    if (v != nullptr) {
-      return v;
-    }
-    if (starting_scope == 0) {
-      break;
-    }
-    starting_scope = scope->get_parent_scope();
-    scope = &m_scopes[starting_scope];
-  }
-  return nullptr;
-}
-
-StructDeclPtr SymTab::lookup_struct(std::shared_ptr<Type> type) const {
-  size_t scope_id = type->get_scope_id();
-  const Scope* scope = &m_scopes[scope_id];
-  while (true) {
-    StructDeclPtr struct_node = scope->lookup_struct(type);
-    if (struct_node != nullptr) {
-      return struct_node;
-    }
-    if (scope_id == 0) {
-      break;
-    }
-    scope_id = scope->get_parent_scope();
-    scope = &m_scopes[scope_id];
-  }
-  return nullptr;
-}
-
-FuncDeclPtr SymTab::lookup_func(std::shared_ptr<Type> type) const {
-  size_t scope_id = type->get_scope_id();
-  const Scope* scope = &m_scopes[scope_id];
-  while (true) {
-    FuncDeclPtr func_node = scope->lookup_func(type);
-    if (func_node != nullptr) {
-      return func_node;
-    }
-    if (scope_id == 0) {
-      break;
-    }
-    scope_id = scope->get_parent_scope();
-    scope = &m_scopes[scope_id];
-  }
-  return nullptr;
-}
-
-std::shared_ptr<Type> SymTab::get_primitive_type(std::string primitive) const {
-  return m_scopes[0].lookup_type(
-      Type(Type::Named(std::move(primitive)), 0, -1));
-}
-
-std::shared_ptr<Type> SymTab::declare_type(const Type& tk) {
-  size_t scope = tk.get_scope_id();
-  if (m_scopes[scope].lookup_type(tk)) {
-    return nullptr;
-  }
-  return m_scopes[scope].add_type(tk);
-}
-
-std::shared_ptr<Variable> SymTab::declare_variable(Variable v) {
-  size_t scope = v.scope_id;
-  if (m_scopes[scope].lookup_variable(v.name)) {
-    return nullptr;
-  }
-  return m_scopes[scope].add_variable(std::move(v));
-}
-
-std::shared_ptr<Type> SymTab::declare_struct(const Type& tk,
-                                             StructDeclPtr struct_node) {
-  size_t scope = tk.get_scope_id();
-  if (m_scopes[scope].lookup_type(tk)) {
-    return nullptr;
-  }
-  return m_scopes[scope].add_struct(tk, struct_node);
-}
-
-std::shared_ptr<Type> SymTab::declare_func(const Type& tk,
-                                           FuncDeclPtr func_node) {
-  size_t scope = tk.get_scope_id();
-  if (m_scopes[scope].lookup_type(tk)) {
-    return nullptr;
-  }
-  return m_scopes[scope].add_func(tk, func_node);
 }
 
 void SymTab::print(std::ostream& out) const {

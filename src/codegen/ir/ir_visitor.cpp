@@ -40,7 +40,7 @@ IR_Label IrVisitor::get_runtime_print_call(const std::shared_ptr<Type>& type) {
 }
 
 bool IrVisitor::var_exists(const std::string& name, size_t scope_id) {
-  std::shared_ptr<Variable> var = m_symtab->lookup_variable(name, scope_id);
+  std::shared_ptr<Variable> var = m_symtab->lookup<Variable>(name, scope_id);
   assert(var != nullptr && "var should exist within symbol table");
   uint64_t size = var->type->get_byte_size();
   return m_vars.find(IR_Variable(name + "_" + std::to_string(var->scope_id),
@@ -49,7 +49,7 @@ bool IrVisitor::var_exists(const std::string& name, size_t scope_id) {
 
 const IR_Variable& IrVisitor::get_var(const std::string& name,
                                       size_t scope_id) {
-  std::shared_ptr<Variable> var = m_symtab->lookup_variable(name, scope_id);
+  std::shared_ptr<Variable> var = m_symtab->lookup<Variable>(name, scope_id);
   assert(var != nullptr && "var should exist within symbol table");
   uint64_t size = var->type->get_byte_size();
   auto itr = m_vars.find(
@@ -60,7 +60,7 @@ const IR_Variable& IrVisitor::get_var(const std::string& name,
 
 const IR_Variable* IrVisitor::add_var(const std::string& name, size_t scope_id,
                                       bool is_func_decl = false) {
-  std::shared_ptr<Variable> var = m_symtab->lookup_variable(name, scope_id);
+  std::shared_ptr<Variable> var = m_symtab->lookup<Variable>(name, scope_id);
   assert(var != nullptr && "var should exist within symbol table");
   uint64_t size = var->type->get_byte_size();
   auto itr = m_vars.insert(IR_Variable(
@@ -219,7 +219,7 @@ void IrVisitor::visit_addrof(const ExprPtr& op, const IR_Register& dst) {
 
 void IrVisitor::visit(UnaryExprNode& node) {
   node.operand->accept(*this);
-  IROperand operand_op = m_last_expr_operand;
+  IROperand object = m_last_expr_operand;
 
   IR_Register dest_reg = m_ir_gen.new_temp_reg();
 
@@ -228,13 +228,13 @@ void IrVisitor::visit(UnaryExprNode& node) {
   switch (node.op_type) {
     case UnaryOperator::Negate:
       // dest = -operand
-      m_ir_gen.emit_neg(dest_reg, operand_op, size);
+      m_ir_gen.emit_neg(dest_reg, object, size);
       break;
     case UnaryOperator::LogicalNot:
-      m_ir_gen.emit_log_not(dest_reg, operand_op, size);
+      m_ir_gen.emit_log_not(dest_reg, object, size);
       break;
     case UnaryOperator::Dereference:
-      m_ir_gen.emit_load(dest_reg, operand_op, Type::PTR_SIZE);
+      m_ir_gen.emit_load(dest_reg, object, Type::PTR_SIZE);
       break;
     case UnaryOperator::AddressOf:
     case UnaryOperator::AddressOfMut:
@@ -263,7 +263,9 @@ IR_Register IrVisitor::compute_struct_field_addr(
 
   assert(struct_type->is<Type::Named>() && "Field access on non-struct");
 
-  StructDeclPtr struct_decl = m_symtab->lookup_struct(struct_type);
+  std::string name = struct_type->to_string();
+  size_t scope_id = struct_type->get_scope_id();
+  StructDeclPtr struct_decl = m_symtab->lookup_struct(name, scope_id);
   assert(struct_decl && "Struct definition not found");
 
   // find the field offset and type
@@ -318,7 +320,9 @@ void IrVisitor::visit(FieldAccessNode& node) {
       obj_type->is<Type::Pointer>() ? obj_type->as<Type::Pointer>().pointee
                                     : obj_type;
 
-  StructDeclPtr struct_decl = m_symtab->lookup_struct(struct_type);
+  std::string name = struct_type->to_string();
+  size_t scope_id = struct_type->get_scope_id();
+  StructDeclPtr struct_decl = m_symtab->lookup_struct(name, scope_id);
   assert(struct_type != nullptr);
 
   std::shared_ptr<Type> field_type;
@@ -550,38 +554,12 @@ void IrVisitor::visit(ParamNode& node) {
   add_var(node.name->name, node.scope_id);
 }
 
-void IrVisitor::call_func_name(const std::string& func_name, size_t scope_id,
-                               std::shared_ptr<Type> expr_type) {
-  assert(var_exists(func_name, scope_id));
-  const IROperand& func_target = get_var(func_name, scope_id);
-
-  std::optional<IR_Register> result_reg_opt = std::nullopt;
-
-  // if it is not void, prepare a temp register for return value
-  assert(expr_type && "Type checker should resolve function call");
-  if (!(expr_type->is<Type::Named>() &&
-        expr_type->as<Type::Named>().identifier == "u0")) {
-    IR_Register call_result_reg = m_ir_gen.new_temp_reg();
-    result_reg_opt = call_result_reg;
-    m_last_expr_operand = call_result_reg;
-  } else {
-    // void placeholder
-    m_last_expr_operand = IR_Immediate(0, 8);
-  }
-
-  m_ir_gen.emit_lcall(result_reg_opt, func_target, expr_type->get_byte_size());
-}
-
 void IrVisitor::visit(FunctionCallNode& node) {
-  IdentPtr callee_ident =
-      std::dynamic_pointer_cast<IdentifierNode>(node.callee);
-  if (!callee_ident) {
-    unimpl("FunctionCallNode with complex callee expressions (func ptr)");
-    return;
-  }
-
   assert(node.callee->expr_type && "Callee must have a type");
-  FuncDeclPtr func_decl = m_symtab->lookup_func(node.callee->expr_type);
+  assert(node.callee->expr_type->is<Type::Function>() &&
+         "Callee in a function call must have a function type");
+  const Type::Function& func_type =
+      node.callee->expr_type->as<Type::Function>();
 
   m_ir_gen.emit_begin_lcall_prep();
   for (size_t i = 0; i < node.arguments.size(); ++i) {
@@ -593,11 +571,11 @@ void IrVisitor::visit(FunctionCallNode& node) {
            "Types should be resolved by Typechecker");
     auto arg_type = arg_node->expression->expr_type;
 
-    ParamPtr param_node = func_decl->params[i];
+    const Type::ParamInfo& param_info = func_type.params[i];
     IROperand final_arg_op = arg_op;
 
-    if (param_node->modifier == BorrowState::ImmutableOwned ||
-        param_node->modifier == BorrowState::MutablyOwned) { // take
+    if (param_info.modifier == BorrowState::ImmutablyOwned ||
+        param_info.modifier == BorrowState::MutablyOwned) { // take
       if (!arg_node->is_give) {
         final_arg_op = get_copy_of_operand(arg_op, arg_type);
       }
@@ -605,8 +583,25 @@ void IrVisitor::visit(FunctionCallNode& node) {
 
     m_ir_gen.emit_push_arg(final_arg_op, arg_type->get_byte_size());
   }
+  node.callee->accept(*this);
+  IROperand func_target = m_last_expr_operand;
 
-  call_func_name(callee_ident->name, node.scope_id, node.expr_type);
+  std::optional<IR_Register> result_reg_opt = std::nullopt;
+
+  // if it is not void, prepare a temp register for return value
+  assert(node.expr_type && "Type checker should resolve function call");
+  if (!(node.expr_type->is<Type::Named>() &&
+        node.expr_type->as<Type::Named>().identifier == "u0")) {
+    IR_Register call_result_reg = m_ir_gen.new_temp_reg();
+    result_reg_opt = call_result_reg;
+    m_last_expr_operand = call_result_reg;
+  } else {
+    // void placeholder
+    m_last_expr_operand = IR_Immediate(0, 8);
+  }
+
+  size_t byte_size = node.expr_type->get_byte_size();
+  m_ir_gen.emit_lcall(result_reg_opt, func_target, byte_size);
 }
 
 void IrVisitor::visit(ReturnStmtNode& node) {
@@ -916,8 +911,11 @@ IROperand IrVisitor::get_copy_of_operand(const IROperand& src,
       m_ir_gen.emit_lcall(result_reg, IR_Label("string_copy"), Type::PTR_SIZE);
       return result_reg;
     }
-    StructDeclPtr struct_decl = m_symtab->lookup_struct(type);
-    if (struct_decl != nullptr) { // It's a struct
+    std::string name = type->to_string();
+    size_t scope = type->get_scope_id();
+    StructDeclPtr struct_decl = m_symtab->lookup_struct(name, scope);
+    if (struct_decl != nullptr) {
+      // it must be a struct
       uint64_t struct_size = struct_decl->struct_size;
       IR_Register new_addr_reg = m_ir_gen.new_temp_reg();
       m_ir_gen.emit_alloc(new_addr_reg, struct_size, std::nullopt, 0);

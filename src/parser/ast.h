@@ -412,8 +412,9 @@ public:
   // the total struct size (sum of sizes of fields)
   uint64_t struct_size; // set by the type checker
 
-  StructDeclNode(const Token* tok, size_t sc, std::vector<StructFieldPtr> f)
-      : AstNode(tok, sc), type(nullptr), fields(std::move(f)), struct_size(0) {}
+  StructDeclNode(const Token* tok, size_t sc, std::shared_ptr<Type> type,
+                 std::vector<StructFieldPtr> f)
+      : AstNode(tok, sc), type(type), fields(std::move(f)), struct_size(0) {}
   void accept(Visitor& v) override;
 };
 

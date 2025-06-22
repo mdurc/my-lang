@@ -276,7 +276,7 @@ std::string X86_64CodeGenerator::generate(
   m_out << "extern print_newline, print_uint, print_int" << std::endl;
   m_out << "extern read_char, read_word, parse_uint" << std::endl;
   m_out << "extern parse_int, string_equals, string_copy" << std::endl;
-  m_out << "extern malloc, free, clrscr" << std::endl;
+  m_out << "extern memcpy, malloc, free, clrscr" << std::endl;
 
   m_out << std::endl;
 
@@ -494,8 +494,6 @@ void X86_64CodeGenerator::handle_end_preamble() {
 
 void X86_64CodeGenerator::handle_end_func(const IRInstruction* instr,
                                           bool exit) {
-  handle_end_preamble();
-
   if (!exit) {
     // set up the return value here
     if (instr != nullptr && !instr->operands.empty()) {
@@ -508,6 +506,10 @@ void X86_64CodeGenerator::handle_end_func(const IRInstruction* instr,
       emit("xor rax, rax ; void return"); // store zero in rax
     }
   }
+
+  // handle the preamble after setting the return value due to the case
+  // that the IR reg is a part of the callee-saved regs that are restored
+  handle_end_preamble();
 
   // restore stack pointer and base ptr
   emit("mov rsp, rbp ; restore stack");
@@ -906,14 +908,24 @@ void X86_64CodeGenerator::handle_store(const IRInstruction& instr) {
   // [mem] = reg
   IROperand dst_addr = instr.result.value();
   IROperand src_val = instr.operands[0];
-  assert((std::holds_alternative<IR_Register>(src_val) ||
-          std::holds_alternative<IR_Immediate>(src_val)) &&
-         "Store instructions source must be a register or immediate");
+  bool src_is_var = std::holds_alternative<IR_Variable>(src_val);
+  assert(
+      (std::holds_alternative<IR_Register>(src_val) ||
+       std::holds_alternative<IR_Immediate>(src_val) || src_is_var) &&
+      "Store instructions source must be a register or immediate or variable");
 
   std::string temp = get_temp_x86_reg(Type::PTR_SIZE);
   std::string dst_str = get_sized_component(dst_addr, instr.size);
   std::string src_str = get_sized_component(src_val, instr.size);
-  emit("mov " + temp + ", " + dst_str);   // store ptr/addr in temp
+  emit("mov " + temp + ", " + dst_str); // store ptr/addr in temp
+
+  if (src_is_var) {
+    // they are both memory, so put the source in a register first
+    std::string temp = get_temp_x86_reg(instr.size);
+    emit("mov " + temp + ", " + src_str);
+    src_str = temp;
+  }
+
   emit("mov [" + temp + "], " + src_str); // now we can deref the addr
 }
 

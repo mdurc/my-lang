@@ -1,108 +1,112 @@
 #ifndef PARSER_SYMTAB_H
 #define PARSER_SYMTAB_H
 
-#include <cstddef>
-#include <optional>
-#include <string>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
 #include "ast.h"
 #include "types.h"
 
+#define DEFINE_ADD_DECL(TypeName, FuncName, MemberMap)        \
+  TypeName FuncName(const std::string& name, TypeName decl) { \
+    auto itr = MemberMap.insert({name, decl});                \
+    return itr.second ? decl : nullptr;                       \
+  }
+
+#define DEFINE_DECLARE_DECL(TypeName, FuncName, AddFuncName)                \
+  TypeName FuncName(const std::string& name, TypeName decl, size_t scope) { \
+    return m_scopes[scope].AddFuncName(name, decl);                         \
+  }
+
+#define DEFINE_LOOKUP(TypeName, FuncName, MemberLookupFunc)              \
+  TypeName FuncName(const std::string& name, size_t start_scope) const { \
+    if (start_scope >= m_scopes.size()) {                                \
+      return nullptr;                                                    \
+    }                                                                    \
+    for (size_t scope_id = start_scope;;                                 \
+         scope_id = m_scopes[scope_id].get_parent_scope()) {             \
+      TypeName result = m_scopes[scope_id].MemberLookupFunc(name);       \
+      if (result) return result;                                         \
+      if (scope_id == 0) break;                                          \
+    }                                                                    \
+    return nullptr;                                                      \
+  }
+
+struct Symbol {
+  enum Kind { Variable, Type };
+  Kind kind;
+  std::shared_ptr<void> data;
+
+  template <typename T>
+  std::shared_ptr<T> as() const {
+    return std::static_pointer_cast<T>(data);
+  }
+};
+
 class Scope {
 public:
-  Scope(size_t ps) : m_parent_scope(ps) {}
-
+  Scope(size_t parent) : m_parent_scope(parent) {}
   size_t get_parent_scope() const { return m_parent_scope; }
 
-  std::shared_ptr<Type> add_type(const Type& tk) {
-    m_types.push_back(std::make_shared<Type>(tk));
-    return m_types.back();
-  }
-  std::shared_ptr<Variable> add_variable(const Variable& v) {
-    m_variables.push_back(std::make_shared<Variable>(v));
-    return m_variables.back();
-  }
-
-  std::shared_ptr<Type> add_struct(const Type& tk, StructDeclPtr struct_node) {
-    std::shared_ptr<Type> type = std::make_shared<Type>(tk);
-    m_types.push_back(type);
-    m_structs.insert({type, struct_node});
-    return m_types.back();
+  template <typename T>
+  std::shared_ptr<T> add(const std::string& name, Symbol::Kind kind,
+                         const T& value) {
+    std::shared_ptr<T> shrd_type = std::make_shared<T>(value);
+    auto itr = m_symbols.insert({name, {kind, shrd_type}});
+    return itr.second ? shrd_type : nullptr;
   }
 
-  std::shared_ptr<Type> add_func(const Type& tk, FuncDeclPtr func_node) {
-    std::shared_ptr<Type> type = std::make_shared<Type>(tk);
-    m_types.push_back(type);
-    m_funcs.insert({type, func_node});
-    return m_types.back();
-  }
+  DEFINE_ADD_DECL(StructDeclPtr, add_struct, m_structs)
 
-  const std::vector<std::shared_ptr<Type>>& get_types() const {
-    return m_types;
-  }
-  const std::vector<std::shared_ptr<Variable>>& get_variables() const {
-    return m_variables;
-  }
-
-  std::shared_ptr<Type> lookup_type(const Type& target) const;
-  std::shared_ptr<Variable> lookup_variable(const std::string& name) const;
-
-  StructDeclPtr lookup_struct(std::shared_ptr<Type> type) const {
-    auto itr = m_structs.find(type);
-    return itr == m_structs.end() ? nullptr : itr->second;
-  }
-
-  FuncDeclPtr lookup_func(std::shared_ptr<Type> type) const {
-    auto itr = m_funcs.find(type);
-    return itr == m_funcs.end() ? nullptr : itr->second;
-  }
+  const Symbol* lookup(const std::string& name) const;
+  StructDeclPtr lookup_struct(const std::string& name) const;
 
   void print(std::ostream& out, const std::string& indent = "") const;
 
 private:
-  size_t m_parent_scope; // parent scope id within symbol table
-  std::vector<std::shared_ptr<Type>>
-      m_types; // types declared within this scope
-  std::vector<std::shared_ptr<Variable>>
-      m_variables; // variables declared within this scope
-
-  std::unordered_map<std::shared_ptr<Type>, StructDeclPtr> m_structs;
-  std::unordered_map<std::shared_ptr<Type>, FuncDeclPtr> m_funcs;
+  size_t m_parent_scope;
+  std::unordered_map<std::string, Symbol> m_symbols;
+  std::unordered_map<std::string, StructDeclPtr> m_structs;
 };
 
 class SymTab {
 public:
   SymTab();
-
-  void enter_new_scope();
+  void enter_scope();
   void exit_scope();
 
-  std::shared_ptr<Type> lookup_type(const Type& target) const;
+  template <typename T>
+  std::shared_ptr<T> lookup(const std::string& name, size_t start_scope) const {
+    if (start_scope >= m_scopes.size()) {
+      return nullptr;
+    }
+    for (size_t scope_id = start_scope;;
+         scope_id = m_scopes[scope_id].get_parent_scope()) {
+      const Symbol* s = m_scopes[scope_id].lookup(name);
+      if (s && s->data) return s->as<T>();
+      if (scope_id == 0) break;
+    }
+    return nullptr;
+  }
 
-  std::shared_ptr<Variable> lookup_variable(const std::string& name,
-                                            int starting_scope = -1) const;
+  DEFINE_LOOKUP(StructDeclPtr, lookup_struct, lookup_struct)
 
-  StructDeclPtr lookup_struct(std::shared_ptr<Type> type) const;
-  FuncDeclPtr lookup_func(std::shared_ptr<Type> type) const;
+  template <typename T>
+  std::shared_ptr<T> declare(const std::string& name, Symbol::Kind kind,
+                             const T& value, size_t scope) {
+    return m_scopes[scope].add<T>(name, kind, value);
+  }
 
-  std::shared_ptr<Type> get_primitive_type(std::string primitive) const;
-
-  std::shared_ptr<Type> declare_type(const Type& tk);
-  std::shared_ptr<Variable> declare_variable(Variable v);
-
-  std::shared_ptr<Type> declare_struct(const Type& tk,
-                                       StructDeclPtr struct_node);
-  std::shared_ptr<Type> declare_func(const Type& tk, FuncDeclPtr func_node);
+  DEFINE_DECLARE_DECL(StructDeclPtr, declare_struct, add_struct)
 
   size_t current_scope() const { return m_current_scope; }
 
   void print(std::ostream& out) const;
 
 private:
-  size_t m_current_scope;      // current scope id
-  std::vector<Scope> m_scopes; // v[scope id] <-> Scope
+  size_t m_current_scope;
+  std::vector<Scope> m_scopes;
 };
 
 #endif // PARSER_SYMTAB_H

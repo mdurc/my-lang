@@ -132,14 +132,34 @@ AstPtr Parser::parse_struct_decl() {
   Type struct_type(Type::Named(name_tok->get_lexeme()),
                    m_symtab->current_scope(), Type::PTR_SIZE);
 
-  m_symtab->enter_new_scope(); // new scope for the contents
+  // declare it and see if it already exists (in which an error should occur)
+  std::string type_name = struct_type.to_string();
+  size_t scope_id = struct_type.get_scope_id();
+  std::shared_ptr<Type> sym_struct_type =
+      m_symtab->declare<Type>(type_name, Symbol::Type, struct_type, scope_id);
+  if (!sym_struct_type) {
+    m_logger.report(DuplicateDeclarationError(name_tok->get_span(),
+                                              struct_type.to_string()));
+    throw std::runtime_error("Parser error");
+  }
+
+  // now link the struct declaration node to the symbol table for the IR
+  StructDeclPtr struct_node =
+      _AST(StructDeclNode, struct_tok, m_symtab->current_scope(),
+           sym_struct_type, std::vector<StructFieldPtr>{});
+  if (!m_symtab->declare_struct(type_name, struct_node, scope_id)) {
+    m_logger.report(
+        DuplicateDeclarationError(name_tok->get_span(), "struct " + type_name));
+    throw std::runtime_error("Parser error");
+  }
+
+  m_symtab->enter_scope(); // new scope for the contents
 
   _consume(TokenType::LBRACE);
 
-  std::vector<StructFieldPtr> fields;
   if (!match(TokenType::RBRACE)) {
     do {
-      fields.push_back(parse_struct_field());
+      struct_node->fields.push_back(parse_struct_field());
     } while (match(TokenType::COMMA) && advance());
   }
 
@@ -147,21 +167,7 @@ AstPtr Parser::parse_struct_decl() {
 
   m_symtab->exit_scope();
 
-  StructDeclPtr node = _AST(StructDeclNode, struct_tok,
-                            m_symtab->current_scope(), std::move(fields));
-
-  // declare it and see if it already exists (in which an error should occur)
-  std::shared_ptr<Type> sym_struct_type =
-      m_symtab->declare_struct(struct_type, node);
-  if (!sym_struct_type) {
-    m_logger.report(DuplicateDeclarationError(name_tok->get_span(),
-                                              struct_type.to_string()));
-    throw std::runtime_error("Parser error");
-  }
-
-  node->type = sym_struct_type;
-
-  return node;
+  return struct_node;
 }
 
 // <StructField> ::= Identifier ':' <Type>
@@ -180,7 +186,8 @@ StructFieldPtr Parser::parse_struct_field() {
                      m_symtab->current_scope());
 
   // check if the field is a duplicate to another field
-  if (!m_symtab->declare_variable(std::move(field_var))) {
+  if (!m_symtab->declare<Variable>(field_var.name, Symbol::Variable, field_var,
+                                   field_var.scope_id)) {
     m_logger.report(DuplicateDeclarationError(name_tok->get_span(),
                                               name_tok->get_lexeme()));
     throw std::runtime_error("Parser error");
@@ -203,7 +210,7 @@ FuncDeclPtr Parser::parse_function_decl() {
   IdentPtr name_ident = _AST(IdentifierNode, name_tok,
                              m_symtab->current_scope(), name_tok->get_lexeme());
 
-  m_symtab->enter_new_scope();
+  m_symtab->enter_scope();
 
   _consume(TokenType::LPAREN);
 
@@ -221,7 +228,7 @@ FuncDeclPtr Parser::parse_function_decl() {
   if (match(TokenType::RETURNS)) {
     return_t = parse_function_return_type();
   } else {
-    return_t.second = m_symtab->get_primitive_type("u0");
+    return_t.second = m_symtab->lookup<Type>("u0", 0);
   }
   assert(return_t.second != nullptr);
 
@@ -230,36 +237,33 @@ FuncDeclPtr Parser::parse_function_decl() {
   m_symtab->exit_scope();
 
   // Construct FunctionType for the symbol table declaration
-  std::vector<std::shared_ptr<Type>> ft_params;
+  std::vector<Type::ParamInfo> ft_params;
   for (const ParamPtr& ast_param : params_vec) {
-    ft_params.push_back(ast_param->type);
+    ft_params.push_back({ast_param->type, ast_param->modifier});
   }
 
   // make it at the global scope, as we don't allow member functions
   Type ft(Type::Function(std::move(ft_params), return_t.second), 0);
 
   // do not redeclare function families
-  FuncDeclPtr func_node =
-      _AST(FunctionDeclNode, func_tok, m_symtab->current_scope(), name_ident,
-           std::move(params_vec), std::move(return_t.first), return_t.second,
-           body_block);
-
-  std::shared_ptr<Type> func_type = m_symtab->lookup_type(ft);
-  if (!func_type) {
+  std::string name = ft.to_string();
+  std::shared_ptr<Type> fn_type = m_symtab->lookup<Type>(name, 0);
+  if (!fn_type) {
     // it doesn't exist, so we can add it as a new func-type
-    func_type = m_symtab->declare_func(ft, func_node);
+    fn_type = m_symtab->declare<Type>(name, Symbol::Type, ft, 0);
   }
 
   // declare it as a var with the associated type (also at global scope)
-  Variable func_var(name_tok->get_lexeme(), BorrowState::ImmutableOwned,
-                    func_type, 0);
-  if (!m_symtab->declare_variable(std::move(func_var))) {
+  Variable var(name_tok->get_lexeme(), BorrowState::ImmutablyOwned, fn_type, 0);
+  if (!m_symtab->declare<Variable>(var.name, Symbol::Variable, var, 0)) {
     m_logger.report(DuplicateDeclarationError(name_tok->get_span(),
                                               name_tok->get_lexeme()));
     throw std::runtime_error("Parser error");
   }
 
-  return func_node;
+  return _AST(FunctionDeclNode, func_tok, m_symtab->current_scope(), name_ident,
+              std::move(params_vec), std::move(return_t.first), return_t.second,
+              body_block);
 }
 
 BorrowState Parser::parse_function_param_prefix() {
@@ -271,7 +275,7 @@ BorrowState Parser::parse_function_param_prefix() {
     advance(); // imm borrowed is already the default
   } else if (match(TokenType::TAKE)) {
     advance();
-    modifier = BorrowState::ImmutableOwned; // Take ==> imm owned by default
+    modifier = BorrowState::ImmutablyOwned; // Take ==> imm owned by default
     if (match(TokenType::MUT)) {
       modifier = BorrowState::MutablyOwned;
       advance();
@@ -301,7 +305,8 @@ ParamPtr Parser::parse_function_param() {
   // declare the parameter as a variable in current scope
   Variable param_var(name_tok->get_lexeme(), modifier, type_val,
                      m_symtab->current_scope());
-  if (!m_symtab->declare_variable(std::move(param_var))) {
+  if (!m_symtab->declare<Variable>(param_var.name, Symbol::Variable, param_var,
+                                   param_var.scope_id)) {
     m_logger.report(DuplicateDeclarationError(name_tok->get_span(),
                                               name_tok->get_lexeme()));
     throw std::runtime_error("Parser error");
@@ -330,7 +335,8 @@ Parser::parse_function_return_type() {
   // MutablyOwned is required
   Variable return_var(ident_tok->get_lexeme(), BorrowState::MutablyOwned,
                       type_val, m_symtab->current_scope(), true);
-  if (!m_symtab->declare_variable(std::move(return_var))) {
+  if (!m_symtab->declare<Variable>(return_var.name, Symbol::Variable,
+                                   return_var, return_var.scope_id)) {
     m_logger.report(DuplicateDeclarationError(ident_tok->get_span(),
                                               ident_tok->get_lexeme()));
     throw std::runtime_error("Parser error");
@@ -436,13 +442,14 @@ StmtPtr Parser::parse_var_decl() {
   _consume(TokenType::SEMICOLON);
 
   BorrowState bs =
-      is_mutable ? BorrowState::MutablyOwned : BorrowState::ImmutableOwned;
+      is_mutable ? BorrowState::MutablyOwned : BorrowState::ImmutablyOwned;
 
   Variable var_sym(name_tok->get_lexeme(), bs, type_val,
                    m_symtab->current_scope());
 
   // check if it is a duplicate variable
-  if (!m_symtab->declare_variable(std::move(var_sym))) {
+  if (!m_symtab->declare<Variable>(var_sym.name, Symbol::Variable, var_sym,
+                                   var_sym.scope_id)) {
     m_logger.report(DuplicateDeclarationError(name_tok->get_span(),
                                               name_tok->get_lexeme()));
     throw std::runtime_error("Parser error");
@@ -487,7 +494,7 @@ StmtPtr Parser::parse_for_stmt() {
   const Token* for_tok = current();
   _consume(TokenType::FOR);
 
-  m_symtab->enter_new_scope();
+  m_symtab->enter_scope();
 
   _consume(TokenType::LPAREN);
 
@@ -688,7 +695,7 @@ BlockPtr Parser::parse_block(bool create_scope) {
   const Token* lbrace_tok = current();
 
   if (create_scope) {
-    m_symtab->enter_new_scope();
+    m_symtab->enter_scope();
   }
 
   _consume(TokenType::LBRACE);
@@ -1010,16 +1017,16 @@ std::shared_ptr<Type> Parser::parse_type() {
     // Basic types
     advance();
     std::shared_ptr<Type> t =
-        m_symtab->get_primitive_type(type_start_tok->get_lexeme());
+        m_symtab->lookup<Type>(type_start_tok->get_lexeme(), 0);
     assert(t != nullptr);
     return t;
   }
   if (match(TokenType::IDENTIFIER)) {
     // Struct type
     advance();
-    std::shared_ptr<Type> t =
-        m_symtab->lookup_type(Type(Type::Named(type_start_tok->get_lexeme()),
-                                   m_symtab->current_scope(), -1));
+    const std::string& name = type_start_tok->get_lexeme();
+    size_t scope = m_symtab->current_scope();
+    std::shared_ptr<Type> t = m_symtab->lookup<Type>(name, scope);
     if (t == nullptr) {
       m_logger.report(TypeNotFoundError(type_start_tok->get_span(),
                                         type_start_tok->get_lexeme()));
@@ -1046,13 +1053,14 @@ std::shared_ptr<Type> Parser::parse_type() {
     // we do not check the symbol table for this because ptrs of any valid
     // pointee types are allowed. We will add it to the symbol table though.
 
-    Type search_type(Type::Pointer(is_mutable, pointee),
-                     m_symtab->current_scope());
-
-    std::shared_ptr<Type> ptr_type = m_symtab->lookup_type(search_type);
+    Type search_t(Type::Pointer(is_mutable, pointee),
+                  m_symtab->current_scope());
+    std::string name = search_t.to_string();
+    size_t scope = search_t.get_scope_id();
+    std::shared_ptr<Type> ptr_type = m_symtab->lookup<Type>(name, scope);
     if (!ptr_type) {
       // it doesn't exist, so we can add
-      ptr_type = m_symtab->declare_type(search_type);
+      ptr_type = m_symtab->declare<Type>(name, Symbol::Type, search_t, scope);
     }
 
     return ptr_type;
@@ -1061,10 +1069,16 @@ std::shared_ptr<Type> Parser::parse_type() {
     advance();
     _consume(TokenType::LPAREN);
 
-    std::vector<std::shared_ptr<Type>> param_types;
+    std::vector<Type::ParamInfo> param_types;
     if (!match(TokenType::RPAREN)) {
       do {
-        param_types.push_back(parse_type());
+        size_t pos = m_pos;
+        BorrowState modifier = parse_function_param_prefix();
+        if (pos != m_pos) {
+          // we must have parsed the prefix
+          _consume(TokenType::COLON);
+        }
+        param_types.push_back({parse_type(), modifier});
       } while (match(TokenType::COMMA) && advance());
     }
     _consume(TokenType::RPAREN);
@@ -1075,8 +1089,10 @@ std::shared_ptr<Type> Parser::parse_type() {
 
     // functions are declared at scope 0
     Type func_type(Type::Function(std::move(param_types), ret_type), 0);
-    std::shared_ptr<Type> t = m_symtab->lookup_type(func_type);
+    std::string name = func_type.to_string();
+    std::shared_ptr<Type> t = m_symtab->lookup<Type>(name, 0);
     if (t == nullptr) {
+      // the function type should already have been declared
       m_logger.report(
           TypeNotFoundError(type_start_tok->get_span(), func_type.to_string()));
       throw std::runtime_error("Parser error");
@@ -1102,10 +1118,11 @@ ExprPtr Parser::parse_primary() {
 
     // if it exists as a type, then it is a struct because that is the only
     // other named type that can exist besides primatives
-    std::shared_ptr<Type> struct_type = m_symtab->lookup_type(
-        Type(Type::Named(tok->get_lexeme()), m_symtab->current_scope(), -1));
-    if (struct_type) {
-      return parse_struct_literal(m_symtab->lookup_struct(struct_type));
+    const std::string& name = tok->get_lexeme();
+    size_t scope = m_symtab->current_scope();
+    StructDeclPtr struct_decl = m_symtab->lookup_struct(name, scope);
+    if (struct_decl) {
+      return parse_struct_literal(struct_decl);
     }
 
     // otherwise it is an identifier
@@ -1191,9 +1208,6 @@ ExprPtr Parser::parse_struct_literal(StructDeclPtr struct_decl) {
               struct_decl, std::move(initializers_vec));
 }
 
-// <NewExpr> ::= 'new' '<' <TypePrefix>? <Type> '>' ( '[' <Expr> ']' | '('
-// <Expr>? ')' )
-
 // <NewExpr> ::= 'new' '<'<TypePrefix>? <Type>'>'
 // ( '['<Expr>']' | '('(<StructLiteral> | <Expr>)?')' )
 
@@ -1228,11 +1242,12 @@ ExprPtr Parser::parse_new_expr() {
     advance();
     if (!match(TokenType::RPAREN)) {
       // Check if the current token is the start of a declared Struct Type
-      std::shared_ptr<Type> struct_type = m_symtab->lookup_type(Type(
-          Type::Named(current()->get_lexeme()), m_symtab->current_scope(), -1));
-      if (struct_type) {
+      const std::string& name = current()->get_lexeme();
+      size_t scope = m_symtab->current_scope();
+      StructDeclPtr struct_decl = m_symtab->lookup_struct(name, scope);
+      if (struct_decl) {
         // This must be the start of a struct literal
-        specifier = parse_struct_literal(m_symtab->lookup_struct(struct_type));
+        specifier = parse_struct_literal(struct_decl);
       } else {
         // It is a standard constructor type (primitives, literals, and
         // expressions that resolve to those)

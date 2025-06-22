@@ -16,12 +16,12 @@ func midpoint(p1: Point, p2: Point) returns (m: Point) {
 }
 
 func print_point(p: Point) {
-  print "Point(", p.x, ", ", p.y, ")\n";
+  print "Point(", p.x, ", ", p.y, ")";
 }
 
 func move_point(mut p: ptr<mut Point>, dx: i64, dy: i64) {
-  p.x = p.x + dx;
-  p.y = p.y + dy;
+  (*p).x = (*p).x + dx;
+  (*p).y = (*p).y + dy;
 }
 
 func main() {
@@ -29,18 +29,20 @@ func main() {
   mut a: Point = Point(x = 3, y = 4);
   mut b: Point = Point(x = 6, y = 8);
 
-  print "Distance^2 between a and b: ", distance_squared(a, b), "\n";
+  print "Distance^2 between a and b: ", distance_squared(a,b), "\n";
 
   // Midpoint
   mut mid: Point = midpoint(a, b);
   print "Midpoint: ";
   print_point(mid);
+  print "\n";
 
   // Pointer modification
   mut p: ptr<mut Point> = &mut a;
   move_point(p, 10, -3);
   print "Moved point a: ";
   print_point(a);
+  print "\n";
 
   // Struct array
   mut points: ptr<mut Point> = new<mut Point>[3];
@@ -51,6 +53,9 @@ func main() {
   print "Array of Points:\n";
   for (mut i: i64 = 0; i < 3; i = i + 1) {
     print_point(points[i]);
+    print " --> ";
+    print_point(*(points + 8 * i));
+    print "\n";
   }
 
   free[] points;
