@@ -1,5 +1,8 @@
 <Program>               ::= ( <StructDecl> | <FunctionDecl> | <Stmt> )*
 
+<DefineDirective>       ::= '#define' Identifier Expr
+<IncludeDirective>       ::= '#include' String
+
 <StructDecl>            ::= 'struct' Identifier '{' <StructFields>? '}'
 <StructFields>         ::= <StructField> ( ',' <StructField> )*
 <StructField>           ::= Identifier ':' <Type>
@@ -31,7 +34,7 @@
 <VarDecl>               ::= <TypePrefix>? Identifier ( ( ':' <Type> ( '=' <Expr> )? ) | ( ':=' <Expr> ) )
 
 <IfStmt>                ::= 'if' '(' <Expr> ')' <Block> ( 'else' ( <Block> | <IfStmt> ) )?
-<ForStmt>               ::= 'for' '(' <Expr>? ';' <Expr>? ';' <Expr>? ')' <Block>
+<ForStmt>               ::= 'for' '(' (<VarDecl> | <Expr>)? ';' <Expr>? ';' <Expr>? ')' <Block>
 <WhileStmt>             ::= 'while' '(' <Expr> ')' <Block>
 <SwitchStmt>            ::= 'switch' '(' <Expr> ')' '{' <Case>* '}'
 <Case>                  ::= 'case' <Expr> ':' <Block> | 'default' ':' <Block>
@@ -41,7 +44,7 @@
 <BreakStmt>             ::= 'break'
 <ContinueStmt>          ::= 'continue'
 <FreeStmt>              ::= 'free' '[]'? <Expr>
-<ErrorStmt>             ::= 'Error' String
+<ErrorStmt>             ::= 'error' String
 <ExitStmt>              ::= 'exit' Integer
 
 <Expr>                  ::= <AssignmentExpr>

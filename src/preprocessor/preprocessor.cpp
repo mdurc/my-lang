@@ -91,24 +91,24 @@ void Preprocessor::handle_define_directive(const std::string& line) {
 
 void Preprocessor::handle_include_directive(const std::string& line,
                                             std::stringstream& output) {
-  // #include "filename" or #include <filename>
-  std::string include_name;
-
-  char open = line.find('"') != std::string::npos
-                  ? '"'
-                  : (line.find('<') != std::string::npos ? '<' : '\0');
-
-  if (open != '\0') {
-    char close = (open == '"') ? '"' : '>';
-    size_t start = line.find(open) + 1;
-    size_t end = line.find(close, start);
-    if (end != std::string::npos) {
-      include_name = line.substr(start, end - start);
-    }
+  // #include "filename"
+  size_t start = line.find('"');
+  if (start == std::string::npos) {
+    m_logger->report(
+        Error("Invalid include directive (missing opening quote): " + line));
+    return;
   }
 
+  size_t end = line.find('"', start + 1);
+  if (end == std::string::npos) {
+    m_logger->report(
+        Error("Invalid include directive (missing closing quote): " + line));
+    return;
+  }
+
+  std::string include_name = line.substr(start + 1, end - start - 1);
   if (include_name.empty()) {
-    m_logger->report(Error("Invalid include directive: " + line));
+    m_logger->report(Error("Empty include path in directive: " + line));
     return;
   }
 
