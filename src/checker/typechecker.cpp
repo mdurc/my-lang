@@ -262,16 +262,31 @@ std::shared_ptr<Type> TypeChecker::get_lvalue_type_if_mutable(
     }
   } else if (auto field_access_node =
                  std::dynamic_pointer_cast<FieldAccessNode>(expr)) {
-    // let the access be a valid l-value iff the object is mut
-    std::shared_ptr<Type> field_type = get_expr_type(expr);
-    if (field_type && get_lvalue_type_if_mutable(field_access_node->object)) {
-      return field_type;
+    // For s.f or p->f, we need to check mutability of s or pointee of p.
+    std::shared_ptr<Type> object_type =
+        get_expr_type(field_access_node->object);
+    if (!object_type) {
+      return nullptr;
+    }
+
+    if (object_type->is<Type::Pointer>()) {
+      // pointer access: p.f (auto-deref). Mutable if p is ptr<mut S>.
+      if (object_type->as<Type::Pointer>().is_pointee_mutable) {
+        return get_expr_type(expr); // return field's type
+      }
+    } else {
+      // struct value access: s.f is mutable if s is a mutable variable.
+      if (get_lvalue_type_if_mutable(field_access_node->object)) {
+        return get_expr_type(expr);
+      }
     }
   } else if (auto array_index_node =
                  std::dynamic_pointer_cast<ArrayIndexNode>(expr)) {
-    std::shared_ptr<Type> element_type = get_expr_type(expr);
-    if (element_type && get_lvalue_type_if_mutable(array_index_node->object)) {
-      return element_type;
+    // For p[i] = ..., p must be ptr<mut T>
+    std::shared_ptr<Type> object_type = get_expr_type(array_index_node->object);
+    if (object_type && object_type->is<Type::Pointer>() &&
+        object_type->as<Type::Pointer>().is_pointee_mutable) {
+      return get_expr_type(expr);
     }
   }
 
