@@ -904,18 +904,32 @@ void X86_64CodeGenerator::handle_load(const IRInstruction& instr) {
   // IRInstruction: result: dest_temp(reg), operands[0]:
   // address_operand(*addr) reg = [mem]
   IROperand dst = instr.result.value();
-  bool dst_is_var = std::holds_alternative<IR_Variable>(dst);
   IROperand src_addr = instr.operands[0];
-  std::string dst_str = get_sized_component(dst, instr.size);
-  std::string src_str = get_sized_component(src_addr, Type::PTR_SIZE);
-  std::string temp_a = get_temp_x86_reg(Type::PTR_SIZE);
-  emit("mov " + temp_a + ", " + src_str); // dst is now at the memory
-  if (dst_is_var) {
-    std::string temp_b = get_temp_x86_reg(instr.size);
-    emit("mov " + temp_b + ", " + dst_str);
-    dst_str = temp_b;
+  bool src_is_var = std::holds_alternative<IR_Variable>(src_addr);
+  bool dst_is_var = std::holds_alternative<IR_Variable>(dst);
+  // Note: be careful about asking for temp_registers or other regs here, as
+  // it is possible that we spill the dst/src reg that we just asked for, where
+  // they are uninitialized. Be careful with preemptively asking for regs.
+
+  std::string src_str;
+  if (src_is_var) {
+    std::string temp = get_temp_x86_reg(Type::PTR_SIZE);
+    emit("mov " + temp + ", " + get_sized_component(src_addr, Type::PTR_SIZE));
+    src_str = temp;
+  } else {
+    src_str = get_sized_component(src_addr, Type::PTR_SIZE);
   }
-  emit("mov " + dst_str + ", [" + temp_a + "]"); // load it
+
+  std::string dst_str;
+  if (dst_is_var) {
+    std::string temp = get_temp_x86_reg(instr.size);
+    emit("mov " + temp + ", " + get_sized_component(dst, instr.size));
+    dst_str = temp;
+  } else {
+    dst_str = get_sized_component(dst, instr.size);
+  }
+
+  emit("mov " + dst_str + ", [" + src_str + "] ; performing load");
 }
 
 void X86_64CodeGenerator::handle_store(const IRInstruction& instr) {
@@ -924,26 +938,31 @@ void X86_64CodeGenerator::handle_store(const IRInstruction& instr) {
   IROperand dst_addr = instr.result.value();
   IROperand src_val = instr.operands[0];
   bool src_is_var = std::holds_alternative<IR_Variable>(src_val);
+  bool dst_is_var = std::holds_alternative<IR_Variable>(dst_addr);
   _assert(
       (std::holds_alternative<IR_Register>(src_val) ||
        std::holds_alternative<IR_Immediate>(src_val) || src_is_var),
       "Store instructions source must be a register or immediate or variable");
 
-  // these are both addresses to memory, so they must be 64 bit
-  std::string temp_a = get_temp_x86_reg(Type::PTR_SIZE);
-  std::string dst_str = get_sized_component(dst_addr, Type::PTR_SIZE);
-  std::string src_str = get_sized_component(src_val, instr.size);
-
+  std::string src_str;
   if (src_is_var) {
-    // when we are accessing mem in the next move with [temp], they will both
-    // be memory, so put the source in a register first
-    std::string temp_b = get_temp_x86_reg(instr.size);
-    emit("mov " + temp_b + ", " + src_str);
-    src_str = temp_b;
+    std::string temp = get_temp_x86_reg(instr.size);
+    emit("mov " + temp + ", " + get_sized_component(src_val, instr.size));
+    src_str = temp;
+  } else {
+    src_str = get_sized_component(src_val, instr.size);
   }
 
-  emit("mov " + temp_a + ", " + dst_str);   // store ptr/addr in temp
-  emit("mov [" + temp_a + "], " + src_str); // now we can deref the addr
+  std::string dst_str;
+  if (dst_is_var) {
+    std::string temp = get_temp_x86_reg(Type::PTR_SIZE);
+    emit("mov " + temp + ", " + get_sized_component(dst_addr, Type::PTR_SIZE));
+    dst_str = temp;
+  } else {
+    dst_str = get_sized_component(dst_addr, Type::PTR_SIZE);
+  }
+
+  emit("mov [" + dst_str + "], " + src_str + " ; performing store");
 }
 
 void X86_64CodeGenerator::handle_addr_of(const IRInstruction& instr) {
