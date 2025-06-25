@@ -1189,7 +1189,7 @@ ExprPtr Parser::parse_struct_literal(StructDeclPtr struct_decl) {
   const Token* type_name_tok = current(); // this is the Type that is passed
   _consume(TokenType::IDENTIFIER);
 
-  _consume(TokenType::LPAREN);
+  _consume(TokenType::LBRACE);
 
   std::vector<StructFieldInitPtr> initializers_vec;
   if (!match(TokenType::RPAREN)) {
@@ -1211,7 +1211,7 @@ ExprPtr Parser::parse_struct_literal(StructDeclPtr struct_decl) {
     } while (match(TokenType::COMMA) && advance());
   }
 
-  _consume(TokenType::RPAREN);
+  _consume(TokenType::RBRACE);
 
   return _AST(StructLiteralNode, type_name_tok, m_symtab->current_scope(),
               struct_decl, std::move(initializers_vec));

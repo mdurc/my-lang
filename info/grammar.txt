@@ -1,6 +1,6 @@
 <Program>               ::= ( <StructDecl> | <FunctionDecl> | <Stmt> )*
 
-<DefineDirective>       ::= '#define' Identifier Expr
+<DefineDirective>       ::= '#define' Identifier /[^\n]+/
 <IncludeDirective>       ::= '#include' String
 
 <StructDecl>            ::= 'struct' Identifier '{' <StructFields>? '}'
@@ -67,7 +67,7 @@
 
 <PrimitiveLiteral>      ::= Integer | Float | String | Bool | 'null'
 
-<StructLiteral>         ::= Identifier '(' ( Identifier '=' <Expr> ( ',' Identifier '=' <Expr> )* )? ')'
+<StructLiteral>         ::= Identifier '{' ( Identifier '=' <Expr> ( ',' Identifier '=' <Expr> )* )? '}'
 <NewExpr>               ::= 'new' '<' <TypePrefix>? <Type> '>' ( '[' <Expr> ']' | '(' (<StructLiteral> | <Expr>)? ')' )
 
 <Args>                  ::= <Arg> ( ',' <Arg> )*
