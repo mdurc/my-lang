@@ -46,6 +46,7 @@ set(LOGGING_SOURCES
 add_executable(${PROJECT_NAME}
     main.cpp
     ../src/driver.cpp
+    ../src/json_export/json_exporter.cpp
     test_lexer.cpp
     test_parser.cpp
     test_symtab.cpp
