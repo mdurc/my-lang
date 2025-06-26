@@ -15,13 +15,17 @@ void IrGenerator::emit_begin_func(IR_Label func_label) {
                               std::vector<IROperand>{});
 }
 
-void IrGenerator::emit_end_func(IROperand return_val, uint64_t return_size) {
-  m_instructions.emplace_back(IROpCode::END_FUNC, std::nullopt,
+void IrGenerator::emit_end_func() {
+  m_instructions.emplace_back(IROpCode::END_FUNC);
+}
+
+void IrGenerator::emit_return(IROperand return_val, uint64_t return_size) {
+  m_instructions.emplace_back(IROpCode::RETURN, std::nullopt,
                               std::vector<IROperand>{return_val}, return_size);
 }
 
-void IrGenerator::emit_end_func() {
-  m_instructions.emplace_back(IROpCode::END_FUNC);
+void IrGenerator::emit_return() {
+  m_instructions.emplace_back(IROpCode::RETURN);
 }
 
 void IrGenerator::emit_exit(int exit_code) {

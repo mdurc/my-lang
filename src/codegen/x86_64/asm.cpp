@@ -331,7 +331,7 @@ std::string X86_64CodeGenerator::generate(
     emit("call exit");
   } else {
     // exit from _start
-    handle_end_func(nullptr, true);
+    handle_end_func(true);
   }
 
   // process all functions underneath the top level instructions
@@ -379,7 +379,8 @@ std::string X86_64CodeGenerator::generate(
 void X86_64CodeGenerator::handle_instruction(const IRInstruction& instr) {
   switch (instr.opcode) {
     case IROpCode::BEGIN_FUNC: handle_begin_func(instr); break;
-    case IROpCode::END_FUNC: handle_end_func(&instr, false); break;
+    case IROpCode::RETURN: handle_return(instr); break;
+    case IROpCode::END_FUNC: handle_end_func(false); break;
     case IROpCode::EXIT:
       _assert(!instr.operands.empty(), "exit operand should have an exit code");
       _assert(std::holds_alternative<IR_Immediate>(instr.operands[0]),
@@ -496,21 +497,8 @@ void X86_64CodeGenerator::handle_end_preamble() {
   }
 }
 
-void X86_64CodeGenerator::handle_end_func(const IRInstruction* instr,
-                                          bool exit) {
-  if (!exit) {
-    // set up the return value here
-    if (instr != nullptr && !instr->operands.empty()) {
-      // Non-void return
-      std::string return_str =
-          get_sized_component(instr->operands[0], instr->size);
-      std::string sized_rax = get_sized_register_name("rax", instr->size);
-      emit("mov " + sized_rax + ", " + return_str + " ; return value");
-    } else {
-      emit("xor rax, rax ; void return"); // store zero in rax
-    }
-  }
-
+void X86_64CodeGenerator::handle_end_func(bool is_exit) {
+  // return value is handled by a RETURN operand prior to this.
   // handle the preamble after setting the return value due to the case
   // that the IR reg is a part of the callee-saved regs that are restored
   handle_end_preamble();
@@ -519,7 +507,7 @@ void X86_64CodeGenerator::handle_end_func(const IRInstruction* instr,
   emit("mov rsp, rbp ; restore stack");
   emit("pop rbp");
 
-  if (exit) {
+  if (is_exit) {
     handle_exit(0);
   } else {
     // return from procedure here
@@ -534,6 +522,16 @@ void X86_64CodeGenerator::handle_exit(int code) {
     emit("mov rdi, " + std::to_string(code));
   }
   emit("call exit");
+}
+
+void X86_64CodeGenerator::handle_return(const IRInstruction& instr) {
+  if (!instr.operands.empty()) {
+    std::string return_str = get_sized_component(instr.operands[0], instr.size);
+    std::string sized_rax = get_sized_register_name("rax", instr.size);
+    emit("mov " + sized_rax + ", " + return_str + " ; set return value");
+  } else {
+    emit("xor rax, rax ; default return zero");
+  }
 }
 
 void X86_64CodeGenerator::handle_assign(const IRInstruction& instr) {

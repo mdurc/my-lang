@@ -15,8 +15,9 @@ public:
 
   // Function demarcation
   void emit_begin_func(IR_Label func_label);
-  void emit_end_func(IROperand return_val, uint64_t return_size);
   void emit_end_func();
+  void emit_return(IROperand return_val, uint64_t return_size);
+  void emit_return();
   void emit_exit(int exit_code);
 
   // Assignment and Data

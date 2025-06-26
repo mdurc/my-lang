@@ -11,8 +11,9 @@
 
 enum class IROpCode {
   BEGIN_FUNC, // Result: label_func_name, no operands
-  END_FUNC,   // Operands: optional return value
-  EXIT,       // Operands: exit code
+  RETURN,
+  END_FUNC, // Operands: optional return value
+  EXIT,     // Operands: exit code
 
   // Assignment and Data
   ASSIGN, // Result: dest_var_or_temp, Operands: src_operand

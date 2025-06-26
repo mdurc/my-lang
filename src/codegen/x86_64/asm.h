@@ -90,7 +90,8 @@ private:
 
   void handle_begin_func(const IRInstruction& instr);
   void handle_end_preamble();
-  void handle_end_func(const IRInstruction* instr, bool exit);
+  void handle_end_func(bool is_exit);
+  void handle_return(const IRInstruction& instr);
   void handle_exit(int code);
 
   void handle_assign(const IRInstruction& instr);

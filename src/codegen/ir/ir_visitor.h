@@ -79,9 +79,9 @@ private:
   IrGenerator m_ir_gen;
   std::set<IR_Variable> m_vars;
   std::stack<std::pair<IR_Label, IR_Label>> m_loop_contexts; // {continue,break}
+  std::optional<IR_Label> m_current_func_epilogue_label;
 
   IROperand m_last_expr_operand;
-  bool m_emitted_return;
   bool m_main_function_defined;
 
   IR_Label get_runtime_print_call(const std::shared_ptr<Type>& type);

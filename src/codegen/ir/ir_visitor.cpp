@@ -13,7 +13,6 @@ static bool is_str_cmp(std::shared_ptr<Type> a, std::shared_ptr<Type> b) {
 IrVisitor::IrVisitor(const SymTab* tab)
     : m_symtab(tab),
       m_last_expr_operand(IR_Register(-1)),
-      m_emitted_return(false),
       m_main_function_defined(false) {}
 
 const std::vector<IRInstruction>& IrVisitor::get_instructions() const {
@@ -534,19 +533,34 @@ void IrVisitor::visit(FunctionDeclNode& node) {
                          param_size);
   }
 
+  IR_Label epilogue_label = m_ir_gen.new_label();
+  std::optional<IR_Label> prev_epilogue_label = m_current_func_epilogue_label;
+  m_current_func_epilogue_label = epilogue_label;
+
   if (node.return_type_name.has_value()) {
     const std::string& ret_name = node.return_type_name.value()->name;
     add_var(ret_name, node.body->scope_id);
   }
 
-  m_emitted_return = false; // reset
   if (node.body) {
     node.body->accept(*this);
   }
 
-  if (!m_emitted_return) {
-    m_ir_gen.emit_end_func();
+  // setup void return before epilogue
+  if (node.return_type_name.has_value()) {
+    // named return, defaultly return the value within the return variable
+    IdentPtr named_ret = node.return_type_name.value();
+    IROperand named_operand = get_var(named_ret->name, named_ret->scope_id);
+    m_ir_gen.emit_return(named_operand, node.return_type->get_byte_size());
+  } else {
+    // void return, add default return before epilogue in case there are no
+    // explicit return statements in the code.
+    m_ir_gen.emit_return();
   }
+  m_ir_gen.emit_label(epilogue_label);
+  m_ir_gen.emit_end_func();
+
+  m_current_func_epilogue_label = prev_epilogue_label;
 }
 
 void IrVisitor::visit(ArgumentNode& node) {
@@ -610,16 +624,19 @@ void IrVisitor::visit(FunctionCallNode& node) {
 }
 
 void IrVisitor::visit(ReturnStmtNode& node) {
-  m_emitted_return = true;
+  _assert(m_current_func_epilogue_label.has_value(),
+          "Return statement found outside of a function context in IR visitor");
+
   if (node.value) {
     node.value->accept(*this);
     _assert(node.value->expr_type, "Types should be resolved by Typechecker");
-    m_ir_gen.emit_end_func(m_last_expr_operand,
-                           node.value->expr_type->get_byte_size());
+    m_ir_gen.emit_return(m_last_expr_operand,
+                         node.value->expr_type->get_byte_size());
   } else {
     // void
-    m_ir_gen.emit_end_func();
+    m_ir_gen.emit_return();
   }
+  m_ir_gen.emit_goto(m_current_func_epilogue_label.value());
 }
 
 void IrVisitor::visit(ForStmtNode& node) {
