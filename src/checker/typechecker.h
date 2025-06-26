@@ -1,8 +1,6 @@
 #ifndef CHECKER_TYPECHECKER_H
 #define CHECKER_TYPECHECKER_H
 
-#include <map>
-
 #include "../logging/logger.h"
 #include "../parser/ast.h"
 #include "../parser/symtab.h"

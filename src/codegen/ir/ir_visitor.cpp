@@ -10,8 +10,9 @@ static bool is_str_cmp(std::shared_ptr<Type> a, std::shared_ptr<Type> b) {
          b->is<Type::Named>() && b->as<Type::Named>().identifier == "string";
 }
 
-IrVisitor::IrVisitor(const SymTab* tab)
+IrVisitor::IrVisitor(const SymTab* tab, Logger* logger)
     : m_symtab(tab),
+      m_logger(logger),
       m_last_expr_operand(IR_Register(-1)),
       m_main_function_defined(false) {}
 
@@ -25,6 +26,7 @@ void IrVisitor::visit_all(const std::vector<AstPtr>& ast) {
       ast_node->accept(*this);
     } catch (const FatalError& internal_error) {
       // they either come from a throws from unimpl or something, or _assert
+      m_logger->report(internal_error);
       throw internal_error; // exit
     }
   }

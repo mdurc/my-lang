@@ -51,8 +51,9 @@ void TypeChecker::check_program(SymTab* symtab,
     if (node) {
       try {
         node->accept(*this);
-      } catch (const FatalError& assert_error) {
-        throw assert_error; // exit
+      } catch (const FatalError& internal_error) {
+        m_logger->report(internal_error);
+        throw internal_error; // exit
       }
     }
   }

@@ -103,6 +103,7 @@ std::vector<AstPtr> Parser::parse_program(SymTab* symtab,
         m_root.push_back(node);
       }
     } catch (const FatalError& internal_error) {
+      m_logger->report(internal_error);
       throw internal_error; // exit
     } catch (const std::runtime_error&) {
       synchronize();

@@ -15,7 +15,7 @@
 
 class IrVisitor : public Visitor {
 public:
-  IrVisitor(const SymTab* tab);
+  IrVisitor(const SymTab* tab, Logger* logger);
 
   const std::vector<IRInstruction>& get_instructions() const;
   bool is_main_defined() const { return m_main_function_defined; }
@@ -76,6 +76,7 @@ public:
 
 private:
   const SymTab* m_symtab;
+  Logger* m_logger;
   IrGenerator m_ir_gen;
   std::set<IR_Variable> m_vars;
   std::stack<std::pair<IR_Label, IR_Label>> m_loop_contexts; // {continue,break}

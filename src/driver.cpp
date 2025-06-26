@@ -68,7 +68,7 @@ void compile_tokens(const std::string& filename, std::ostream& out) {
     _check_diags();
     print_tokens(tokens, out);
   } catch (const FatalError&) {
-    std::cerr << logger.get_diagnostic_str();
+    std::cerr << "Error\n" << logger.get_diagnostic_str();
   }
 }
 
@@ -83,7 +83,7 @@ void compile_ast(const std::string& filename, std::ostream& out) {
     _check_diags();
     print_ast(ast, out);
   } catch (const FatalError&) {
-    std::cerr << logger.get_diagnostic_str();
+    std::cerr << "Error\n" << logger.get_diagnostic_str();
   }
 }
 
@@ -98,7 +98,7 @@ void compile_symtab(const std::string& filename, std::ostream& out) {
     _check_diags();
     symtab.print(out);
   } catch (const FatalError&) {
-    std::cerr << logger.get_diagnostic_str();
+    std::cerr << "Error\n" << logger.get_diagnostic_str();
   }
 }
 
@@ -108,7 +108,7 @@ void compile_ir(const std::string& filename, std::ostream& out) {
   SymTab symtab;
   Parser parser(&logger);
   TypeChecker type_checker(&logger);
-  IrVisitor ir_visitor(&symtab);
+  IrVisitor ir_visitor(&symtab, &logger);
   try {
     std::vector<Token> tokens = lexer.tokenize_file(filename);
     std::vector<AstPtr> ast = parser.parse_program(&symtab, tokens);
@@ -118,7 +118,7 @@ void compile_ir(const std::string& filename, std::ostream& out) {
     const std::vector<IRInstruction>& instrs = ir_visitor.get_instructions();
     print_ir_instructions(instrs, out);
   } catch (const FatalError&) {
-    std::cerr << logger.get_diagnostic_str();
+    std::cerr << "Error\n" << logger.get_diagnostic_str();
   }
 }
 
@@ -128,7 +128,7 @@ void compile_asm(const std::string& filename, std::ostream& out) {
   SymTab symtab;
   Parser parser(&logger);
   TypeChecker type_checker(&logger);
-  IrVisitor ir_visitor(&symtab);
+  IrVisitor ir_visitor(&symtab, &logger);
   X86_64CodeGenerator gen;
   try {
     std::vector<Token> tokens = lexer.tokenize_file(filename);
@@ -140,7 +140,7 @@ void compile_asm(const std::string& filename, std::ostream& out) {
     _check_diags();
     out << asm_code;
   } catch (const FatalError&) {
-    std::cerr << logger.get_diagnostic_str();
+    std::cerr << "Error\n" << logger.get_diagnostic_str();
   }
 }
 
@@ -150,7 +150,7 @@ void compile_exe(const std::string& filename, const std::string& out_exe) {
   SymTab symtab;
   Parser parser(&logger);
   TypeChecker type_checker(&logger);
-  IrVisitor ir_visitor(&symtab);
+  IrVisitor ir_visitor(&symtab, &logger);
   X86_64CodeGenerator gen;
   try {
     std::vector<Token> tokens = lexer.tokenize_file(filename);
@@ -162,7 +162,7 @@ void compile_exe(const std::string& filename, const std::string& out_exe) {
     _check_diags();
     assemble_and_link(asm_code, out_exe);
   } catch (const FatalError&) {
-    std::cerr << logger.get_diagnostic_str();
+    std::cerr << "Error\n" << logger.get_diagnostic_str();
   }
 }
 
