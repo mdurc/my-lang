@@ -95,12 +95,13 @@ bool TypeChecker::check_type_assignable(std::shared_ptr<Type> target_type,
   if (target_type->is<Type::Pointer>() && value_type->is<Type::Pointer>()) {
     const Type::Pointer& target_ptr = target_type->as<Type::Pointer>();
     const Type::Pointer& value_ptr = value_type->as<Type::Pointer>();
+    // ensure pointee types exist and make sure pointee types are exact match,
+    // along with mutability. This makes sense because types and mutability
+    // should not change, as we compare assignment operations to the decl type.
     if (target_ptr.pointee && value_ptr.pointee &&
-        *(target_ptr.pointee) == *(value_ptr.pointee)) {
-      if (target_ptr.is_pointee_mutable == value_ptr.is_pointee_mutable ||
-          !target_ptr.is_pointee_mutable) {
-        return true;
-      }
+        *(target_ptr.pointee) == *(value_ptr.pointee) &&
+        target_ptr.is_pointee_mutable == value_ptr.is_pointee_mutable) {
+      return true;
     }
   }
 
