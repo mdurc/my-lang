@@ -299,7 +299,8 @@ std::string JsonExporter::export_to_json() {
   for (const Diagnostic& d : m_logger->get_fatals()) {
     diagnostics.push_back({{"range", span_to_range(d.get_span())},
                            {"message", d.what()},
-                           {"severity", 1}});
+                           {"severity", 3}});
+    // mark as information to LSP, as it is usually an internal error
   }
   for (const Diagnostic& d : m_logger->get_errors()) {
     diagnostics.push_back({{"range", span_to_range(d.get_span())},

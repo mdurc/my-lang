@@ -170,6 +170,20 @@ void TypeChecker::visit(IdentifierNode& node) {
     return;
   }
 
+  // further check for declaration-before-use check for variables.
+  // Functions are allowed to be used before declaration for now, though we can
+  // easily make them work like variables by removing the `if_function` we
+  // likely have to unify the symbol table construction system to make this
+  // check more robust, possibly by tracking the AST instruction number or
+  // something too, unsure yet, but this is somewhat okay for now.
+  bool is_function = var_symbol->type && var_symbol->type->is<Type::Function>();
+  // check if the declaration occurs after the usage of this identifier
+  if (!is_function && var_symbol->span > node.token->get_span()) {
+    m_logger->report(Error(node.token->get_span(),
+                           "'" + node.name + "' used before its declaration."));
+    return;
+  }
+
   if (!var_symbol->type) {
     // This can happen if type inference failed for this variable earlier.
     m_logger->report(

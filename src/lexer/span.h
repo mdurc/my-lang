@@ -25,6 +25,12 @@ public:
     out << span.to_string();
     return out;
   }
+
+  inline bool operator>(const Span& other) const {
+    if (row != other.row) return row > other.row;
+    if (start_col != other.start_col) return start_col > other.start_col;
+    return end_col > other.end_col;
+  }
 };
 
 #endif // LEXER_SPAN_H

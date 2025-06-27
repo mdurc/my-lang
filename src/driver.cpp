@@ -174,10 +174,15 @@ void compile_json(const std::string& filename, std::ostream& out) {
   TypeChecker type_checker(&logger);
   std::vector<Token> tokens;
   std::vector<AstPtr> ast;
+  IrVisitor ir_visitor(&symtab, &logger);
+  X86_64CodeGenerator gen;
   try {
     tokens = lexer.tokenize_file(filename);
     ast = parser.parse_program(&symtab, tokens);
     type_checker.check_program(&symtab, ast);
+    ir_visitor.visit_all(ast);
+    const std::vector<IRInstruction>& instrs = ir_visitor.get_instructions();
+    std::string asm_code = gen.generate(instrs, ir_visitor.is_main_defined());
     // don't check the diags, leave it to the json output
   } catch (const FatalError&) {
     // do nothing, let the json output the diagnostics

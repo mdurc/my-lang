@@ -21,6 +21,20 @@ const std::vector<IRInstruction>& IrVisitor::get_instructions() const {
 }
 
 void IrVisitor::visit_all(const std::vector<AstPtr>& ast) {
+  // pre-pass for function declarations to allow forward calls.
+  // works with the typechecker to allow for forward declarations.
+  for (const AstPtr& ast_node : ast) {
+    if (FuncDeclPtr func_decl =
+            std::dynamic_pointer_cast<FunctionDeclNode>(ast_node)) {
+      const std::string& func_name = func_decl->name->name;
+      if (func_name == "main") {
+        m_main_function_defined = true;
+      }
+      // add it as a variable so that function calls can find it's identifier
+      add_var(func_name, func_decl->scope_id, true);
+    }
+  }
+
   for (const AstPtr& ast_node : ast) {
     try {
       ast_node->accept(*this);
@@ -506,14 +520,11 @@ void IrVisitor::visit(FunctionDeclNode& node) {
   const std::string& original_func_name = node.name->name;
   std::string func_ir_name = original_func_name;
 
-  if (original_func_name == "main") {
-    m_main_function_defined = true;
-  } else {
+  if (original_func_name != "main") {
     func_ir_name = "_" + original_func_name;
   }
 
   IR_Label func_label = m_ir_gen.new_func_label(func_ir_name);
-  add_var(original_func_name, node.scope_id, true);
 
   m_ir_gen.emit_begin_func(func_label);
 
