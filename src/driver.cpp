@@ -69,6 +69,7 @@ void compile_tokens(const std::string& filename, std::ostream& out) {
     print_tokens(tokens, out);
   } catch (const FatalError&) {
     std::cerr << "Error\n" << logger.get_diagnostic_str();
+    exit(1);
   }
 }
 
@@ -84,6 +85,7 @@ void compile_ast(const std::string& filename, std::ostream& out) {
     print_ast(ast, out);
   } catch (const FatalError&) {
     std::cerr << "Error\n" << logger.get_diagnostic_str();
+    exit(1);
   }
 }
 
@@ -99,6 +101,7 @@ void compile_symtab(const std::string& filename, std::ostream& out) {
     symtab.print(out);
   } catch (const FatalError&) {
     std::cerr << "Error\n" << logger.get_diagnostic_str();
+    exit(1);
   }
 }
 
@@ -119,6 +122,7 @@ void compile_ir(const std::string& filename, std::ostream& out) {
     print_ir_instructions(instrs, out);
   } catch (const FatalError&) {
     std::cerr << "Error\n" << logger.get_diagnostic_str();
+    exit(1);
   }
 }
 
@@ -141,6 +145,7 @@ void compile_asm(const std::string& filename, std::ostream& out) {
     out << asm_code;
   } catch (const FatalError&) {
     std::cerr << "Error\n" << logger.get_diagnostic_str();
+    exit(1);
   }
 }
 
@@ -163,6 +168,7 @@ void compile_exe(const std::string& filename, const std::string& out_exe) {
     assemble_and_link(asm_code, out_exe);
   } catch (const FatalError&) {
     std::cerr << "Error\n" << logger.get_diagnostic_str();
+    exit(1);
   }
 }
 
@@ -189,4 +195,5 @@ void compile_json(const std::string& filename, std::ostream& out) {
   }
   JsonExporter json_exporter(&symtab, &logger, &ast);
   out << json_exporter.export_to_json() << std::endl;
+  exit(1);
 }
