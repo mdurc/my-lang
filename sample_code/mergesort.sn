@@ -1,57 +1,52 @@
-func merge_sort(array: ptr<mut i64>, size: i64) returns (c: ptr<mut i64>) {
-  if (size <= 1) {
-    c = new<mut i64>[size];
-    for (mut i := 0; i < size; i = i + 1) { c[i] = array[i]; }
-    return c;
+func merge_sort(arr: ptr<mut i64>, left: i64, right: i64) {
+  if (left < right) {
+    mid := left + (right - left) / 2;
+
+    merge_sort(arr, left, mid);
+    merge_sort(arr, mid + 1, right);
+
+    merge(arr, left, mid, right);
   }
-
-  mid := size / 2;
-  size_b := size - mid;
-
-  mut a: ptr<mut i64> = new<mut i64>[mid];
-  for (mut i := 0; i < mid; i = i + 1) {
-    a[i] = array[i];
-  }
-
-  mut b: ptr<mut i64> = new<mut i64>[size_b];
-  for (mut i := 0; i < size_b; i = i + 1) {
-    b[i] = array[mid + i];
-  }
-
-  mut sorted_a := merge_sort(a, mid);
-  mut sorted_b := merge_sort(b, size_b);
-  free[] a;
-  free[] b;
-
-  c = merge(sorted_a, mid, sorted_b, size_b);
-
-  free[] sorted_a;
-  free[] sorted_b;
-
-  return c;
 }
 
-func merge(a: ptr<mut i64>, size_a:i64, b: ptr<mut i64>, size_b:i64) returns (c: ptr<mut i64>) {
-  mut i := 0; mut j := 0; mut k := 0;
-  size_c := size_a + size_b;
-  c = new<mut i64>[size_a + size_b];
-  while (i < size_a or j < size_b) {
-    if (i >= size_a) {
-      c[k] = b[j];
-      j = j + 1;
-    } else if (j >= size_b) {
-      c[k] = a[i];
-      i = i + 1;
-    } else if (a[i] < b[j]) {
-      c[k] = a[i];
-      i = i + 1;
+// merge two halves into a sorted array
+func merge(arr: ptr<mut i64>, left: i64, mid: i64, right: i64) {
+  size_L := mid - left + 1;
+  size_R := right - mid;
+  L := new<mut i64>[size_L];
+  R := new<mut i64>[size_R];
+
+  for (mut i := 0; i < size_L; i = i + 1) {
+    L[i] = arr[left + i];
+  }
+
+  for (mut i := 0; i < size_R; i = i + 1) {
+    R[i] = arr[mid + i + 1];
+  }
+
+  // merge them into arr[left..right]
+  mut i := 0;
+  mut j := 0;
+  mut k := left;
+  while (i < size_L and j < size_R) {
+    if (L[i] <= R[j]) {
+      arr[k] = L[i]; i = i + 1;
     } else {
-      c[k] = b[j];
-      j = j + 1;
+      arr[k] = R[j]; j = j + 1;
     }
     k = k + 1;
   }
-  return c;
+
+  // extend remaining content
+  while (i < size_L)  {
+    arr[k] = L[i]; k = k + 1; i = i + 1;
+  }
+  while (j < size_R) {
+    arr[k] = R[j]; k = k + 1; j = j + 1;
+  }
+
+  free[] L;
+  free[] R;
 }
 
 func print_arr(p: ptr<mut i64>, size: i64) {
@@ -66,53 +61,21 @@ func print_arr(p: ptr<mut i64>, size: i64) {
 }
 
 // driver code:
+size_arr := 12;
+arr : ptr<mut i64> = new<mut i64>[size_arr];
+arr[0] = 3;
+arr[1] = 25;
+arr[2] = 0;
+arr[3] = 13;
+arr[4] = 17;
+arr[5] = 4;
+arr[6] = 21;
+arr[7] = 5;
+arr[8] = 22;
+arr[9] = 7;
+arr[10] = 14;
+arr[11] = 9;
 
-size_a := 7;
-a : ptr<mut i64> = new<mut i64>[size_a];
-a[0] = 3;
-a[1] = 25;
-a[2] = 0;
-a[3] = 13;
-a[4] = 17;
-a[5] = 4;
-a[6] = 21;
-
-
-size_b := 5;
-b : ptr<mut i64> = new<mut i64>[size_b];
-b[0] = 5;
-b[1] = 22;
-b[2] = 7;
-b[3] = 14;
-b[4] = 9;
-
-size_ab := size_a + size_b;
-
-print "a: "; print_arr(a, size_a);
-print "b: "; print_arr(b, size_b);
-
-print "merged:\n";
-mut c : ptr<mut i64> = merge(a, size_a, b, size_b);
-print "c: "; print_arr(c, size_ab);
-free[] c;
-
-print "merge sorting a: \n";
-d : ptr<mut i64> = merge_sort(a, size_a);
-print "d: "; print_arr(d, size_a);
-free[] d;
-
-print "merge sorting b: \n";
-e : ptr<mut i64> = merge_sort(b, size_b);
-print "e: "; print_arr(e, size_b);
-free[] e;
-
-print "merge sorting a + b: \n";
-c = merge(a, size_a, b, size_b);
-f : ptr<mut i64> = merge_sort(c, size_ab);
-print "f: "; print_arr(f, size_ab);
-free[] c;
-free[] f;
-
-// free inputs
-free[] a;
-free[] b;
+print "Original a: "; print_arr(arr, size_arr);
+merge_sort(arr, 0, 11);
+print "Sorted arr: "; print_arr(arr, size_arr);
