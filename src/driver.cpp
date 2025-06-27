@@ -195,5 +195,4 @@ void compile_json(const std::string& filename, std::ostream& out) {
   }
   JsonExporter json_exporter(&symtab, &logger, &ast);
   out << json_exporter.export_to_json() << std::endl;
-  exit(1);
 }

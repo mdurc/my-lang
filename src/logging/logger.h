@@ -31,28 +31,17 @@ public:
 
   std::string get_diagnostic_str() const {
     std::string out;
-    if (num_fatals() == 0 && num_errors() == 0) {
-      for (const Diagnostic& d : m_warnings) {
-        out += d.what();
-        out += "\n";
-      }
-      return out;
-    }
-
-    if (num_fatals() != 0) {
-      for (const Diagnostic& d : m_fatals) {
-        out += d.what();
-        out += "\n";
-      }
-      return out;
-    }
-
     for (const Diagnostic& d : m_warnings) {
       out += d.what();
       out += "\n";
     }
 
     for (const Diagnostic& d : m_errors) {
+      out += d.what();
+      out += "\n";
+    }
+
+    for (const Diagnostic& d : m_fatals) {
       out += d.what();
       out += "\n";
     }
