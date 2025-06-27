@@ -507,13 +507,15 @@ StmtPtr Parser::parse_for_stmt() {
   _consume(TokenType::LPAREN);
 
   std::optional<std::variant<ExprPtr, StmtPtr>> initializer = std::nullopt;
-  if (!match(TokenType::SEMICOLON)) {
-    if (is_next_var_decl()) {
-      initializer = parse_var_decl();
-    } else {
+  bool has_initializer = !match(TokenType::SEMICOLON);
+  if (has_initializer && is_next_var_decl()) {
+    initializer = parse_var_decl(); // consumes the semicolon
+  } else {
+    if (has_initializer) {
       initializer = parse_expression();
-      _consume(TokenType::SEMICOLON);
+      // does not consume the semicolon
     }
+    _consume(TokenType::SEMICOLON);
   }
 
   ExprPtr condition = nullptr;
