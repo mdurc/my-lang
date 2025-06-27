@@ -1,25 +1,34 @@
-func merge_sort(array: ptr<mut i64>, size:i64) returns (c: ptr<mut i64>) {
+func merge_sort(array: ptr<mut i64>, size: i64) returns (c: ptr<mut i64>) {
   if (size <= 1) {
-    return array;
+    c = new<mut i64>[size];
+    for (mut i := 0; i < size; i = i + 1) { c[i] = array[i]; }
+    return c;
   }
-  mid := size / 2; // integer division
-                   // left side
+
+  mid := size / 2;
+  size_b := size - mid;
+
   mut a: ptr<mut i64> = new<mut i64>[mid];
-  for (mut i := 0; i < mid ; i = i + 1) {
+  for (mut i := 0; i < mid; i = i + 1) {
     a[i] = array[i];
   }
 
-   // right side
-  size_b := size - mid;
   mut b: ptr<mut i64> = new<mut i64>[size_b];
-  for (mut i := mid; i < size; i = i + 1) {
-    b[i - mid] = array[i];
+  for (mut i := 0; i < size_b; i = i + 1) {
+    b[i] = array[mid + i];
   }
 
-  a = merge_sort(a, mid);
-  b = merge_sort(b, size_b);
+  mut sorted_a := merge_sort(a, mid);
+  mut sorted_b := merge_sort(b, size_b);
+  free[] a;
+  free[] b;
 
-  return merge(a, mid, b, size_b);
+  c = merge(sorted_a, mid, sorted_b, size_b);
+
+  free[] sorted_a;
+  free[] sorted_b;
+
+  return c;
 }
 
 func merge(a: ptr<mut i64>, size_a:i64, b: ptr<mut i64>, size_b:i64) returns (c: ptr<mut i64>) {
@@ -56,6 +65,8 @@ func print_arr(p: ptr<mut i64>, size: i64) {
   }
 }
 
+// driver code:
+
 size_a := 7;
 a : ptr<mut i64> = new<mut i64>[size_a];
 a[0] = 3;
@@ -81,17 +92,27 @@ print "a: "; print_arr(a, size_a);
 print "b: "; print_arr(b, size_b);
 
 print "merged:\n";
-c : ptr<mut i64> = merge(a, size_a, b, size_b);
+mut c : ptr<mut i64> = merge(a, size_a, b, size_b);
 print "c: "; print_arr(c, size_ab);
+free[] c;
 
 print "merge sorting a: \n";
 d : ptr<mut i64> = merge_sort(a, size_a);
 print "d: "; print_arr(d, size_a);
+free[] d;
 
 print "merge sorting b: \n";
 e : ptr<mut i64> = merge_sort(b, size_b);
 print "e: "; print_arr(e, size_b);
+free[] e;
 
 print "merge sorting a + b: \n";
+c = merge(a, size_a, b, size_b);
 f : ptr<mut i64> = merge_sort(c, size_ab);
 print "f: "; print_arr(f, size_ab);
+free[] c;
+free[] f;
+
+// free inputs
+free[] a;
+free[] b;

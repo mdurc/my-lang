@@ -1055,6 +1055,7 @@ void X86_64CodeGenerator::handle_free(const IRInstruction& instr) {
   emit("mov rdi, " + ptr_str);
   emit("call free");
   restore_caller_saved_regs();
+  emit("mov " + ptr_str + ", 0 ; clear ptr to null after free");
 }
 
 void X86_64CodeGenerator::handle_mem_copy(const IRInstruction& instr) {
