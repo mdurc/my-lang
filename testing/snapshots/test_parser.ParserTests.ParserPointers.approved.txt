@@ -120,7 +120,7 @@ VariableDecl(Mutable: true,
   Name:
     Ident(pz),
   Type:
-    {ptr<imm i64>} Type::Pointer(pointee mutable: false,
+    {ptr<mut i64>} Type::Pointer(pointee mutable: true,
       Pointee:
         {i64} Type::Named(i64)
     )
@@ -195,7 +195,7 @@ ExpressionStmt(
       Ident(pz),
     RValue:
       NewExpr(
-        TypeToAllocate:(immutable memory, type: constructor)
+        TypeToAllocate:(mutable memory, type: constructor)
           {i64} Type::Named(i64)
         AllocationSpecifier:
           Int(32)

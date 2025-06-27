@@ -2,6 +2,8 @@
 _foo
 	BeginFunc
 	x_1 = _param 0
+	Return
+_L0:
 	EndFunc
 	p_foo_0 = foo_0
 	BeginLCallPrep

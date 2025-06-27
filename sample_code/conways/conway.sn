@@ -13,7 +13,7 @@ func idx(x: i64, y: i64) returns (r: i64) {
   return y * WIDTH + x;
 }
 
-func print_grid(grid: ptr<imm i64>) {
+func print_grid(grid: ptr<mut i64>) {
   print "+";
   for (mut x: i64 = 0; x < WIDTH; x = x + 1) {
     print "-";
@@ -40,7 +40,7 @@ func print_grid(grid: ptr<imm i64>) {
   print "+\n";
 }
 
-func count_neighbors(grid: ptr<imm i64>, x: i64, y: i64) returns (r: i64) {
+func count_neighbors(grid: ptr<mut i64>, x: i64, y: i64) returns (r: i64) {
   mut count: i64 = 0;
   for (mut dy: i64 = -1; dy <= 1; dy = dy + 1) {
     for (mut dx: i64 = -1; dx <= 1; dx = dx + 1) {
@@ -57,7 +57,7 @@ func count_neighbors(grid: ptr<imm i64>, x: i64, y: i64) returns (r: i64) {
   return count;
 }
 
-func step(current: ptr<imm i64>, mut next: ptr<mut i64>) {
+func step(current: ptr<mut i64>, mut next: ptr<mut i64>) {
   for (mut y: i64 = 0; y < HEIGHT; y = y + 1) {
     for (mut x: i64 = 0; x < WIDTH; x = x + 1) {
       mut i: i64 = idx(x, y);

@@ -50,15 +50,20 @@ _foo:
 	sub rsp, 16
 	mov r10, 18
 	mov DWORD[rbp - 4], r10d
-	xor rax, rax ; void return
+	mov eax, DWORD[rbp - 4] ; set return value
+_L0:
 	mov rsp, rbp ; restore stack
 	pop rbp
 	ret
 _bar:
 	push rbp
 	mov rbp, rsp
+	sub rsp, 16
 	mov r10, 5
-	mov rax, r10 ; return value
+	mov rax, r10 ; set return value
+	jmp _L1
+	mov eax, DWORD[rbp - 4] ; set return value
+_L1:
 	mov rsp, rbp ; restore stack
 	pop rbp
 	ret
@@ -74,7 +79,8 @@ _foo_2:
 	mov rdi, r10; value stored in arg reg
 	call print_string
 	pop r10 ; restoring caller-saved register
-	xor rax, rax ; void return
+	xor rax, rax ; default return zero
+_L2:
 	mov rsp, rbp ; restore stack
 	pop rbp
 	ret

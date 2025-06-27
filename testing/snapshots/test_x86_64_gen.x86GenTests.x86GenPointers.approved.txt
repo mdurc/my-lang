@@ -128,7 +128,8 @@ _foo:
 	mov rbp, rsp
 	sub rsp, 16
 	mov DWORD[rbp - 4], edi
-	xor rax, rax ; void return
+	xor rax, rax ; default return zero
+_L0:
 	mov rsp, rbp ; restore stack
 	pop rbp
 	ret

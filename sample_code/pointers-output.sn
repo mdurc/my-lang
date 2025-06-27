@@ -32,13 +32,13 @@ print *(px + 0), "\n"; // value at px, using pointer arithmetic
 print px[0], "\n"; // equivalent with subscripting
 
 // Ptr Allocation:
-func print_arr(p : ptr<imm i64>, size: i64) {
+func print_arr(p : ptr<mut i64>, size: i64) {
   for (mut i: i64; i < size; i = i + 1) {
     print p[i], "\n";
   }
 }
-mut pz : ptr<imm i64>;
 
+mut pz : ptr<mut i64>;
 pz = new<mut i64>[3];
 pz[0] = 30;
 pz[1] = 60;
@@ -47,6 +47,6 @@ print_arr(pz, 3);
 free[] pz;
 
 pz = null;
-pz = new<imm i64>(32);
+pz = new<mut i64>(32);
 print_arr(pz, 1);
 free pz;

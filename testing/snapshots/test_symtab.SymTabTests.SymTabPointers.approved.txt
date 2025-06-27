@@ -18,7 +18,7 @@ Scope ID: 0
     ptr<mut i64>: type ptr<mut i64>
     px: var px (type: ptr<imm i64>, scope: 0, modifier: mut)
     py: var py (type: ptr<mut i64>, scope: 0, modifier: mut)
-    pz: var pz (type: ptr<imm i64>, scope: 0, modifier: mut)
+    pz: var pz (type: ptr<mut i64>, scope: 0, modifier: mut)
     string: type string
     u0: type u0
     u16: type u16
