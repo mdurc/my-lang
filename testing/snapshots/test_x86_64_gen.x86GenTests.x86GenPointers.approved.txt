@@ -93,6 +93,7 @@ _start:
 	call free
 	pop r11 ; restoring caller-saved register
 	pop r10 ; restoring caller-saved register
+	mov QWORD[global_vars + 40], 0 ; clear ptr to null after free
 	mov QWORD[rbp - 128], r14 ; spilling register r14 to stack
 	mov r14, 0
 	mov QWORD[global_vars + 40], r14
@@ -114,6 +115,7 @@ _start:
 	call free
 	pop r11 ; restoring caller-saved register
 	pop r10 ; restoring caller-saved register
+	mov QWORD[global_vars + 40], 0 ; clear ptr to null after free
 	pop r15 ; restoring callee-saved register
 	pop r14 ; restoring callee-saved register
 	pop r13 ; restoring callee-saved register
