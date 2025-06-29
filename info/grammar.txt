@@ -55,7 +55,7 @@
 <RelationalExpr>        ::= <AdditiveExpr> ( ( '<' | '>' | '<=' | '>=' ) <AdditiveExpr> )*
 <AdditiveExpr>          ::= <MultiplicativeExpr> ( ( '+' | '-') <MultiplicativeExpr> )*
 <MultiplicativeExpr>    ::= <UnaryExpr> ( ( '*' | '/' | '%' ) <UnaryExpr> )*
-<UnaryExpr>             ::= ( '&' <TypePrefix>? | '*' | '!' ) <UnaryExpr> | <PostfixExpr>
+<UnaryExpr>             ::= ( '&' <TypePrefix>? | '*' | '!' | '-') <UnaryExpr> | <PostfixExpr>
 <PostfixExpr>           ::= <PrimaryExpr> ( <PostfixSuffix> )*
 <PostfixSuffix>         ::= '.' Identifier | '(' <Args>? ')' | '[' <Expr> ']'
 

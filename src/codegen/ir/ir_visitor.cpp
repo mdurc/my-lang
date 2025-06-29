@@ -63,6 +63,7 @@ IR_Label IrVisitor::get_runtime_print_call(const std::shared_ptr<Type>& type) {
 bool IrVisitor::var_exists(const std::string& name, size_t scope_id) {
   std::shared_ptr<Variable> var = m_symtab->lookup<Variable>(name, scope_id);
   _assert(var != nullptr, "var should exist within symbol table");
+  _assert(var->type, "variable type should be resolved (even if inferred)");
   uint64_t size = var->type->get_byte_size();
   return m_vars.find(IR_Variable(name + "_" + std::to_string(var->scope_id),
                                  size)) != m_vars.end();
@@ -83,6 +84,7 @@ const IR_Variable* IrVisitor::add_var(const std::string& name, size_t scope_id,
                                       bool is_func_decl = false) {
   std::shared_ptr<Variable> var = m_symtab->lookup<Variable>(name, scope_id);
   _assert(var != nullptr, "var should exist within symbol table");
+  _assert(var->type, "variable type should be resolved (even if inferred)");
   uint64_t size = var->type->get_byte_size();
   auto itr = m_vars.insert(IR_Variable(
       name + "_" + std::to_string(var->scope_id), size, is_func_decl));

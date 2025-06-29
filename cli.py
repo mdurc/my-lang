@@ -18,7 +18,7 @@ class fmt(click.RichCommand):
 
 
 @click.command(cls=fmt)
-@click.argument("source", type=click.Path(exists=True))
+@click.argument("source", type=click.Path(exists=True), required=False)
 @click.option(
     "--tokens",
     type=click.Path(),
@@ -81,7 +81,31 @@ class fmt(click.RichCommand):
     default=False,
     help="Suppress CLI output messages.",
 )
-def main(source, tokens, ast, symtab, ir, asm, exe, json, mute):
+@click.option(
+    "--repl",
+    is_flag=True,
+    default=False,
+    help="Start interactive REPL mode.",
+)
+
+def main(source, tokens, ast, symtab, ir, asm, exe, json, mute, repl):
+    if repl:
+        args = [EXECUTABLE_PATH, "--repl"]
+        try:
+            if not mute:
+                click.secho("Starting REPL mode...", fg="cyan")
+            subprocess.run(args, check=True)
+        except subprocess.CalledProcessError as e:
+            click.secho(
+                f"REPL failed with return code {e.returncode}.", fg="red", err=True
+            )
+            sys.exit(e.returncode)
+        return
+
+    # Check if source is provided (required for non-REPL mode)
+    if source is None:
+        click.secho("Error: Source file is required when not using REPL mode.", fg="red", err=True)
+        sys.exit(1)
 
     options = {
         "--tokens": tokens,

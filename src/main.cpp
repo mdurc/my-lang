@@ -1,16 +1,8 @@
-#include <fstream>
+#include <cstdio>
+#include <cstdlib>
 #include <iostream>
 #include <string>
 #include <unordered_set>
-
-#define drive_print(func, input, output) \
-  if (output.empty()) {                  \
-    func(input, std::cout);              \
-  } else {                               \
-    std::ofstream out(output);           \
-    func(input, out);                    \
-    out.close();                         \
-  }
 
 #include "driver.h"
 
@@ -21,47 +13,38 @@ static void usage() {
             << "       [--symtab [filename]]\n"
             << "       [--ir [filename]]\n"
             << "       [--asm [filename]]\n"
-            << "       [--exe [filename]]\n";
+            << "       [--exe [filename]]\n"
+            << "       [--repl]\n";
   exit(1);
-}
-
-static void drive(const std::string& arg, const std::string& input,
-                  const std::string& output) {
-  if (arg == "--tokens") {
-    drive_print(compile_tokens, input, output);
-  } else if (arg == "--ast") {
-    drive_print(compile_ast, input, output);
-  } else if (arg == "--symtab") {
-    drive_print(compile_symtab, input, output);
-  } else if (arg == "--ir") {
-    drive_print(compile_ir, input, output);
-  } else if (arg == "--asm") {
-    drive_print(compile_asm, input, output);
-  } else if (arg == "--exe") {
-    if (output.empty()) throw std::runtime_error("Exe output file must exist");
-    compile_exe(input, output);
-  } else if (arg == "--json") {
-    drive_print(compile_json, input, output);
-  }
 }
 
 int main(int argc, char** argv) {
   if (argc < 2) {
     usage();
   }
-  std::string input = argv[1];
-  std::unordered_set<std::string> opts = {
-      "--tokens", "--ast", "--symtab", "--ir", "--asm", "--exe", "--json"};
 
+  std::string input = argv[1];
+  if (input == "--repl") {
+    drive(input, "", "");
+    return 0;
+  }
+  std::unordered_set<std::string> opts = {"--tokens", "--ast", "--symtab",
+                                          "--ir",     "--asm", "--exe",
+                                          "--json",   "--repl"};
   for (int i = 2; i < argc;) {
     std::string arg = argv[i];
     if (opts.find(arg) != opts.end()) {
+      bool success = false;
       if (i + 1 < argc && argv[i + 1][0] != '-') {
-        drive(arg, input, argv[i + 1]);
+        success = drive(arg, input, argv[i + 1]);
         i += 2;
       } else {
-        drive(arg, input, "");
+        success = drive(arg, input, "");
         i += 1;
+      }
+
+      if (!success) {
+        return 1;
       }
     } else {
       std::cerr << "Unknown option: " << arg << std::endl;
