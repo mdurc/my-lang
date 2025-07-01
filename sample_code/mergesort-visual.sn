@@ -1,0 +1,117 @@
+func delay(ticks: i64) {
+  mut i: i64 = 0;
+  while (i < ticks) {
+    i = i + 1;
+  }
+}
+
+func max_value(arr: ptr<mut i64>, size: i64) returns (max: i64) {
+  max = arr[0];
+  for (mut i := 1; i < size; i = i + 1) {
+    if (arr[i] > max) {
+      max = arr[i];
+    }
+  }
+  return max;
+}
+
+func print_bar_chart(arr: ptr<mut i64>, size: i64) {
+  asm { call clrscr };
+  max_val := max_value(arr, size);
+  for (mut level := max_val; level >= 1; level = level - 1) {
+    for (mut i := 0; i < size; i = i + 1) {
+      if (arr[i] >= level) {
+        print "| ";
+      } else {
+        print "  ";
+      }
+    }
+    print "\n";
+  }
+
+  for (mut i := 0; i < size; i = i + 1) {
+    print "--";
+  }
+  print "\n\n";
+
+  delay(55000000);
+}
+
+func merge_sort(arr: ptr<mut i64>, left: i64, right: i64, total_size: i64) {
+  if (left < right) {
+    mid := left + (right - left) / 2;
+
+    merge_sort(arr, left, mid, total_size);
+    merge_sort(arr, mid + 1, right, total_size);
+
+    merge(arr, left, mid, right, total_size);
+  }
+}
+
+func merge(arr: ptr<mut i64>, left: i64, mid: i64, right: i64, total_size: i64) {
+  size_L := mid - left + 1;
+  size_R := right - mid;
+  L := new<mut i64>[size_L];
+  R := new<mut i64>[size_R];
+
+  for (mut i := 0; i < size_L; i = i + 1) {
+    L[i] = arr[left + i];
+  }
+
+  for (mut i := 0; i < size_R; i = i + 1) {
+    R[i] = arr[mid + i + 1];
+  }
+
+  mut i := 0;
+  mut j := 0;
+  mut k := left;
+  while (i < size_L and j < size_R) {
+    if (L[i] <= R[j]) {
+      arr[k] = L[i]; i = i + 1;
+    } else {
+      arr[k] = R[j]; j = j + 1;
+    }
+    k = k + 1;
+  }
+
+  while (i < size_L) {
+    arr[k] = L[i]; k = k + 1; i = i + 1;
+  }
+  while (j < size_R) {
+    arr[k] = R[j]; k = k + 1; j = j + 1;
+  }
+
+  free[] L;
+  free[] R;
+
+  print_bar_chart(arr, total_size);
+}
+
+func print_arr(p: ptr<mut i64>, size: i64) {
+  for (mut i := 0; i < size; i = i + 1) {
+    print p[i];
+    if (i != size - 1) {
+      print ", ";
+    } else {
+      print "\n";
+    }
+  }
+}
+
+size_arr := 48;
+arr : ptr<mut i64> = new<mut i64>[size_arr];
+arr[0] = 7; arr[1] = 23; arr[2] = 14; arr[3] = 40; arr[4] = 1; arr[5] = 36;
+arr[6] = 28; arr[7] = 1; arr[8] = 20; arr[9] = 45; arr[10] = 17; arr[11] = 2;
+arr[12] = 34; arr[13] = 10; arr[14] = 6; arr[15] = 44; arr[16] = 21;
+arr[17] = 15; arr[18] = 30; arr[19] = 3; arr[20] = 32; arr[21] = 13;
+arr[22] = 46; arr[23] = 18; arr[24] = 41; arr[25] = 4; arr[26] = 37;
+arr[27] = 35; arr[28] = 25; arr[29] = 26; arr[30] = 8; arr[31] = 42;
+arr[32] = 39; arr[33] = 22; arr[34] = 33; arr[35] = 27; arr[36] = 19;
+arr[37] = 11; arr[38] = 16; arr[39] = 5; arr[40] = 9; arr[41] = 12;
+arr[42] = 29; arr[43] = 24; arr[44] = 47; arr[45] = 31; arr[46] = 38;
+arr[47] = 43;
+
+print_bar_chart(arr, size_arr);
+delay(90000000);
+merge_sort(arr, 0, size_arr - 1, size_arr);
+free[] arr;
