@@ -121,3 +121,5 @@ Memory are managed manually on the heap using `new` and `free`.
 - `asm { ... };`: Inlines raw x86-64 assembly code.
 - `error "message";`: Prints a string to stdout and exits with code 1.
 - `exit <int_literal>;`: Exits the program with the given integer code.
+- `#include "..."`: Preprocessor file import
+- `#define <identifier> ...`: Preprocessor definition
