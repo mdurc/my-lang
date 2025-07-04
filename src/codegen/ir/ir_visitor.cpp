@@ -380,12 +380,14 @@ void IrVisitor::visit(FieldAccessNode& node) {
 
 void IrVisitor::visit(AssignmentNode& node) {
   node.rvalue->accept(*this);
-  // assignment is defaultly a copy, thus rval_op isn't just m_last_expr_operand
-  IROperand rval_op =
-      get_copy_of_operand(m_last_expr_operand, node.rvalue->expr_type);
+  std::shared_ptr<Type> lval_type = node.lvalue->expr_type;
+  std::shared_ptr<Type> rval_type = node.rvalue->expr_type;
 
-  _assert(node.lvalue->expr_type, "Types should be resolved by Typechecker");
-  uint64_t size = node.lvalue->expr_type->get_byte_size();
+  // assignment is defaultly a copy, thus rval_op isn't just m_last_expr_operand
+  IROperand rval_op = get_copy_of_operand(m_last_expr_operand, rval_type);
+
+  _assert(lval_type, "Types should be resolved by Typechecker");
+  uint64_t size = lval_type->get_byte_size();
 
   // Handle all possible L-values
   if (auto lval_ident =
@@ -961,9 +963,9 @@ void IrVisitor::visit(StructLiteralNode& node) {
 
 IROperand IrVisitor::get_copy_of_operand(const IROperand& src,
                                          std::shared_ptr<Type> type) {
-  // check if it is a struct
   if (type->is<Type::Named>()) {
-    std::string name = type->to_string();
+    // check if it is a struct
+    std::string name = type->as<Type::Named>().identifier;
     size_t scope = type->get_scope_id();
     StructDeclPtr struct_decl = m_symtab->lookup_struct(name, scope);
     if (struct_decl != nullptr) {
@@ -973,6 +975,16 @@ IROperand IrVisitor::get_copy_of_operand(const IROperand& src,
       m_ir_gen.emit_alloc(new_addr_reg, struct_size, std::nullopt, 0);
       m_ir_gen.emit_mem_copy(new_addr_reg, src, struct_size);
       return new_addr_reg;
+    }
+
+    // check if it is a string
+    if (name == "string") {
+      // heap-allocate and copy the literal
+      IR_Register result_reg = m_ir_gen.new_temp_reg();
+      m_ir_gen.emit_begin_lcall_prep();
+      m_ir_gen.emit_push_arg(src, Type::PTR_SIZE);
+      m_ir_gen.emit_lcall(result_reg, IR_Label("string_copy"), Type::PTR_SIZE);
+      return result_reg;
     }
   }
   // default: primitive types, pointers (shallow copy), return src itself

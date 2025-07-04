@@ -294,23 +294,28 @@ string_equals:
 	xor rax, rax
 	ret
 
-; rdi <- address of string
-; rsi <- address of buffer
-; rdx <- length of buffer
-; rax -> buffer address, else 0 if the string doesn't fit the buffer
-; copies the string from rdi into the buffer at rsi
+; rdi <- addr of null-terminated string
+; rax -> address of heap-allocated copy, or 0 on failure
+; copies the string from rdi into a newly allocated buffer on the heap
 string_copy:
-	xor rcx, rcx
-.loop:
-	cmp rcx, rdx
-	jae .err
-	mov al, [rdi + rcx]
-	mov [rsi + rcx], al
-	inc rcx
-	test al, al
-	jnz .loop
-	mov rax, rsi
-	ret
+  push rdi  ; save src buffer
+
+  call string_length
+  inc rax   ; include null terminator in length
+  push rax  ; save src length
+
+  mov rdi, rax  ; size to allocate
+  call malloc
+  test rax, rax
+  jz .err       ; if malloc failed, return 0
+
+  mov rdi, rax  ; rdi is the dst buffer from malloc
+  pop rcx       ; get src length
+  pop rsi       ; get src buffer
+  call memcpy
+
+  mov rax, rdi  ; return dst buffer
+  ret
 .err:
 	xor rax, rax
 	ret

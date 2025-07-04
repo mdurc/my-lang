@@ -303,11 +303,25 @@ std::shared_ptr<Type> TypeChecker::get_lvalue_type_if_mutable(
     }
   } else if (auto array_index_node =
                  std::dynamic_pointer_cast<ArrayIndexNode>(expr)) {
-    // For p[i] = ..., p must be ptr<mut T>
+    // Pointers: p[i] = ..., p must be ptr<mut T>
     std::shared_ptr<Type> object_type = get_expr_type(array_index_node->object);
     if (object_type && object_type->is<Type::Pointer>() &&
         object_type->as<Type::Pointer>().is_pointee_mutable) {
       return get_expr_type(expr);
+    }
+
+    // Strings: s[i] = ..., s must be mutable
+    if (object_type && object_type->is<Type::Named>() &&
+        object_type->as<Type::Named>().identifier == "string") {
+      if (auto ident_node = std::dynamic_pointer_cast<IdentifierNode>(
+              array_index_node->object)) {
+        std::shared_ptr<Variable> var_sym =
+            m_symtab->lookup<Variable>(ident_node->name, ident_node->scope_id);
+        if (var_sym && (var_sym->modifier == BorrowState::MutablyOwned ||
+                        var_sym->modifier == BorrowState::MutablyBorrowed)) {
+          return get_expr_type(expr);
+        }
+      }
     }
   }
 
