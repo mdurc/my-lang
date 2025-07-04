@@ -382,15 +382,11 @@ void IrVisitor::visit(AssignmentNode& node) {
   node.rvalue->accept(*this);
   std::shared_ptr<Type> lval_type = node.lvalue->expr_type;
   std::shared_ptr<Type> rval_type = node.rvalue->expr_type;
-  bool is_string_literal = is_string_literal_expr(node.rvalue);
 
-  // assignment is defaultly a copy, thus rval_op isn't just m_last_expr_operand
-  bool str_mut_lval = false;
-  if (auto lval = std::dynamic_pointer_cast<IdentifierNode>(node.lvalue)) {
-    str_mut_lval = should_copy_string(lval_type, lval->name, lval->scope_id);
-  }
-  IROperand rval_op = get_copy_of_operand(m_last_expr_operand, rval_type,
-                                          str_mut_lval, is_string_literal);
+  // Assignment is defaultly a copy, so rval_op isn't just m_last_expr_operand.
+  // Don't have to worry about string copies, it should always copy because imm
+  // variables cannot be assigned anything, only initialized... as of now.
+  IROperand rval_op = get_copy_of_operand(m_last_expr_operand, rval_type);
 
   _assert(lval_type, "Types should be resolved by Typechecker");
   uint64_t size = lval_type->get_byte_size();
