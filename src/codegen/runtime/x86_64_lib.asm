@@ -298,11 +298,11 @@ string_equals:
 ; rax -> address of heap-allocated copy, or 0 on failure
 ; copies the string from rdi into a newly allocated buffer on the heap
 string_copy:
-  push rdi  ; save src buffer
+  push rdi      ; save src buffer
 
   call string_length
   inc rax   ; include null terminator in length
-  push rax  ; save src length
+  push rax      ; save src length
 
   mov rdi, rax  ; size to allocate
   call malloc
@@ -314,7 +314,7 @@ string_copy:
   pop rsi       ; get src buffer
   call memcpy
 
-  mov rax, rdi  ; return dst buffer
+  ; rax is still dst buffer from malloc
   ret
 .err:
 	xor rax, rax
@@ -324,6 +324,7 @@ string_copy:
 ; rsi <- src
 ; rcx <- size
 ; copies 'size' bytes from src to dst. requires dst to be allocated prior
+; clobbering: rep movsb rcx, rsi, rdi
 memcpy:
 	cld           ; clear direction flag
 	rep movsb     ; repeat movsb from [rsi] to [rdi], rcx times, incrementing both each time
