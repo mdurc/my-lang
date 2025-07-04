@@ -94,7 +94,12 @@ private:
   void unimpl(const std::string& nodeName);
 
   IROperand get_copy_of_operand(const IROperand& src,
-                                std::shared_ptr<Type> type);
+                                std::shared_ptr<Type> type,
+                                bool strcpy_mut_lvalue = false,
+                                bool is_string_literal = false);
+  bool should_copy_string(std::shared_ptr<Type> type, const std::string& name,
+                          size_t scope_id);
+  bool is_string_literal_expr(const ExprPtr& expr);
 };
 
 #endif // CODEGEN_IR_IR_VISITOR_H

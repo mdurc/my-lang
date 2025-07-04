@@ -382,19 +382,24 @@ void IrVisitor::visit(AssignmentNode& node) {
   node.rvalue->accept(*this);
   std::shared_ptr<Type> lval_type = node.lvalue->expr_type;
   std::shared_ptr<Type> rval_type = node.rvalue->expr_type;
+  bool is_string_literal = is_string_literal_expr(node.rvalue);
 
   // assignment is defaultly a copy, thus rval_op isn't just m_last_expr_operand
-  IROperand rval_op = get_copy_of_operand(m_last_expr_operand, rval_type);
+  bool str_mut_lval = false;
+  if (auto lval = std::dynamic_pointer_cast<IdentifierNode>(node.lvalue)) {
+    str_mut_lval = should_copy_string(lval_type, lval->name, lval->scope_id);
+  }
+  IROperand rval_op = get_copy_of_operand(m_last_expr_operand, rval_type,
+                                          str_mut_lval, is_string_literal);
 
   _assert(lval_type, "Types should be resolved by Typechecker");
   uint64_t size = lval_type->get_byte_size();
 
   // Handle all possible L-values
-  if (auto lval_ident =
-          std::dynamic_pointer_cast<IdentifierNode>(node.lvalue)) {
-    _assert(var_exists(lval_ident->name, lval_ident->scope_id),
+  if (auto lval = std::dynamic_pointer_cast<IdentifierNode>(node.lvalue)) {
+    _assert(var_exists(lval->name, lval->scope_id),
             "Type checker should identify use of undeclared variable");
-    IR_Variable lval_var = get_var(lval_ident->name, lval_ident->scope_id);
+    IR_Variable lval_var = get_var(lval->name, lval->scope_id);
     m_ir_gen.emit_assign(lval_var, rval_op, size);
   } else if (auto array_idx_node =
                  std::dynamic_pointer_cast<ArrayIndexNode>(node.lvalue)) {
@@ -447,8 +452,9 @@ void IrVisitor::visit(VariableDeclNode& node) {
   _assert(!var_exists(node.var_name->name, node.scope_id),
           "Type checker should identify variable re-declaration");
 
+  size_t var_scope = node.scope_id;
   const std::string& var_name = node.var_name->name;
-  const IR_Variable* var_operand = add_var(var_name, node.scope_id);
+  const IR_Variable* var_operand = add_var(var_name, var_scope);
 
   uint64_t size = node.type->get_byte_size();
   if (node.initializer) {
@@ -459,7 +465,10 @@ void IrVisitor::visit(VariableDeclNode& node) {
     if (std::dynamic_pointer_cast<StructLiteralNode>(node.initializer)) {
       m_ir_gen.emit_assign(*var_operand, m_last_expr_operand, size);
     } else {
-      IROperand init_val = get_copy_of_operand(m_last_expr_operand, init_type);
+      bool is_string_literal = is_string_literal_expr(node.initializer);
+      bool str_mut_lval = should_copy_string(node.type, var_name, var_scope);
+      IROperand init_val = get_copy_of_operand(m_last_expr_operand, init_type,
+                                               str_mut_lval, is_string_literal);
       m_ir_gen.emit_assign(*var_operand, init_val, size);
     }
   } else {
@@ -962,7 +971,9 @@ void IrVisitor::visit(StructLiteralNode& node) {
 }
 
 IROperand IrVisitor::get_copy_of_operand(const IROperand& src,
-                                         std::shared_ptr<Type> type) {
+                                         std::shared_ptr<Type> type,
+                                         bool strcpy_mut_lvalue,
+                                         bool is_string_literal) {
   if (type->is<Type::Named>()) {
     // check if it is a struct
     std::string name = type->as<Type::Named>().identifier;
@@ -979,14 +990,37 @@ IROperand IrVisitor::get_copy_of_operand(const IROperand& src,
 
     // check if it is a string
     if (name == "string") {
-      // heap-allocate and copy the literal
-      IR_Register result_reg = m_ir_gen.new_temp_reg();
-      m_ir_gen.emit_begin_lcall_prep();
-      m_ir_gen.emit_push_arg(src, Type::PTR_SIZE);
-      m_ir_gen.emit_lcall(result_reg, IR_Label("string_copy"), Type::PTR_SIZE);
-      return result_reg;
+      if (strcpy_mut_lvalue || !is_string_literal) {
+        // heap-allocate if the l-value is mutable, or it is not a str literal
+        IR_Register result_reg = m_ir_gen.new_temp_reg();
+        m_ir_gen.emit_begin_lcall_prep();
+        m_ir_gen.emit_push_arg(src, Type::PTR_SIZE);
+        m_ir_gen.emit_lcall(result_reg, IR_Label("string_copy"),
+                            Type::PTR_SIZE);
+        return result_reg;
+      } else {
+        return src; // return reference
+      }
     }
   }
   // default: primitive types, pointers (shallow copy), return src itself
   return src;
+}
+
+bool IrVisitor::should_copy_string(std::shared_ptr<Type> type,
+                                   const std::string& name, size_t scope_id) {
+  bool strcpy_mut_lvalue =
+      type->is<Type::Named>() && type->as<Type::Named>().identifier == "string";
+  if (strcpy_mut_lvalue) {
+    std::shared_ptr<Variable> var_sym =
+        m_symtab->lookup<Variable>(name, scope_id);
+    strcpy_mut_lvalue =
+        var_sym && (var_sym->modifier == BorrowState::MutablyOwned ||
+                    var_sym->modifier == BorrowState::MutablyBorrowed);
+  }
+  return strcpy_mut_lvalue;
+}
+
+bool IrVisitor::is_string_literal_expr(const ExprPtr& expr) {
+  return std::dynamic_pointer_cast<StringLiteralNode>(expr) != nullptr;
 }
