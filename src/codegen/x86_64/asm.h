@@ -16,12 +16,13 @@
 
 class X86_64CodeGenerator {
 public:
-  X86_64CodeGenerator();
+  X86_64CodeGenerator(Logger* logger);
 
   std::string generate(const std::vector<IRInstruction>& instructions,
                        bool is_main_defined);
 
 private:
+  Logger* m_logger;
   std::ostringstream m_out;
 
   bool m_handling_top_level;
@@ -74,7 +75,8 @@ private:
                       uint64_t old_reg_size);
   std::string get_temp_x86_reg(uint64_t size);
   std::string get_x86_reg(const IR_Register& ir_reg);
-
+  std::string get_mov_instr(const std::string& reg_64, const std::string& src,
+                            bool is_src_immediate, uint64_t src_size);
   void emit_one_operand_memory_operation(const IROperand& s1,
                                          const IROperand& s2,
                                          const std::string& operation,
@@ -86,6 +88,8 @@ private:
   void emit(const std::string& instruction);
   void emit_label(const std::string& label_name);
 
+  std::string generate_assembly(const std::vector<IRInstruction>& instructions,
+                                bool is_main_defined);
   void handle_instruction(const IRInstruction& instr);
 
   void handle_begin_func(const IRInstruction& instr);
@@ -98,9 +102,8 @@ private:
   void handle_load(const IRInstruction& instr);
   void handle_store(const IRInstruction& instr);
 
-  void handle_add(const IRInstruction& instr);
-  void handle_sub(const IRInstruction& instr);
-  void handle_mul(const IRInstruction& instr);
+  void handle_prim_binop(const std::string& x86_instr,
+                         const IRInstruction& instr);
   void handle_div(const IRInstruction& instr);
   void handle_mod(const IRInstruction& instr);
   void handle_neg(const IRInstruction& instr);

@@ -1120,8 +1120,9 @@ ExprPtr Parser::parse_primary() {
   const Token* tok = current();
 
   if (match(TokenType::INT_LITERAL) || match(TokenType::FLOAT_LITERAL) ||
-      match(TokenType::STRING_LITERAL) || match(TokenType::TRUE) ||
-      match(TokenType::FALSE) || match(TokenType::NULL_)) {
+      match(TokenType::STRING_LITERAL) || match(TokenType::CHAR_LITERAL) ||
+      match(TokenType::TRUE) || match(TokenType::FALSE) ||
+      match(TokenType::NULL_)) {
     return parse_primitive_literal();
   } else if (match(TokenType::IDENTIFIER)) {
     // could be variable identifier or struct literal
@@ -1172,6 +1173,9 @@ ExprPtr Parser::parse_primitive_literal() {
     case TokenType::STRING_LITERAL:
       return _AST(StringLiteralNode, tok, m_symtab->current_scope(),
                   tok->get_string_val());
+    case TokenType::CHAR_LITERAL:
+      return _AST(CharLiteralNode, tok, m_symtab->current_scope(),
+                  tok->get_int_val());
     case TokenType::TRUE:
       return _AST(BoolLiteralNode, tok, m_symtab->current_scope(), true);
     case TokenType::FALSE:
@@ -1195,7 +1199,7 @@ ExprPtr Parser::parse_struct_literal(StructDeclPtr struct_decl) {
   _consume(TokenType::LBRACE);
 
   std::vector<StructFieldInitPtr> initializers_vec;
-  if (!match(TokenType::RPAREN)) {
+  if (!match(TokenType::RBRACE)) {
     do {
       const Token* field_name_tok = current();
       _consume(TokenType::IDENTIFIER);

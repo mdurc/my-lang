@@ -126,6 +126,13 @@ void IrVisitor::visit(StringLiteralNode& node) {
   m_last_expr_operand = temp_reg;
 }
 
+void IrVisitor::visit(CharLiteralNode& node) {
+  IR_Register temp_reg = m_ir_gen.new_temp_reg();
+  // 1 byte for char literal (u8)
+  m_ir_gen.emit_assign(temp_reg, IR_Immediate(node.value, 1), 1);
+  m_last_expr_operand = temp_reg;
+}
+
 void IrVisitor::visit(IdentifierNode& node) {
   _assert(var_exists(node.name, node.scope_id),
           "Type checker should identify use of undeclared identifiers");
@@ -150,7 +157,15 @@ void IrVisitor::visit(BinaryOpExprNode& node) {
 
   switch (node.op_type) {
     case BinOperator::Plus:
-      m_ir_gen.emit_add(dest_reg, left_op, right_op, size);
+      if (is_str_cmp(node.left->expr_type, node.right->expr_type)) {
+        m_ir_gen.emit_begin_lcall_prep();
+        m_ir_gen.emit_push_arg(left_op, Type::PTR_SIZE);
+        m_ir_gen.emit_push_arg(right_op, Type::PTR_SIZE);
+        m_ir_gen.emit_lcall(dest_reg, IR_Label("string_concat"),
+                            Type::PTR_SIZE);
+      } else {
+        m_ir_gen.emit_add(dest_reg, left_op, right_op, size);
+      }
       break;
     case BinOperator::Minus:
       m_ir_gen.emit_sub(dest_reg, left_op, right_op, size);
@@ -236,7 +251,6 @@ void IrVisitor::visit_addrof(const ExprPtr& op, const IR_Register& dst) {
              AstPrinter::unary_op_to_string(unary_deref_node->op_type));
     }
   } else {
-    // TODO FieldAccessNode for &struct.field
     unimpl("AddressOf complex l-value");
   }
 }
@@ -258,7 +272,7 @@ void IrVisitor::visit(UnaryExprNode& node) {
       m_ir_gen.emit_log_not(dest_reg, object, size);
       break;
     case UnaryOperator::Dereference:
-      m_ir_gen.emit_load(dest_reg, object, Type::PTR_SIZE);
+      m_ir_gen.emit_load(dest_reg, object, node.expr_type->get_byte_size());
       break;
     case UnaryOperator::AddressOf:
     case UnaryOperator::AddressOfMut:
@@ -319,7 +333,7 @@ IR_Register IrVisitor::compute_struct_field_addr(
       m_ir_gen.emit_addr_of(var_addr, base);
 
       IR_Register ptr_reg = m_ir_gen.new_temp_reg();
-      m_ir_gen.emit_load(ptr_reg, var_addr, Type::PTR_SIZE);
+      m_ir_gen.emit_load(ptr_reg, var_addr, Type::PTR_SIZE); // [&var] is addr
 
       IR_Immediate off_imm(offset, Type::PTR_SIZE);
       m_ir_gen.emit_add(addr_reg, ptr_reg, off_imm, Type::PTR_SIZE);
@@ -437,7 +451,15 @@ void IrVisitor::visit(VariableDeclNode& node) {
   uint64_t size = node.type->get_byte_size();
   if (node.initializer) {
     node.initializer->accept(*this);
-    m_ir_gen.emit_assign(*var_operand, m_last_expr_operand, size);
+    std::shared_ptr<Type> init_type = node.initializer->expr_type;
+    // if the initializer is a struct literal, do not copy, otherwise we would
+    // lose the memory and would not be able to free it
+    if (std::dynamic_pointer_cast<StructLiteralNode>(node.initializer)) {
+      m_ir_gen.emit_assign(*var_operand, m_last_expr_operand, size);
+    } else {
+      IROperand init_val = get_copy_of_operand(m_last_expr_operand, init_type);
+      m_ir_gen.emit_assign(*var_operand, init_val, size);
+    }
   } else {
     // default values, right now just assign 0
     m_ir_gen.emit_assign(*var_operand, IR_Immediate(0, 8), size);
@@ -757,14 +779,15 @@ void IrVisitor::visit(ArrayIndexNode& node) { // R-value access: x = arr[i]
   IROperand index_op = m_last_expr_operand;
 
   _assert(node.expr_type, "ArrayIndexNode must have its element type resolved");
+
   uint64_t size = node.expr_type->get_byte_size();
-  IR_Immediate size_op(size, size);
+  IR_Immediate size_op(size, Type::PTR_SIZE);
 
   IR_Register offset_reg = m_ir_gen.new_temp_reg();
-  m_ir_gen.emit_mul(offset_reg, index_op, size_op, size);
+  m_ir_gen.emit_mul(offset_reg, index_op, size_op, Type::PTR_SIZE);
 
   IR_Register target_addr_reg = m_ir_gen.new_temp_reg();
-  m_ir_gen.emit_add(target_addr_reg, base_addr_op, offset_reg, size);
+  m_ir_gen.emit_add(target_addr_reg, base_addr_op, offset_reg, Type::PTR_SIZE);
 
   IR_Register result_val_reg = m_ir_gen.new_temp_reg();
   m_ir_gen.emit_load(result_val_reg, target_addr_reg, size);
@@ -938,15 +961,8 @@ void IrVisitor::visit(StructLiteralNode& node) {
 
 IROperand IrVisitor::get_copy_of_operand(const IROperand& src,
                                          std::shared_ptr<Type> type) {
+  // check if it is a struct
   if (type->is<Type::Named>()) {
-    const Type::Named& named_type = type->as<Type::Named>();
-    if (named_type.identifier == "string") {
-      IR_Register result_reg = m_ir_gen.new_temp_reg();
-      m_ir_gen.emit_begin_lcall_prep();
-      m_ir_gen.emit_push_arg(src, Type::PTR_SIZE);
-      m_ir_gen.emit_lcall(result_reg, IR_Label("string_copy"), Type::PTR_SIZE);
-      return result_reg;
-    }
     std::string name = type->to_string();
     size_t scope = type->get_scope_id();
     StructDeclPtr struct_decl = m_symtab->lookup_struct(name, scope);

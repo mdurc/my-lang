@@ -87,6 +87,7 @@ DERIVE_ABSTRACT_NODE(StatementNode, AstNode)
 LITERAL_NODE(IntegerLiteralNode, uint64_t)
 LITERAL_NODE(FloatLiteralNode, double)
 LITERAL_NODE(StringLiteralNode, std::string)
+LITERAL_NODE(CharLiteralNode, uint64_t)
 LITERAL_NODE(BoolLiteralNode, bool)
 DERIVE_NODE(NullLiteralNode, ExpressionNode)
 

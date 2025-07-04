@@ -43,7 +43,9 @@ private:
 
   void add_token(TokenType type, Token::Lit literal_value = std::monostate{});
 
+  char handle_escape_sequence();
   void lex_string();
+  void lex_char();
   void lex_number();
   std::string read_identifier();
   void lex_identifier_or_keyword();

@@ -1,7 +1,7 @@
 	global exit, string_length, print_string, print_char, print_newline
 	global print_uint, print_int, read_char, read_word, parse_uint
 	global parse_int, string_equals, string_copy
-  global memcpy, malloc, free, clrscr
+	global memcpy, malloc, free, clrscr, string_concat
 
 	section .text
 
@@ -324,13 +324,12 @@ memcpy:
 	rep movsb     ; repeat movsb from [rsi] to [rdi], rcx times, incrementing both each time
 	ret
 
+%define SIGNATURE 0xDEADC0DEDEADC0DE
 ; rdi <- size in bytes
 ; rax -> allocated memory address (16-byte aligned), or 0 on error
 malloc:
   test rdi, rdi
   jz .invalid_size
-  push r12
-  mov r12, rdi
   add rdi, 16        ; total_size = requested_size + 16
   jc .error
   mov rsi, rdi       ; length = total_size
@@ -343,26 +342,36 @@ malloc:
   syscall
   cmp rax, -1
   je .error
-  mov [rax], rsi     ; Store total_size at start of block
-  add rax, 16        ; Return address after header
-  pop r12
+  mov r8, SIGNATURE
+  mov QWORD[rax], r8      ; store signature for identification in 'free'
+  mov QWORD[rax + 8], rsi ; store total_size at the start of the block
+  add rax, 16             ; return address after header
   ret
   .invalid_size:
   xor rax, rax
   ret
   .error:
   xor rax, rax
-  pop r12
   ret
 
 ; rdi <- memory address to free (must be from malloc or NULL)
 free:
   test rdi, rdi
-  jz .end             ; free(NULL) is safe no-op
-  mov rsi, [rdi - 16] ; Retrieve stored total_size
-  lea rdi, [rdi - 16] ; Calculate base address
+  jz .end             ; free(NULL) is safe no-op, we will just return back
+
+  mov rax, [rdi - 16] ; check for the signature added during malloc
+  mov rsi, SIGNATURE
+  cmp rax, rsi
+  jne .err            ; signature mismatch: not our block from malloc
+
+  mov rsi, [rdi - 8]  ; get our total size from the header from malloc
+  lea rdi, [rdi - 16] ; get base address
   mov rax, 0x2000049  ; munmap syscall
   syscall
+  jmp .end
+  .err:
+  mov rdi, free_err
+  call print_string
   .end:
   ret
 
@@ -384,5 +393,67 @@ clrscr:
   pop rdi
   ret
 
+; rdi <- addr of first null-terminated str
+; rsi <- addr of second null-terminated str
+; rax -> addr of new null-terminated str (heap-allocated; caller must free)
+string_concat:
+  push rbx
+  push rcx
+  push rdx
+  push r12
+  push r13
+  push r14
+  push r15
+
+  mov r12, rdi        ; save first string pointer
+  mov r13, rsi        ; save second string pointer
+
+  mov rdi, r12        ; arg1: first string
+  call string_length
+  mov r14, rax        ; r10 = len1
+
+  mov rdi, r13        ; arg1: second string
+  call string_length
+  mov r15, rax       ; r11 = len2
+
+  mov rax, r14
+  add rax, r15
+  add rax, 1         ; total length = len1 + len2 + 1 (for null)
+  mov rdi, rax       ; arg1: malloc size
+  call malloc
+  test rax, rax
+  jz .err            ; malloc failed
+  mov rbx, rax       ; rbx = dest buffer
+
+  ; copy first string
+  mov rdi, rbx       ; dest
+  mov rsi, r12       ; src
+  mov rcx, r14       ; size of string 1
+  call memcpy
+
+  ; copy second string
+  lea rdi, [rbx + r14] ; dest = buffer + len1
+  mov rsi, r13         ; src = second string
+  mov rcx, r15         ; size of string 2
+  call memcpy
+
+  ; null-terminate
+  lea rax, [r14 + r15]
+  mov byte [rbx + rax], 0
+  mov rax, rbx         ; return pointer
+  jmp .epilogue
+  .err:
+  xor rax, rax
+  .epilogue:
+  pop r15
+  pop r14
+  pop r13
+  pop r12
+  pop rdx
+  pop rcx
+  pop rbx
+  ret
+
 section .data
   clr_scr: db 0x1B, '[', '2', 'J', 0x1B, '[', 'H'  ; "\x1B[2J\x1B[H"
+  free_err: db "[ASM Error] Invalid free of memory not allocated by 'malloc' / not 16-bit aligned", 10, 0

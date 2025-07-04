@@ -18,6 +18,7 @@ public:
   void visit(IntegerLiteralNode& node) override;
   void visit(FloatLiteralNode& node) override;
   void visit(StringLiteralNode& node) override;
+  void visit(CharLiteralNode& node) override;
   void visit(BoolLiteralNode& node) override;
   void visit(NullLiteralNode& node) override;
   void visit(IdentifierNode& node) override;

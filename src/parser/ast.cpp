@@ -5,6 +5,7 @@
 void IntegerLiteralNode::accept(Visitor& v) { v.visit(*this); }
 void FloatLiteralNode::accept(Visitor& v) { v.visit(*this); }
 void StringLiteralNode::accept(Visitor& v) { v.visit(*this); }
+void CharLiteralNode::accept(Visitor& v) { v.visit(*this); }
 void BoolLiteralNode::accept(Visitor& v) { v.visit(*this); }
 void NullLiteralNode::accept(Visitor& v) { v.visit(*this); }
 void BreakStmtNode::accept(Visitor& v) { v.visit(*this); }

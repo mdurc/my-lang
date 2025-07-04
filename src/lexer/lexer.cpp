@@ -136,49 +136,84 @@ void Lexer::skip_whitespace_and_comments() {
   }
 }
 
+char Lexer::handle_escape_sequence() {
+  if (is_at_end()) {
+    m_logger->report(Error(Span(m_row, m_col, m_col),
+                           "Unterminated escape sequence at end of file"));
+    return '\0';
+  }
+
+  char esc = advance();
+  switch (esc) {
+    case 'n': return '\n';
+    case 't': return '\t';
+    case '"': return '"';
+    case '\'': return '\'';
+    case '\\': return '\\';
+    default:
+      m_logger->report(
+          Warning(Span(m_row, m_col, m_col),
+                  "Unknown escape sequence: \\" + std::string(1, esc)));
+      return esc;
+  }
+}
+
 void Lexer::lex_string() {
   // Opening '"' was consumed by scan_token calling advance()
   int starting_row = m_row;
-  int curr_col = m_col;
+  int starting_col = m_col;
   std::string value;
-  while (peek() != '"' && !is_at_end()) {
-    char c = peek();
-    if (c == '\\') {
-      // handle escaped characters
+  while (peek() != '"' && peek() != '\n' && !is_at_end()) {
+    if (peek() == '\\') {
       advance();
-
-      // newlines should not be in strings, if they are, it is not terminated
-      curr_col = m_col > curr_col ? m_col : curr_col;
-
-      if (is_at_end()) {
-        break;
-      }
-      char escaped_char = advance();
-      switch (escaped_char) {
-        case 'n': value += '\n'; break;
-        case 't': value += '\t'; break;
-        case '"': value += '"'; break;
-        case '\\': value += '\\'; break;
-        default:
-          std::string msg = "Unterminated string escape sequence: \\" +
-                            std::string(1, escaped_char);
-          m_logger->report(Warning(Span(m_row, m_start_col, m_col), msg));
-          value += escaped_char;
-          break;
-      }
+      value += handle_escape_sequence();
     } else {
       value += advance();
     }
   }
 
   if (is_at_end() || peek() != '"') {
-    m_logger->report(Error(Span(starting_row, m_start_col, curr_col),
+    m_logger->report(Error(Span(starting_row, m_start_col, starting_col),
                            "Unterminated string."));
     add_token(TokenType::UNKNOWN);
     return;
   }
   advance(); // Consume closing "
   add_token(TokenType::STRING_LITERAL, value);
+}
+
+void Lexer::lex_char() {
+  // Opening single quote was consumed by scan_token calling advance()
+  int starting_row = m_row;
+  int starting_col = m_col;
+
+  // check if it is an empty char literal, which is not allowed
+  char c = peek();
+  if (c == '\'') {
+    m_logger->report(Error(Span(starting_row, m_start_col, starting_col),
+                           "Empty char literal"));
+    advance(); // Consume closing '
+    add_token(TokenType::UNKNOWN);
+    return;
+  }
+
+  char value = '\0';
+  if (c == '\\') {
+    advance();
+    value = handle_escape_sequence();
+  } else {
+    value = advance();
+  }
+
+  if (peek() != '\'') {
+    m_logger->report(Error(Span(starting_row, m_start_col, starting_col),
+                           "Improperly terminated char literal"));
+    add_token(TokenType::UNKNOWN);
+    return;
+  }
+
+  advance(); // closing single quote
+  add_token(TokenType::CHAR_LITERAL, static_cast<std::uint64_t>(value));
 }
 
 void Lexer::lex_number() {
@@ -287,6 +322,7 @@ void Lexer::scan_token() {
       break;
 
     case '"': lex_string(); break;
+    case '\'': lex_char(); break;
 
     default:
       _report_error("Unexpected character: " + std::string(1, c));

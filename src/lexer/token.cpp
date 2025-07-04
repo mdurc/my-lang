@@ -138,6 +138,7 @@ std::string token_type_to_string(TokenType type) {
     case TokenType::INT_LITERAL: return "INT_LITERAL";
     case TokenType::FLOAT_LITERAL: return "FLOAT_LITERAL";
     case TokenType::STRING_LITERAL: return "STRING_LITERAL";
+    case TokenType::CHAR_LITERAL: return "CHAR_LITERAL";
 
     // syntax
     case TokenType::LPAREN: return "LPAREN";

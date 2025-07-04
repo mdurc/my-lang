@@ -160,6 +160,11 @@ void TypeChecker::visit(NullLiteralNode& node) {
   _assert(node.expr_type != nullptr, "u0 type not found for NullLiteral");
 }
 
+void TypeChecker::visit(CharLiteralNode& node) {
+  node.expr_type = m_symtab->lookup<Type>("u8", 0);
+  _assert(node.expr_type != nullptr, "u8 type not found for CharLiteral");
+}
+
 // Identifier
 void TypeChecker::visit(IdentifierNode& node) {
   // The parser handles declaring all identifiers, so we just have to search it
@@ -896,6 +901,13 @@ void TypeChecker::visit(ArrayIndexNode& node) {
 
   if (!object_type || !index_type) return;
 
+  // if the object is a string, subscripting returns the char value: u8
+  if (object_type->is<Type::Named>() &&
+      object_type->as<Type::Named>().identifier == "string") {
+    node.expr_type = m_symtab->lookup<Type>("u8", 0);
+    return;
+  }
+
   // Pointers are used as arrays right now, we do not have Array types.
   if (!object_type->is<Type::Pointer>()) {
     m_logger->report(TypeMismatchError(node.object->token->get_span(),
@@ -1105,9 +1117,26 @@ void TypeChecker::visit(CaseNode& node) {
 
 void TypeChecker::visit(FreeStmtNode& node) {
   std::shared_ptr<Type> expr_type = get_expr_type(node.expression);
-  if (expr_type && !expr_type->is<Type::Pointer>()) {
+  if (!expr_type) return;
+
+  // allow free on pointer, string, and struct types.
+  // strings that are concatenated must be freed manually as of now.
+  // structs allocate space on the heap, and also be manually freed as of now.
+  bool is_ptr = expr_type->is<Type::Pointer>();
+  bool is_string = expr_type->is<Type::Named>() &&
+                   expr_type->as<Type::Named>().identifier == "string";
+  bool is_struct = false;
+  if (expr_type->is<Type::Named>()) {
+    std::string name = expr_type->as<Type::Named>().identifier;
+    size_t scope = expr_type->get_scope_id();
+    StructDeclPtr struct_decl = m_symtab->lookup_struct(name, scope);
+    if (struct_decl != nullptr) {
+      is_struct = true;
+    }
+  }
+  if (!is_ptr && !is_string && !is_struct) {
     m_logger->report(TypeMismatchError(
-        node.expression->token->get_span(), "pointer type",
+        node.expression->token->get_span(), "pointer, string, or struct type",
         expr_type->to_string() + ". 'free' statement operand"));
   }
   // array vs not array deallocation will be up to the user.

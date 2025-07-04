@@ -15,6 +15,7 @@ public:
   virtual void visit(IntegerLiteralNode& node) = 0;
   virtual void visit(FloatLiteralNode& node) = 0;
   virtual void visit(StringLiteralNode& node) = 0;
+  virtual void visit(CharLiteralNode& node) = 0;
   virtual void visit(BoolLiteralNode& node) = 0;
   virtual void visit(NullLiteralNode&) = 0;
   virtual void visit(IdentifierNode& node) = 0;
@@ -86,6 +87,12 @@ public:
   void visit(StringLiteralNode& node) override {
     print_indent();
     out << "String(\"" << node.value << "\")";
+  }
+
+  void visit(CharLiteralNode& node) override {
+    print_indent();
+    uint64_t val = node.value;
+    out << "Char('" << static_cast<char>(val) << "' : " << val << ")";
   }
 
   void visit(BoolLiteralNode& node) override {
