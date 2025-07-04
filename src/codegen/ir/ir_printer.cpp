@@ -212,6 +212,13 @@ void print_ir_instruction(const IRInstruction& instr, std::ostream& out) {
       out << "Free ";
       print_ir_operand(instr.operands[0], out);
       break;
+    case IROpCode::MEM_COPY:
+      _assert(instr.result.has_value() && instr.operands.size() == 1,
+              "MEM_COPY must have a destination and 1 operand");
+      print_ir_operand(instr.result.value(), out);
+      out << " = memcpy ";
+      print_ir_operand(instr.operands[0], out);
+      break;
     default:
       out << "UNKNOWN_IR_OPCODE(" << static_cast<int>(instr.opcode) << ")";
       break;
