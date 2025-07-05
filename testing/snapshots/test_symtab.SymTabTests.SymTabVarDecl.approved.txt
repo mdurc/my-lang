@@ -9,6 +9,7 @@ Scope ID: 0
     b: var b (type: ?, scope: 0, modifier: imm)
     bool: type bool
     c: var c (type: ?, scope: 0, modifier: mut)
+    copy: var copy (type: ?, scope: 0, modifier: mut)
     d: var d (type: i32, scope: 0, modifier: mut)
     f64: type f64
     i16: type i16

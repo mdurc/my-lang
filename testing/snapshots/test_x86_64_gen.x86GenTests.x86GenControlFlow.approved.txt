@@ -2,7 +2,7 @@ extern exit, string_length, print_string, print_char
 extern print_newline, print_uint, print_int
 extern read_char, read_word, parse_uint
 extern parse_int, string_equals, string_copy
-extern memcpy, malloc, free, clrscr
+extern memcpy, malloc, free, clrscr, string_concat
 
 default rel
 global _start
@@ -17,9 +17,9 @@ _start:
 	push r14 ; saving callee-saved register
 	push r15 ; saving callee-saved register
 	mov r10b, 1
-	mov BYTE[global_vars + 1], r10b
-	mov r11b, BYTE[global_vars + 1]
-	test BYTE[global_vars + 1], r11b
+	mov BYTE[global_vars + 0], r10b
+	movzx r11, BYTE[global_vars + 0]
+	test BYTE[global_vars + 0], r11b
 	jz _L0
 	jmp _L1
 _L0:
@@ -32,11 +32,11 @@ _L2:
 	jmp _L2
 _L3:
 	mov r13, 0
-	mov QWORD[global_vars + 9], r13
+	mov QWORD[global_vars + 1], r13
 _L4:
 	mov r14, 10
 	push rax
-	cmp QWORD[global_vars + 9], r14
+	cmp QWORD[global_vars + 1], r14
 	setl al
 	movzx r15, al
 	pop rax
@@ -47,20 +47,20 @@ _L6:
 _L5:
 	mov rbx, 1
 	mov QWORD[rbp - 8], r10 ; spilling register r10 to stack
-	mov r10, QWORD[global_vars + 9]
+	mov r10, QWORD[global_vars + 1]
 	add r10, rbx
-	mov QWORD[global_vars + 9], r10
+	mov QWORD[global_vars + 1], r10
 	jmp _L4
 _L7:
 	mov r11, 5
-	mov DWORD[global_vars + 13], r11d
+	mov DWORD[global_vars + 9], r11d
 	mov QWORD[rbp - 16], r12 ; spilling register r12 to stack
 	mov r12, 3
 	mov QWORD[rbp - 24], r13 ; spilling register r13 to stack
 	push rax
-	cmp DWORD[global_vars + 13], r12d
+	cmp DWORD[global_vars + 9], r12d
 	setne al
-	movzx r13d, al
+	movzx r13, al
 	pop rax
 	test r13d, r13d
 	jz _L8
@@ -68,12 +68,12 @@ _L7:
 _L8:
 	mov QWORD[rbp - 32], r14 ; spilling register r14 to stack
 	mov r14, 2
-	mov QWORD[global_vars + 21], r14
+	mov QWORD[global_vars + 13], r14
 	jmp _L9
 _L9:
 	mov QWORD[rbp - 40], r15 ; spilling register r15 to stack
 	mov r15, 3
-	mov QWORD[global_vars + 29], r15
+	mov QWORD[global_vars + 21], r15
 	pop r15 ; restoring callee-saved register
 	pop r14 ; restoring callee-saved register
 	pop r13 ; restoring callee-saved register

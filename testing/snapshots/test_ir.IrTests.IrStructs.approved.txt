@@ -17,4 +17,12 @@
 	_t9 = _t11 + 8
 	_t12 = *(_t9)
 	y_o_0 = _t12
+	_t13 = Alloc 0
+	p_0 = _t13
+	_t14 = Alloc 0
+	_t14 = memcpy p_0
+	c_0 = _t14
+	Free origin_0
+	Free p_0
+	Free c_0
 -----------------------

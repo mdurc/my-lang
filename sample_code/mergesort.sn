@@ -79,3 +79,5 @@ arr[11] = 9;
 print "Original a: "; print_arr(arr, size_arr);
 merge_sort(arr, 0, 11);
 print "Sorted arr: "; print_arr(arr, size_arr);
+
+free[] arr;

@@ -638,7 +638,6 @@ void X86_64CodeGenerator::handle_prim_binop(const std::string& x86_instr,
     emit(x86_instr + " " + dst_str + ", " + src2_str);
   } else {
     // imul of non-8 byte instruction
-    std::cout << "imul non 8 byte instruction" << std::endl;
     std::string temp = get_temp_x86_reg(Type::PTR_SIZE);
     src2_str = get_sized_component(instr.operands[1], instr.size);
     emit(get_mov_instr(temp, src2_str, false, instr.size) +

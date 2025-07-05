@@ -66,3 +66,40 @@ VariableDecl(Mutable: true,
         Ident(y)
     )
 )
+StructDecl(
+  Type:
+    {Empty} Type::Named(Empty),
+  Fields: [
+  ]
+)
+VariableDecl(Mutable: false,
+  Name:
+    Ident(p),
+  Type:
+    {Empty} Type::Named(Empty)
+  Initializer:
+    StructLiteral(
+      Type:
+        {Empty} Type::Named(Empty),
+      Initializers: [
+
+      ]
+    )
+)
+VariableDecl(Mutable: false,
+  Name:
+    Ident(c),
+  Type:
+    {Empty} Type::Named(Empty)
+  Initializer:
+    Ident(p)
+)
+FreeStmt(IsArray: false,
+  Ident(origin)
+)
+FreeStmt(IsArray: false,
+  Ident(p)
+)
+FreeStmt(IsArray: false,
+  Ident(c)
+)

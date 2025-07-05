@@ -7,3 +7,11 @@ mut origin := Point{x = 0, y = 0};
 
 mut x_o : i64 = origin.x;
 mut y_o : i64 = origin.y;
+
+struct Empty { }
+p : Empty = Empty{};
+c : Empty = p;
+
+free origin;
+free p;
+free c;

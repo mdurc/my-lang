@@ -2,7 +2,7 @@ extern exit, string_length, print_string, print_char
 extern print_newline, print_uint, print_int
 extern read_char, read_word, parse_uint
 extern parse_int, string_equals, string_copy
-extern memcpy, malloc, free, clrscr
+extern memcpy, malloc, free, clrscr, string_concat
 
 default rel
 global _start
@@ -15,26 +15,26 @@ _start:
 	push r14 ; saving callee-saved register
 	push r15 ; saving callee-saved register
 	lea r10, _foo_2
-	mov QWORD[global_vars + 8], r10
+	mov QWORD[global_vars + 0], r10
 	mov r11, 10
-	mov QWORD[global_vars + 16], r11
+	mov QWORD[global_vars + 8], r11
 	mov r12, 1
-	mov QWORD[global_vars + 24], r12
+	mov QWORD[global_vars + 16], r12
 	mov r13, 2
-	mov QWORD[global_vars + 32], r13
+	mov QWORD[global_vars + 24], r13
 	push r11 ; saving caller-saved register r11
-	mov rdi, QWORD[global_vars + 24]; value stored in arg reg
+	mov rdi, QWORD[global_vars + 16]; value stored in arg reg
 	mov r14, 2
 	mov rsi, r14; value stored in arg reg
-	mov rdx, QWORD[global_vars + 16]; value stored in arg reg
-	call QWORD[global_vars + 8]
+	mov rdx, QWORD[global_vars + 8]; value stored in arg reg
+	call QWORD[global_vars + 0]
 	pop r11 ; restoring caller-saved register
 	push r11 ; saving caller-saved register r11
-	mov rdi, QWORD[global_vars + 32]; value stored in arg reg
+	mov rdi, QWORD[global_vars + 24]; value stored in arg reg
 	mov r15, 2
 	mov rsi, r15; value stored in arg reg
-	mov rdx, QWORD[global_vars + 16]; value stored in arg reg
-	call QWORD[global_vars + 8]
+	mov rdx, QWORD[global_vars + 8]; value stored in arg reg
+	call QWORD[global_vars + 0]
 	pop r11 ; restoring caller-saved register
 	pop r15 ; restoring callee-saved register
 	pop r14 ; restoring callee-saved register

@@ -8,10 +8,15 @@
 	a_0 = _t2
 	_t3 = "hello"
 	b_0 = _t3
-	_t4 = 3
-	c_0 = _t4
-	_t5 = 2
-	d_0 = _t5
-	_t6 = 13
-	x_0 = _t6
+	_t4 = "hello"
+	BeginLCallPrep
+	PushArg _t4
+	_t5 = LCall string_copy
+	copy_0 = _t5
+	_t6 = 3
+	c_0 = _t6
+	_t7 = 2
+	d_0 = _t7
+	_t8 = 13
+	x_0 = _t8
 -----------------------

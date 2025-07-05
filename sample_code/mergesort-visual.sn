@@ -114,4 +114,5 @@ arr[47] = 43;
 print_bar_chart(arr, size_arr);
 delay(90000000);
 merge_sort(arr, 0, size_arr - 1, size_arr);
+
 free[] arr;

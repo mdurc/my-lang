@@ -37,6 +37,13 @@ VariableDecl(Mutable: false,
 )
 VariableDecl(Mutable: true,
   Name:
+    Ident(copy),
+  Type: inferred
+  Initializer:
+    String("hello")
+)
+VariableDecl(Mutable: true,
+  Name:
     Ident(c),
   Type: inferred
   Initializer:

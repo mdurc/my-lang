@@ -9,10 +9,10 @@ func distance_squared(a: Point, b: Point) returns (d: i64) {
   return dx * dx + dy * dy;
 }
 
-func midpoint(p1: Point, p2: Point) returns (m: Point) {
+func set_midpoint(out: ptr<mut Point>, p1: Point, p2: Point) {
   mut mx: i64 = (p1.x + p2.x) / 2;
   mut my: i64 = (p1.y + p2.y) / 2;
-  return Point{x = mx, y = my};
+  *out = Point{x = mx, y = my};
 }
 
 func print_point(p: Point) {
@@ -32,7 +32,8 @@ func main() {
   print "Distance^2 between a and b: ", distance_squared(a,b), "\n";
 
   // Midpoint
-  mut mid: Point = midpoint(a, b);
+  mut mid: Point;
+  set_midpoint(&mut mid, a, b);
   print "Midpoint: ";
   print_point(mid);
   print "\n";
@@ -58,5 +59,11 @@ func main() {
     print "\n";
   }
 
+  free a;
+  free b;
+  free mid;
+  free points[0];
+  free points[1];
+  free points[2];
   free[] points;
 }
