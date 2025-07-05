@@ -484,10 +484,9 @@ StmtPtr Parser::parse_if_stmt() {
     if (match(TokenType::IF)) {
       // else if block
       StmtPtr else_if_stmt = parse_if_stmt();
-      std::vector<StmtPtr> else_if_stmts;
-      else_if_stmts.push_back(else_if_stmt);
-      else_branch =
-          _AST(BlockNode, current(), m_symtab->current_scope(), else_if_stmts);
+      const Token* else_if_tok = else_if_stmt->token;
+      else_branch = _AST(BlockNode, else_if_tok, m_symtab->current_scope(),
+                         std::vector<StmtPtr>{else_if_stmt});
     } else {
       // else block
       else_branch = parse_block(true);
