@@ -383,9 +383,8 @@ void IrVisitor::visit(AssignmentNode& node) {
   std::shared_ptr<Type> rval_type = node.rvalue->expr_type;
 
   // Assignment is defaultly a copy, so rval_op isn't just m_last_expr_operand.
-  // Don't have to worry about string copies, it should always copy because imm
-  // variables cannot be assigned anything, only initialized... as of now.
-  IROperand rval_op = get_copy_of_operand(m_last_expr_operand, rval_type);
+  ExprPtr rval = node.rvalue;
+  IROperand rval_op = get_copy_of_operand(m_last_expr_operand, rval);
 
   _assert(lval_type, "Types should be resolved by Typechecker");
   uint64_t size = lval_type->get_byte_size();
@@ -453,20 +452,12 @@ void IrVisitor::visit(VariableDeclNode& node) {
   const IR_Variable* var_operand = add_var(var_name, var_scope);
 
   uint64_t size = node.type->get_byte_size();
-  if (node.initializer) {
+  ExprPtr init = node.initializer;
+  if (init) {
     node.initializer->accept(*this);
-    std::shared_ptr<Type> init_type = node.initializer->expr_type;
-    // if the initializer is a struct literal, do not copy, otherwise we would
-    // lose the memory and would not be able to free it
-    if (std::dynamic_pointer_cast<StructLiteralNode>(node.initializer)) {
-      m_ir_gen.emit_assign(*var_operand, m_last_expr_operand, size);
-    } else {
-      bool is_string_literal = is_string_literal_expr(node.initializer);
-      bool str_mut_lval = should_copy_string(node.type, var_name, var_scope);
-      IROperand init_val = get_copy_of_operand(m_last_expr_operand, init_type,
-                                               str_mut_lval, is_string_literal);
-      m_ir_gen.emit_assign(*var_operand, init_val, size);
-    }
+    bool str_lhs_mut = is_string_mutable(node.type, var_name, var_scope);
+    IROperand res = get_copy_of_operand(m_last_expr_operand, init, str_lhs_mut);
+    m_ir_gen.emit_assign(*var_operand, res, size);
   } else {
     // default values, right now just assign 0
     m_ir_gen.emit_assign(*var_operand, IR_Immediate(0, 8), size);
@@ -630,20 +621,21 @@ void IrVisitor::visit(FunctionCallNode& node) {
     arg_node->accept(*this);
     IROperand arg_op = m_last_expr_operand;
 
-    _assert(arg_node->expression->expr_type,
-            "Types should be resolved by Typechecker");
-    auto arg_type = arg_node->expression->expr_type;
+    ExprPtr arg_expr = arg_node->expression;
+    _assert(arg_expr->expr_type, "Types should be resolved by Typechecker");
 
     const Type::ParamInfo& param_info = func_type.params[i];
     IROperand final_arg_op = arg_op;
 
     if (param_info.modifier == BorrowState::ImmutablyOwned ||
         param_info.modifier == BorrowState::MutablyOwned) { // take
-      if (!arg_node->is_give) {
-        final_arg_op = get_copy_of_operand(arg_op, arg_type);
+      if (arg_node->is_give) {
+        bool str_mut = is_string_mutable(param_info.type, param_info.modifier);
+        final_arg_op = get_copy_of_operand(arg_op, arg_expr, str_mut);
       }
     }
 
+    std::shared_ptr<Type> arg_type = arg_expr->expr_type;
     m_ir_gen.emit_push_arg(final_arg_op, arg_type->get_byte_size());
   }
   node.callee->accept(*this);
@@ -945,14 +937,21 @@ void IrVisitor::visit(StructLiteralNode& node) {
   size_t offset = 0;
   for (const StructFieldPtr& field : node.struct_decl->fields) {
     // find the initializer for this field
+    const std::string& field_name = field->name->name;
     ExprPtr value = nullptr;
-    for (const auto& init : node.initializers) {
-      if (init->field->name == field->name->name) {
+    for (const StructFieldInitPtr& init : node.initializers) {
+      if (init->field->name == field_name) {
         value = init->value;
         break;
       }
     }
-    _assert(value, "Missing struct field initializer");
+    if (value == nullptr) {
+      // the struct field initializer is missing for one of the fields
+      const Span& span = node.token->get_span();
+      std::string msg = "missing struct field initializer: " + field_name;
+      m_logger->report(Warning(span, msg));
+      continue;
+    }
     value->accept(*this);
     IROperand val = m_last_expr_operand;
     // store at struct_addr + offset
@@ -966,14 +965,16 @@ void IrVisitor::visit(StructLiteralNode& node) {
   m_last_expr_operand = struct_addr;
 }
 
-IROperand IrVisitor::get_copy_of_operand(const IROperand& src,
-                                         std::shared_ptr<Type> type,
-                                         bool strcpy_mut_lvalue,
-                                         bool is_string_literal) {
-  if (type->is<Type::Named>()) {
+IROperand IrVisitor::get_copy_of_operand(const IROperand& src, ExprPtr rhs_expr,
+                                         bool is_str_lhs_mut) {
+  std::shared_ptr<Type> rhs_type = rhs_expr->expr_type;
+  if (rhs_type->is<Type::Named>()) {
     // check if it is a struct
-    std::string name = type->as<Type::Named>().identifier;
-    size_t scope = type->get_scope_id();
+    if (std::dynamic_pointer_cast<StructLiteralNode>(rhs_expr)) {
+      return src; // we won't be copying a struct literal, it is redundant
+    }
+    std::string name = rhs_type->as<Type::Named>().identifier;
+    size_t scope = rhs_type->get_scope_id();
     StructDeclPtr struct_decl = m_symtab->lookup_struct(name, scope);
     if (struct_decl != nullptr) {
       // it must be a struct
@@ -986,7 +987,7 @@ IROperand IrVisitor::get_copy_of_operand(const IROperand& src,
 
     // check if it is a string
     if (name == "string") {
-      if (strcpy_mut_lvalue || !is_string_literal) {
+      if (is_str_lhs_mut || !is_string_literal_expr(rhs_expr)) {
         // heap-allocate if the l-value is mutable, or it is not a str literal
         IR_Register result_reg = m_ir_gen.new_temp_reg();
         m_ir_gen.emit_begin_lcall_prep();
@@ -1003,18 +1004,26 @@ IROperand IrVisitor::get_copy_of_operand(const IROperand& src,
   return src;
 }
 
-bool IrVisitor::should_copy_string(std::shared_ptr<Type> type,
-                                   const std::string& name, size_t scope_id) {
-  bool strcpy_mut_lvalue =
+bool IrVisitor::is_string_mutable(std::shared_ptr<Type> type,
+                                  const std::string& name, size_t scope_id) {
+  bool is_string_mut =
       type->is<Type::Named>() && type->as<Type::Named>().identifier == "string";
-  if (strcpy_mut_lvalue) {
+  if (is_string_mut) {
     std::shared_ptr<Variable> var_sym =
         m_symtab->lookup<Variable>(name, scope_id);
-    strcpy_mut_lvalue =
+    is_string_mut =
         var_sym && (var_sym->modifier == BorrowState::MutablyOwned ||
                     var_sym->modifier == BorrowState::MutablyBorrowed);
   }
-  return strcpy_mut_lvalue;
+  return is_string_mut;
+}
+
+bool IrVisitor::is_string_mutable(std::shared_ptr<Type> type,
+                                  BorrowState modifier) {
+  return type->is<Type::Named>() &&
+         type->as<Type::Named>().identifier == "string" &&
+         modifier == BorrowState::MutablyOwned &&
+         modifier == BorrowState::MutablyBorrowed;
 }
 
 bool IrVisitor::is_string_literal_expr(const ExprPtr& expr) {

@@ -18,6 +18,7 @@
       throw FatalError("");                           \
     } else if (logger.num_warnings()) {               \
       std::cerr << logger.get_diagnostic_str();       \
+      logger.clear_warnings();                        \
     }                                                 \
   } while (0)
 

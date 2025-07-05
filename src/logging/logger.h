@@ -27,7 +27,10 @@ public:
   void clear() {
     m_errors.clear();
     m_warnings.clear();
+    m_fatals.clear();
   }
+
+  void clear_warnings() { m_warnings.clear(); }
 
   std::string get_diagnostic_str() const {
     std::string out;
