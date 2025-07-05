@@ -629,36 +629,50 @@ void X86_64CodeGenerator::handle_prim_binop(const std::string& x86_instr,
   std::string dst_reg = get_x86_reg(std::get<IR_Register>(dst_op));
   std::string dst_str = get_sized_register_name(dst_reg, instr.size);
   std::string src1_str = get_sized_component(instr.operands[0], instr.size);
-  std::string src2_str = get_sized_component(instr.operands[1], instr.size);
+  std::string src2_str; // trying to avoid spilling before usage
 
   emit(get_mov_instr(dst_reg, src1_str, is_imm(instr.operands[0]), instr.size));
-  emit(x86_instr + " " + dst_str + ", " + src2_str);
+
+  if (x86_instr != "imul" || instr.size == Type::PTR_SIZE) {
+    src2_str = get_sized_component(instr.operands[1], instr.size);
+    emit(x86_instr + " " + dst_str + ", " + src2_str);
+  } else {
+    // imul of non-8 byte instruction
+    std::cout << "imul non 8 byte instruction" << std::endl;
+    std::string temp = get_temp_x86_reg(Type::PTR_SIZE);
+    src2_str = get_sized_component(instr.operands[1], instr.size);
+    emit(get_mov_instr(temp, src2_str, false, instr.size) +
+         " ; 64 bit dst for imul");
+    emit(x86_instr + " " + dst_reg + ", " + temp);
+  }
 }
 
 void X86_64CodeGenerator::handle_div(const IRInstruction& instr) {
   // idiv r/m64: RDX:RAX / r/m64. Quotient in RAX, Remainder in RDX.
-  _assert(std::holds_alternative<IR_Register>(instr.result.value()),
+  IROperand dst_op = instr.result.value();
+  _assert(std::holds_alternative<IR_Register>(dst_op),
           "Div instructions must have a register as the destination");
-  std::string dst_str = get_sized_component(instr.result.value(), instr.size);
-  std::string src1_str =
-      get_sized_component(instr.operands[0], instr.size); // Dividend
-  std::string src2_str =
-      get_sized_component(instr.operands[1], instr.size); // Divisor
+  std::string src1_str = get_sized_component(instr.operands[0], instr.size);
+  bool s1_imm = std::holds_alternative<IR_Immediate>(instr.operands[0]);
 
   emit("; --- DIV start ---");
   emit("push rax");
   emit("push rdx");
 
   // Load dividend (src1) into RAX.
-  std::string sized_rax = get_sized_register_name("rax", instr.size);
-  emit("mov " + sized_rax + ", " + src1_str);
+  emit(get_mov_instr("rax", src1_str, s1_imm, instr.size));
   emit("cqo");
 
   // RDX:RAX / src2. Quotient in RAX, Remainder in RDX.
-  emit("idiv " + src2_str);
+  std::string temp = get_temp_x86_reg(Type::PTR_SIZE);
+  std::string src2_str = get_sized_component(instr.operands[1], instr.size);
+  bool s2_imm = std::holds_alternative<IR_Immediate>(instr.operands[1]);
+  emit(get_mov_instr(temp, src2_str, s2_imm, instr.size) +
+       " ; 64 bit dst for idiv");
+  emit("idiv " + temp);
 
-  emit("mov " + dst_str + ", " + sized_rax); // Store quotient
-
+  std::string dst_str = get_sized_component(dst_op, Type::PTR_SIZE);
+  emit("mov " + dst_str + ", rax"); // store 64 bit result
   emit("pop rdx");
   emit("pop rax");
   emit("; --- DIV end ---");
@@ -666,24 +680,28 @@ void X86_64CodeGenerator::handle_div(const IRInstruction& instr) {
 
 void X86_64CodeGenerator::handle_mod(const IRInstruction& instr) {
   // idiv r/m64: RDX:RAX / r/m64. Quotient in RAX, Remainder in RDX.
-  _assert(std::holds_alternative<IR_Register>(instr.result.value()),
+  IROperand dst_op = instr.result.value();
+  _assert(std::holds_alternative<IR_Register>(dst_op),
           "Mod instructions must have a register as the destination");
-  std::string dst_str = get_sized_component(instr.result.value(), instr.size);
   std::string src1_str = get_sized_component(instr.operands[0], instr.size);
-  std::string src2_str = get_sized_component(instr.operands[1], instr.size);
+  bool s1_imm = std::holds_alternative<IR_Immediate>(instr.operands[0]);
 
   emit("; --- MOD start ---");
   emit("push rax");
   emit("push rdx");
 
-  std::string sized_rax = get_sized_register_name("rax", instr.size);
-  emit("mov " + sized_rax + ", " + src1_str);
+  emit(get_mov_instr("rax", src1_str, s1_imm, instr.size));
   emit("cqo");
 
-  emit("idiv " + src2_str);
+  std::string temp = get_temp_x86_reg(Type::PTR_SIZE);
+  std::string src2_str = get_sized_component(instr.operands[1], instr.size);
+  bool s2_imm = std::holds_alternative<IR_Immediate>(instr.operands[1]);
+  emit(get_mov_instr(temp, src2_str, s2_imm, instr.size) +
+       " ; 64 bit dst for idiv (for mod)");
+  emit("idiv " + temp);
 
-  std::string sized_rdx = get_sized_register_name("rdx", instr.size);
-  emit("mov " + dst_str + ", " + sized_rdx); // Store remainder
+  std::string dst_str = get_sized_component(dst_op, Type::PTR_SIZE);
+  emit("mov " + dst_str + ", rdx"); // store 64 bit remainder
   emit("pop rdx");
   emit("pop rax");
   emit("; --- MOD end ---");
@@ -770,7 +788,6 @@ void X86_64CodeGenerator::handle_cmp_str_eq(const IRInstruction& instr) {
   _assert(instr.operands.size() == 2, "str_eq should have two operands");
   _assert(instr.size == Type::PTR_SIZE, "str_eq should have 8 byte instr size");
 
-  std::string dst_str = get_sized_component(dst, Type::PTR_SIZE);
   std::string s1_str = get_sized_component(instr.operands[0], instr.size);
   std::string s2_str = get_sized_component(instr.operands[1], instr.size);
 
@@ -779,6 +796,8 @@ void X86_64CodeGenerator::handle_cmp_str_eq(const IRInstruction& instr) {
   emit("mov rsi, " + s2_str + " ; arg2 for string_equals");
   emit("call string_equals");
   restore_caller_saved_regs();
+
+  std::string dst_str = get_sized_component(dst, Type::PTR_SIZE);
   emit("movzx " + dst_str + ", al"); // zero-extend al to dest_reg
 }
 
@@ -811,6 +830,7 @@ void X86_64CodeGenerator::handle_if_z(const IRInstruction& instr) {
 
 void X86_64CodeGenerator::handle_push_arg(const IRInstruction& instr) {
   IROperand src = instr.operands[0];
+  bool s_imm = std::holds_alternative<IR_Immediate>(src);
 
   uint64_t arg_size = instr.size;
 
@@ -824,9 +844,10 @@ void X86_64CodeGenerator::handle_push_arg(const IRInstruction& instr) {
   }
 
   // handle stack arguments (args beyond the first 6), note it requires QWORD sz
-  m_current_arg_instrs.push_back("push " +
-                                 get_sized_component(src, Type::PTR_SIZE) +
-                                 "; pushing arg to stack");
+  std::string temp = get_temp_x86_reg(Type::PTR_SIZE);
+  std::string src_str = get_sized_component(src, arg_size);
+  emit(get_mov_instr(temp, src_str, s_imm, instr.size));
+  m_current_arg_instrs.push_back("push " + temp + "; pushing arg to stack");
   m_stack_args_size += Type::PTR_SIZE; // we must push 8 bytes
 }
 
@@ -903,10 +924,10 @@ void X86_64CodeGenerator::handle_lcall(const IRInstruction& instr) {
 
   // if the call has a result, it's in rax: move it to the IR result register.
   if (instr.result.has_value()) {
-    _assert(std::holds_alternative<IR_Register>(instr.result.value()),
+    IROperand res = instr.result.value();
+    _assert(std::holds_alternative<IR_Register>(res),
             "LCALL result must be a register");
-    std::string dest_reg = get_sized_component(
-        instr.result.value(), Type::PTR_SIZE); // 64 bit for mov/movzx
+    std::string dest_reg = get_sized_component(res, Type::PTR_SIZE);
     std::string sized_rax = get_sized_register_name("rax", instr.size);
     emit(get_mov_instr(dest_reg, sized_rax, false, instr.size));
   }
@@ -1032,7 +1053,6 @@ void X86_64CodeGenerator::handle_alloc(const IRInstruction& instr) {
           "alloc should have one imm operand at [0]");
 
   const IROperand& dst = instr.result.value();
-  std::string dst_ptr_str = get_sized_component(dst, Type::PTR_SIZE);
 
   uint64_t type_alloc_size = std::get<IR_Immediate>(instr.operands[0]).val;
 
@@ -1040,6 +1060,8 @@ void X86_64CodeGenerator::handle_alloc(const IRInstruction& instr) {
   emit("mov rdi, " + std::to_string(type_alloc_size));
   emit("call malloc");
   restore_caller_saved_regs();
+
+  std::string dst_ptr_str = get_sized_component(dst, Type::PTR_SIZE);
   emit("mov " + dst_ptr_str + ", rax"); // no need for movzx
 
   if (instr.operands.size() > 1) {
@@ -1064,7 +1086,6 @@ void X86_64CodeGenerator::handle_alloc_array(const IRInstruction& instr) {
           "alloc array should have two operands, the first an immediate");
 
   const IROperand& dst = instr.result.value();
-  std::string dst_ptr_str = get_sized_component(dst, Type::PTR_SIZE);
 
   uint64_t element_size_val = std::get<IR_Immediate>(instr.operands[0]).val;
   IROperand num_elements_op = instr.operands[1];
@@ -1084,6 +1105,8 @@ void X86_64CodeGenerator::handle_alloc_array(const IRInstruction& instr) {
   emit("mov rdi, " + temp);
   emit("call malloc");
   restore_caller_saved_regs();
+
+  std::string dst_ptr_str = get_sized_component(dst, Type::PTR_SIZE);
   emit("mov " + dst_ptr_str + ", rax"); // no need for movzx
 }
 

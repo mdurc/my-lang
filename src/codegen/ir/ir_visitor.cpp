@@ -218,43 +218,6 @@ void IrVisitor::visit(BinaryOpExprNode& node) {
   m_last_expr_operand = dest_reg;
 }
 
-void IrVisitor::visit_addrof(const ExprPtr& op, const IR_Register& dst) {
-  if (auto ident_node = std::dynamic_pointer_cast<IdentifierNode>(op)) {
-    m_ir_gen.emit_addr_of(dst, get_var(ident_node->name, ident_node->scope_id));
-  } else if (auto array_idx_node =
-                 std::dynamic_pointer_cast<ArrayIndexNode>(op)) {
-    // calculate address of arr[idx] and store in dest_reg
-    array_idx_node->object->accept(*this);
-    IROperand base_addr_op = m_last_expr_operand;
-
-    array_idx_node->index->accept(*this);
-    IROperand index_op = m_last_expr_operand;
-
-    _assert(
-        array_idx_node->expr_type && array_idx_node->index->expr_type,
-        "node and index should have a resolved type so that we can size it");
-    uint64_t pointee_type_size = array_idx_node->expr_type->get_byte_size();
-    uint64_t idx_type_size = array_idx_node->index->expr_type->get_byte_size();
-    IR_Immediate elem_size_imm(pointee_type_size, idx_type_size);
-
-    IR_Register offset_reg = m_ir_gen.new_temp_reg();
-    m_ir_gen.emit_mul(offset_reg, index_op, elem_size_imm, idx_type_size);
-
-    m_ir_gen.emit_add(dst, base_addr_op, offset_reg, idx_type_size);
-  } else if (auto unary_deref_node =
-                 std::dynamic_pointer_cast<UnaryExprNode>(op)) {
-    if (unary_deref_node->op_type == UnaryOperator::Dereference) {
-      unary_deref_node->operand->accept(*this);
-      m_ir_gen.emit_assign(dst, m_last_expr_operand, Type::PTR_SIZE);
-    } else {
-      unimpl("AddressOf non-dereference UnaryExpr for lvalue: " +
-             AstPrinter::unary_op_to_string(unary_deref_node->op_type));
-    }
-  } else {
-    unimpl("AddressOf complex l-value");
-  }
-}
-
 void IrVisitor::visit(UnaryExprNode& node) {
   node.operand->accept(*this);
   IROperand object = m_last_expr_operand;
@@ -281,6 +244,42 @@ void IrVisitor::visit(UnaryExprNode& node) {
   }
 
   m_last_expr_operand = dest_reg;
+}
+
+void IrVisitor::visit_addrof(const ExprPtr& op, const IR_Register& dst) {
+  if (auto ident_node = std::dynamic_pointer_cast<IdentifierNode>(op)) {
+    m_ir_gen.emit_addr_of(dst, get_var(ident_node->name, ident_node->scope_id));
+  } else if (auto array_idx_node =
+                 std::dynamic_pointer_cast<ArrayIndexNode>(op)) {
+    // calculate address of arr[idx] and store in dest_reg
+    array_idx_node->object->accept(*this);
+    IROperand base_addr_op = m_last_expr_operand;
+
+    array_idx_node->index->accept(*this);
+    IROperand index_op = m_last_expr_operand;
+
+    _assert(
+        array_idx_node->expr_type && array_idx_node->index->expr_type,
+        "node and index should have a resolved type so that we can size it");
+    uint64_t pointee_type_size = array_idx_node->expr_type->get_byte_size();
+    IR_Immediate elem_size_imm(pointee_type_size, Type::PTR_SIZE);
+
+    IR_Register offset_reg = m_ir_gen.new_temp_reg();
+    m_ir_gen.emit_mul(offset_reg, index_op, elem_size_imm, Type::PTR_SIZE);
+
+    m_ir_gen.emit_add(dst, base_addr_op, offset_reg, Type::PTR_SIZE);
+  } else if (auto unary_deref_node =
+                 std::dynamic_pointer_cast<UnaryExprNode>(op)) {
+    if (unary_deref_node->op_type == UnaryOperator::Dereference) {
+      unary_deref_node->operand->accept(*this);
+      m_ir_gen.emit_assign(dst, m_last_expr_operand, Type::PTR_SIZE);
+    } else {
+      unimpl("AddressOf non-dereference UnaryExpr for lvalue: " +
+             AstPrinter::unary_op_to_string(unary_deref_node->op_type));
+    }
+  } else {
+    unimpl("AddressOf complex l-value");
+  }
 }
 
 IR_Register IrVisitor::compute_struct_field_addr(
@@ -406,13 +405,14 @@ void IrVisitor::visit(AssignmentNode& node) {
     array_idx_node->index->accept(*this); // index
     IROperand index_op = m_last_expr_operand;
 
-    IR_Immediate idx_offset(size, 8);
+    IR_Immediate idx_offset(size, Type::PTR_SIZE);
 
     IR_Register offset_reg = m_ir_gen.new_temp_reg();
-    m_ir_gen.emit_mul(offset_reg, index_op, idx_offset, size);
+    m_ir_gen.emit_mul(offset_reg, index_op, idx_offset, Type::PTR_SIZE);
 
     IR_Register target_addr_reg = m_ir_gen.new_temp_reg();
-    m_ir_gen.emit_add(target_addr_reg, base_addr_op, offset_reg, size);
+    m_ir_gen.emit_add(target_addr_reg, base_addr_op, offset_reg,
+                      Type::PTR_SIZE);
 
     m_ir_gen.emit_store(target_addr_reg, rval_op, size);
   } else if (auto unary_deref_node =
