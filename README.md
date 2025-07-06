@@ -1,18 +1,19 @@
-# My Language and its Compiler
+My language is a statically-typed, compiled language. It is designed with small similarties in syntax to C, rust, mojo. Written in C++ and targets the x86-64 architecture on macOs.
 
-This is a technical overview of the compiler and the language it compiles.
+My second take at a revised compiler from the one that I wrote a while ago over christmas break. I wanted to come back and try to make something better. The main goals that I went into this with were:
+- Revise the syntax and make it actually readable and somewhat intuitive
+- Create a context free grammar for the language
+- Compile to `x86_64` instead of mips
+- Make a basic but useful LSP and treesitter
+- Eventually bootstrap the compiler
+
+Note that this surely has lots of hidden bugs, but in the general use of all features it seems effective and much more sophisticated and useful compared to my last compiler attempt which had extremely limited and poorly designed features.
+
+This is a technical overview of the compiler and the language it compiles:
 - [Grammar](info/grammar.txt)
 - [Syntax](info/syntax.md)
 
-## 1. Overview
-
-My language is a statically-typed, ahead-of-time compiled programming language. It is designed with small similarties in syntax to C, rust, mojo. Written in C++ and targets the x86-64 architecture on macOs.
-
-Primary goals:
-- **Strong type safety**: Type safety is a big priority, particularly with regards to mutability as well.
-- **Low-level**: direct memory manipulation and unsafe pointers are important, and inline assembly seemed really interesting.
-
-## 2. Design
+## 1. Design
 
 Follows a standard flow of passes until producing the assembly:
 1. **Preprocessing**: Handles `#include` and `#define` directives.
@@ -25,14 +26,14 @@ Follows a standard flow of passes until producing the assembly:
 
 Each stage exists within the `src/` directory, where `src/driver.cpp` is the driver for all of the CLI options for the compiler.
 
-## 3. Preprocessing
+## 2. Preprocessing
 
 The preprocessor runs just before the driver of the lexer and handles two main directives:
 
 -   `#define IDENTIFIER value`: Implements a simple direct text substitution. It replaces all occurrences of `IDENTIFIER` as a whole word with `value`.
 -   `#include "path/to/file.sn"`: Inlines the content of another file. The preprocessor tracks included files to detect and report circular dependencies.
 
-## 4. Lexical Analysis (Lexer)
+## 3. Lexical Analysis (Lexer)
 
 -   **Functionality**: It scans the preprocessed source code and converts it into a sequence of `Token` objects.
 -   **Comments**: It recognizes and discards single-line (`// ...`) and multi-line (`/* ... */`) comments.
@@ -47,7 +48,7 @@ The preprocessor runs just before the driver of the lexer and handles two main d
 -   **Location Tracking**: Each token stores a `Span` (row, start column, end column) for precise error reporting and LSP information.
 
 
-## 6. Syntactic Analysis (Parser)
+## 4. Syntactic Analysis (Parser)
 
 Recursive descent parser, heavily mirroring the grammar in `info/grammar.txt`, that consumes the token stream and builds the AST
 
@@ -56,7 +57,7 @@ Recursive descent parser, heavily mirroring the grammar in `info/grammar.txt`, t
 -   **Symbol Table Interaction**: During parsing, when a declaration (`func`, `struct`, variable) is encountered, it is immediately added to the current scope in the symbol table. We thus also check for TypeNotFound errors when parsing types.
 -   **Error Recovery**: The parser implements panic mode. On a syntax error, it reports the error and then calls `synchronize()` to advance the token stream until it finds a "synchronization point". This allows it to report multiple independent errors in a single pass.
 
-## 7. Symbol Table and Scoping
+## 5. Symbol Table and Scoping
 
 -   **Structure**: It is implemented as a `std::vector<Scope>`, where the vector index is the `scope_id`. Each `Scope` object contains a hash map for symbols and a pointer to its parent scope's ID, forming a parent-pointer tree of scopes.
 -   **Symbols**: It stores `Variable` and `Type` symbols. `Variable` symbols contain their name, type, borrow state, and scope.
@@ -67,7 +68,7 @@ Recursive descent parser, heavily mirroring the grammar in `info/grammar.txt`, t
     -   **Loop Scopes**: `for` loops create a new scope that encompasses the initializer, condition, iteration, and body. This means a variable declared in the `for` initializer is only visible within the loop.
 -   **Lookup**: When looking up a symbol, the search starts at the current scope and traverses up the parent chain to the global scope until the symbol is found, thus supporting shadowing of variables as well.
 
-## 8. Semantic Analysis (Type Checker)
+## 6. Semantic Analysis (Type Checker)
 
 Utilizes the visitor design pattern to traverse the AST and enforce the type rules.
 
@@ -79,7 +80,7 @@ Utilizes the visitor design pattern to traverse the AST and enforce the type rul
     -   **Function Calls**: The number and types of arguments must match the function's parameter types.
 -   **L-value and Mutability Checking**: Verifies that assignments and mutable borrows are only performed on valid, mutable locations in memory. This prevents modifying immutable variables or r-values.
 
-### 8.1 Type System
+### 6.1 Type System
 Each type has an associated scope id and data
 
 - Named Types: primitives, user-defined types (structs)
@@ -88,7 +89,7 @@ Each type has an associated scope id and data
 - Pointer Types
 - Variables: name, borrow state modifier, type, `scope_id`
 
-## 9. Intermediate Representation (IR)
+## 7. Intermediate Representation (IR)
 
 -   **Format**: Three-Address Code (TAC)
 -   **Instructions**: `IRInstruction` is the core data structure. It has an `IROpCode`, an optional destination operand, a list of source operands, and a size.
@@ -102,7 +103,7 @@ Each type has an associated scope id and data
     -   `IR_ParameterSlot`: Represents an incoming function argument. It is for the codegen to know the current index of the parameters so that if any overflow into the stack, we can identify the proper offsets.
 -   **Generation**: The `IrVisitor` walks the AST. It translates expressions into sequences of IR instructions that compute the result into a temporary register. It converts control flow structures like `if` and `while` into conditional jumps (`IF_Z`) and labels.
 
-## 10. Code Generation (x86-64)
+## 8. Code Generation (x86-64)
 
 -   **Target**: The generator produces NASM-syntax assembly for macOS, following the System V AMD64 ABI.
 -   **Register Allocation**:
@@ -118,7 +119,7 @@ Each type has an associated scope id and data
     -   The generator saves and restores any caller-saved registers that are live across a `call` instruction. It also saves and restores any used callee-saved registers in the function prologue/epilogue.
 -   **Entry Point**: The final executable's entry point is `_start`. This label marks the beginning of the top-level code. If a `main` function is defined, `_start` will execute all top-level statements and then `call main`. The return value of `main` is used as the program's exit code. If no `main` exists, the program exits after the top-level code.
 
-## 11. Runtime Library
+## 9. Runtime Library
 
 -   **Output to stdout**: `print_string`, `print_char`, `print_int`, `print_uint`, `print_newline`.
 -   **Input from stdin**: `read_char`, `read_word`, `parse_uint`, `parse_int`.
@@ -127,7 +128,7 @@ Each type has an associated scope id and data
 -   **String Utilities**: `string_length`, `string_equals`, `string_copy`, `string_concat`.
 -   **Other**: `exit`, `clrscr`.
 
-## 12. Driver
+## 10. Driver
 
 -   It parses command-line arguments to control which stage of the compilation to run and where to output the result.
 -   It orchestrates the pipeline by creating and running the Preprocessor, Lexer, Parser, TypeChecker, IR Visitor, and Code Generator in sequence.
@@ -135,5 +136,5 @@ Each type has an associated scope id and data
 
 ## Other
 - Tree sitter highlighting
-- LSP: Diagnostic, Goto-Definition, Hovering over identifiers and literals
+- LSP: Diagnostic, Goto-Definition, Hovering over identifiers to display types, mutability, etc.
 - [CLI](cli.py) can be installed to local bin with `make install` where you can then use it as `mcompiler_cli --help`
