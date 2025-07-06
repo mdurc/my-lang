@@ -41,6 +41,7 @@ The preprocessor runs just before the driver of the lexer and handles two main d
     -   **Integer**: `i64`
     -   **Float**: `f64`
     -   **String**: UTF-8 strings enclosed in double quotes (e.g., `"hello"`). Supports `\n`, `\t`, `\"`, `\\` escape sequences.
+    -   **Char**: `u8` char literals are enclosed in single quotes (e.g., `'a'`), though ascii values can be used as well when using char literals in interactions with string variables.
     -   **Boolean**: `true` and `false`.
     -   **Null**: `null`.
 -   **Location Tracking**: Each token stores a `Span` (row, start column, end column) for precise error reporting and LSP information.
@@ -119,10 +120,12 @@ Each type has an associated scope id and data
 
 ## 11. Runtime Library
 
--   **I/O**: `print_string`, `print_int`, `print_char`, `read_word`, etc.
--   **Memory Management**: `malloc` and `free` are wrappers around the `mmap` and `munmap` syscalls.
--   **String Utilities**: `string_length`, `string_equals`, `string_copy`.
--   **Other**: `memcpy`, `clrscr`.
+-   **Output to stdout**: `print_string`, `print_char`, `print_int`, `print_uint`, `print_newline`.
+-   **Input from stdin**: `read_char`, `read_word`, `parse_uint`, `parse_int`.
+-   **Memory Management**: `malloc`, `free`, `memcpy`
+    - Note that memory allocated with `malloc` is signed so that during `free` we know that we are deallocated our own memory.
+-   **String Utilities**: `string_length`, `string_equals`, `string_copy`, `string_concat`.
+-   **Other**: `exit`, `clrscr`.
 
 ## 12. Driver
 

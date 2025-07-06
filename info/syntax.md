@@ -79,6 +79,9 @@ Functions are top-level declarations.
 
 ### Structs
 
+- Stored on the heap, and must be freed with the use of the `free` keyword, as of now without any garbage collection system in place.
+- RHS Structs in assignments and initialization are copied with `memcpy` except for when the RHS is a struct literal, as it is a new allocation to memory and has no need to be re-copied.
+
 - **Declaration**:
     ```
     struct Point {
@@ -113,6 +116,33 @@ Memory are managed manually on the heap using `new` and `free`.
     - `free[] ptr`: Frees an array.
     - Note that in the current implementation, in both cases of allocation we are allocating a block of memory, so both of these versions perform the same free, though can be helpful for specificity to the writer.
 - **Pointer Arithmetic**: Pointers support addition and subtraction with integers. Array-style subscripting `ptr[i]` is syntactic sugar for `*(ptr + i)`.
+
+### Strings
+
+- Stored on the heap as null-terminated byte sequences, and must be freed with the use of the `free` keyword, as of now without any garbage collection system in place.
+- RHS Strings in assignments and initialization are copied with `string_copy` except for the case described with an immutable string variable.
+
+- **String Literals**: Stored in the data section. When immutable variables are initialized with a string literal, no string copy is done due to the inability to modify the string anyways. For mutable variables a copy is done on the string literal within the data segment.
+    ```
+    x : string = "hello";  // String literal, stored in .data section
+    ```
+- **String Concatenation**: Uses the `+` operator and returns a heap-allocated string.
+    ```
+    a : string = "hello";
+    b : string = "world";
+    c : string = a + b; // helloworld
+    ```
+- **String Subscripting**: Access individual characters using `string[index]`, returning `u8` values.
+    ```
+    // loading
+    s : string = "hello";
+    h : u8 = s[0];       // 'h' (104 in ASCII)
+    e : u8 = s[1];       // 'e' (101 in ASCII)
+
+    // storing
+    s[0] = 'a'; // character literal
+    s[1] = 97;  // ascii
+    ```
 
 ### Special Statements
 
